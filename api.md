@@ -15,7 +15,7 @@ curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" https://admin.rubyisf
 * 200 {"hosts":["mine.com","mine2.com"]}
 
 
-## add host
+## add/edit host
 ```bash
 curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d "{\"host\": \"yours.com\", \"ip\": \"127.0.0.1:4000\"}" https://admin.rubyisforpussys.com/api/
 ```
