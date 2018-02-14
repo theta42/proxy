@@ -16,12 +16,19 @@ This has been tested on ubuntu 16.04, but should work on any modern Linux distro
 
 The steps below are for a new ubuntu server, they should be mostly the same for other distros, but the paths and availability of packages may vary.
 
+* Install other
+    These packages are needed for the PAM node package
+    ```bash
+    apt install libpam0g-dev build-essential
+    ```
+
 * Install open ssh server
     ```bash
     apt install ssh
     ```
 
 * Install openresty
+
     [OpenResty® Linux Packages](https://openresty.org/en/linux-packages.html)
 
 * Install redis
