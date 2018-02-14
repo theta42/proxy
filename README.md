@@ -1,20 +1,23 @@
 # proxy
 
-## Install openresty
+## API docs
+[API dpcs](api.md)
 
-## Install redis
+## Server set up
 
-## install lua plugin
+* Install openresty
+
+* Install redis
+
+* install lua plugin
 ```bash
 apt install luarocks
 sudo luarocks install lua-resty-auto-ssl
 ```
 
+* openresty config
 
-
-## openresty config
-
-
+Set up fail back SSL certs
 ```bash
 mkdir /etc/ssl/
 
@@ -25,7 +28,7 @@ openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509   -subj '/CN=sni-suppo
 ```
 
 
-/etc/openresty/nginx.conf
+change the `/etc/openresty/nginx.conf to have this config`
 
 ```
 #user  nobody;
@@ -107,7 +110,7 @@ http {
 ```
 
 
-/etc/openresty/autossl.conf
+add the SSL config file `/etc/openresty/autossl.conf`
 
 ```
   ssl_protocols     TLSv1 TLSv1.1 TLSv1.2;
@@ -130,7 +133,7 @@ http {
 ```
 
 
-/etc/openresty/sites-enabled/000-proxy
+Add the proxy config `/etc/openresty/sites-enabled/000-proxy`
 
 
 ```
@@ -162,7 +165,7 @@ server {
 			return ngx.exit(500)
 		    end
 
-		    local host, err = red:hget(key, "ip")
+		    local host, err = red:hget("proxy_host_"..key, "ip")
 		    if not host then
 			ngx.log(ngx.ERR, "failed to get redis key: ", err)
 			return ngx.exit(500)
@@ -187,6 +190,8 @@ server {
 	}
 }
 ```
+
+
 
 ## ref
 
