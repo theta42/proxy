@@ -1,20 +1,22 @@
 ## invite
 ```bash
-curl -H "Content-Type: application/json" -H "auth-token: 0b06eb2e-4ca4-4881-9a0f-b8df55431cd1" -X POST -d "{\"username\": \"william\", \"password\": \"palm7\"}" http://localhost:3000/users/invite
-
-{"token":"5caf94d2-2c91-4010-8df7-968d10802b9d"}
+curl -H "Content-Type: application/json" -H "auth-token: 0b06eb2e-4ca4-4881-9a0f-b8df55431cd1" -X POST http://localhost:3000/users/invite
 ```
+
+* 200 {"token":"5caf94d2-2c91-4010-8df7-968d10802b9d"}
+
 
 ## sing up
 ```bash
 curl -H "Content-Type: application/json" -X POST -d "{\"username\": \"test9\", \"password\": \"palm7\"}" http://localhost:3000/auth/invite/b33d8819-ec64-4cf4-a6ec-77562d738fa4
 
-200 {"user":"test9","token":"af662d8b-3d44-4110-8ad9-047dc752d97f"}
-400 {"message":"Missing fields"}
-401 {"message":"Token not valid"}
-409 {"message":"username taken"}
-
 ```
+
+* 200 {"user":"test9","token":"af662d8b-3d44-4110-8ad9-047dc752d97f"}
+* 400 {"message":"Missing fields"}
+* 401 {"message":"Token not valid"}
+* 409 {"message":"username taken"}
+
 ## login
 ```bash
 curl -H "Content-Type: application/json" -X POST -d "{\"username\": \"test8\", \"password\": \"palm7\"}" http://localhost:3000/auth/login
