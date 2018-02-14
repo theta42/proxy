@@ -3,7 +3,7 @@ const Users = require('../models/users');
 async function auth(req, res, next){
 	if(req.header('auth-token')){
 		let user = await Users.checkToken({token: req.header('auth-token')});
-		if(user){
+		if(user.username){
 			req.user = user;
 			return next();
 		}

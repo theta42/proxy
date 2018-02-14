@@ -1,23 +1,27 @@
-const client = require('../redis');
+'use strict';
+
 const router = require('express').Router();
-const app = require('../app');
+
+const Host = require('../models/hosts');
 
 router.get('/:host', async function(req, res){
-	client.HGETALL('host_' + req.params.host, function (error, results) {
-		res.json({
-			host: req.params.host,
-			results: results
-		});
+	let host = req.params.host;
+
+	let info = await Host.getInfo({host});
+
+	return res.status(info ? 200 : 404).json({
+		host: req.params.host,
+		results: info
 	});
 });
 
 router.get('/', async function(req, res){
-	client.SMEMBERS('hosts', function(error, results){
-		if(error){
-			return res.status(500).json({message: `ERROR ${error}`});
-		}
-		return res.json({hosts: results});
-	});
+	try{
+		let hosts = await Host.listAll();
+		return res.json({hosts: hosts});
+	}catch(error){
+		return res.status(500).json({message: `ERROR ${error}`});
+	}
 });
 
 router.post('/', async function(req, res){
@@ -28,47 +32,45 @@ router.post('/', async function(req, res){
 		return res.status(400).json({
 			message: `Missing fields: ${!host ? 'host' : ''} ${!ip ? 'ip' : ''}` 
 		});
-	}else{
+	}
 
-		try{
-			await client.SADD('hosts', host);
-			await client.HSET('host_' + host, 'ip', ip);
-			await client.HSET('host_' + host, 'updated', (new Date).getTime());
-
-		} catch (error){
-			return res.status(500).json({
-				message: `ERROR: ${error}`
-			});
-		}
+	try{
+		Host.add({host, ip, username: req.user.username});
 
 		return res.json({
 			message: `Host ${host} Added`
 		});
+	} catch (error){
+
+		return res.status(500).json({
+			message: `ERROR: ${error}`
+		});
 	}
+
 });
 
 router.delete('/', async function(req, res){
 	let host = req.body.host;
+	let count;
 
 	if(!host){
 		return res.status(400).json({
 			message: `Missing fields: ${!host ? 'host' : ''}` 
 		});
-	}else{
+	}
 	
-		try{
-			await client.SREM('hosts', host);
-			await client.DEL('host_' + host);
-		}catch(error){
-			return res.status(500).json({
-				message: `ERROR: ${error}`
-			});
-		}
+	try{
+		count = await Host.remove({host});
 
-		return res.json({
-			message: `Host ${host} deleted`
+	}catch(error){
+		return res.status(500).json({
+			message: `ERROR: ${error}`
 		});
 	}
+
+	return res.json({
+		message: `Host ${host} deleted`,
+	});
 });
 
 module.exports = router;

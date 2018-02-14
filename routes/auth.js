@@ -1,16 +1,16 @@
 'use strict';
 
 const router = require('express').Router();
-const linuxUser = require('linux-user');
-const {promisify} = require('util');
-
 const Users = require('../models/users'); 
 
+/*
+	Password login
+*/
 router.post('/login', async function(req, res){
 	let username = req.body.username;
 	let password = req.body.password;
 
-	let groups = await Users.login({username, password})
+	let groups = await Users.login({username, password});
 
 	if(groups){
 		return res.json({
@@ -26,16 +26,15 @@ router.post('/login', async function(req, res){
 
 });
 
+/*
+	verify public ssh key
+*/
 router.post('/verifykey', async function(req, res){
 	let key = req.body.key;
-	const verifySSHKey = promisify(linuxUser.verifySSHKey);
-
-	let isValid;
 
 	try{
-		isValid = await verifySSHKey(key);
 		return res.json({
-			info: isValid
+			info: await Users.verifyKey(key)
 		});
 	}catch(error){
 		return res.status(400).json({
@@ -45,14 +44,14 @@ router.post('/verifykey', async function(req, res){
 	
 });
 
-router.post('/:token', async function(req, res, next) {
+
+router.post('/invite/:token', async function(req, res, next) {
 	let username = req.body.username;
 	let password = req.body.password;
 	let token = req.params.token;
 
-	let invite = await Users.checkInviteToken({token});
-
-	console.log('invite', invite)
+	// make sure invite token is valid
+	let invite = await Users.checkInvite({token});
 
 	if(!invite || invite.invited){
 		return res.status(401).json({
@@ -60,23 +59,31 @@ router.post('/:token', async function(req, res, next) {
 		});
 	}
 
+	// make sure requires fields are in
 	if(!username || !password){
 		return res.status(400).json({
 			message: 'Missing fields'
 		});
 	}
 
+	// make sure the requested user name can be used 
 	if(await Users.ifUserExists({username})){
-		return res.json({
-			message: 'username taken'
+		return res.status(409).json({
+			message: 'Username taken'
 		});
 	}
 
+	// create the new user
 	await Users.add({username, password, isAdmin: invite.isAdmin});
 
-	await Users.useInviteToken({token, username});
+	// consume the invite token
+	await Users.consumeInvite({token, username});
 
-	return res.json({user:username});
+	// send back API token for the new user
+	return res.json({
+		user: username,
+		token: await Users.addToken({username})
+	});
 
 });
 
