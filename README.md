@@ -1,7 +1,7 @@
 # proxy
 
 ## API docs
-[API dpcs](api.md)
+[API docs](api.md)
 
 ## Server set up
 
@@ -9,12 +9,13 @@ The server requires:
 * NodeJS 8.x
 * open ssh server(any modern version will do)
 * inbound Internet access
+* OpenResty
 * redis
 * lua rocks
 
 This has been tested on ubuntu 16.04, but should work on any modern Linux distro. It used the Linux users for its user management, so this will **ONLY** work on Linux, no macOS, BSD or Windows.
 
-The steps below are for a new ubuntu server, they should be mostly the same for other distros, but the paths and availability of packages may vary.
+The steps below are for a new ubuntu server, they should be mostly the same for other distros, but the paths and availability of packages may vary. A dedicated server is highly recommended (since it will make ever user a system user), a VPS like Digital Ocean will do just fine.
 
 * Install other
     These packages are needed for the PAM node package
@@ -41,6 +42,9 @@ The steps below are for a new ubuntu server, they should be mostly the same for 
 apt install luarocks
 sudo luarocks install lua-resty-auto-ssl
 ```
+
+* Configure sshd for tunneling
+
 
 * openresty config
 
