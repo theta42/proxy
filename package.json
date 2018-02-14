@@ -1,16 +1,25 @@
 {
   "name": "proxy-api",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
+  "author": [
+    {
+      "name": "William Mantly",
+      "email": "wmantly@gmail.com"
+    }
+  ],
   "scripts": {
     "start": "node ./bin/www"
   },
   "dependencies": {
     "authenticate-pam": "^1.0.2",
-    "bcrypt": "^1.0.3",
     "express": "~4.16.1",
     "linux-user": "github:wmantly/linux-user",
-    "pubsub-js": "^1.6.0",
     "redis": "^2.8.0"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://git.theta42.com/wmantly/proxy.git"
   }
 }

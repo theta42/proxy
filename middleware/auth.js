@@ -1,3 +1,5 @@
+'use strict';
+
 const Users = require('../models/users'); 
 
 async function auth(req, res, next){

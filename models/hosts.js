@@ -9,16 +9,16 @@ async function getInfo(data){
 	return info
 }
 
+
 async function listAll(){
-	
 	try{
 		let hosts = await client.SMEMBERS('hosts');
 		return hosts;
 	}catch(error){
 		return new Error(error);
 	}
-
 }
+
 
 async function add(data){
 	try{
@@ -33,6 +33,7 @@ async function add(data){
 	}
 }
 
+
 async function remove(data){
 	try{
 		await client.SREM('hosts', data.host);
@@ -42,5 +43,6 @@ async function remove(data){
 		return new Error(error);
 	}
 }
+
 
 module.exports = {getInfo, listAll, add, remove};
