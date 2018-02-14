@@ -1,3 +1,37 @@
+## get host info
+```bash
+curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" http://localhost:3000/api/mine.com
+```
+
+* 200 {"host":"yours.com","results":{"ip":"127.0.0.1:4000","updated":"1518595297563","username":"test10"}}
+* 404 {"host":"mine.comf","results":null}
+
+
+## view all hosts
+```bash
+curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" http://localhost:3000/api/
+```
+
+* 200 {"hosts":["mine.com","mine2.com"]}
+
+
+## add host
+```bash
+curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d "{\"host\": \"yours.com\", \"ip\": \"127.0.0.1:4000\"}" http://localhost:3000/api/
+```
+
+* 200 {"message":"Host yours.com Added"}
+* 400 {"message":"Missing fields:  ip"}
+
+
+## delete host
+```bash
+curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X DELETE -d "{\"host\": \"yours.com\"}" http://localhost:3000/api/
+```
+
+* 200 {"message":"Host yours.com deleted"}
+
+
 ## invite
 ```bash
 curl -H "Content-Type: application/json" -H "auth-token: 0b06eb2e-4ca4-4881-9a0f-b8df55431cd1" -X POST http://localhost:3000/users/invite
@@ -17,6 +51,7 @@ curl -H "Content-Type: application/json" -X POST -d "{\"username\": \"test9\", \
 * 401 {"message":"Token not valid"}
 * 409 {"message":"username taken"}
 
+
 ## login
 ```bash
 curl -H "Content-Type: application/json" -X POST -d "{\"username\": \"test8\", \"password\": \"palm7\"}" http://localhost:3000/auth/login
@@ -31,6 +66,7 @@ curl -H "Content-Type: application/json" -X POST -d "{\"key\":\"ssh-rsa AAAAB3Nz
 ```
 * 200 {"info":"4096 SHA256:dfdCYzt0atMBXVZTJzUxsu99IjXXFXpocSox5q+jOs8 wmantly@gmail.co (RSA)\n"}
 * 400 {"message":"Key is not a public key file!"}
+
 
 ## add ssh key to current user
 ```bash
