@@ -5,9 +5,29 @@
 
 ## Server set up
 
+The server requires:
+* NodeJS 8.x
+* open ssh server(any modern version will do)
+* inbound Internet access
+* redis
+* lua rocks
+
+This has been tested on ubuntu 16.04, but should work on any modern Linux distro. It used the Linux users for its user management, so this will **ONLY** work on Linux, no macOS, BSD or Windows.
+
+The steps below are for a new ubuntu server, they should be mostly the same for other distros, but the paths and availability of packages may vary.
+
+* Install open ssh server
+    ```bash
+    apt install ssh
+    ```
+
 * Install openresty
+    [OpenResty® Linux Packages](https://openresty.org/en/linux-packages.html)
 
 * Install redis
+    ```bash
+    apt install redis-server
+    ```
 
 * install lua plugin
 ```bash
