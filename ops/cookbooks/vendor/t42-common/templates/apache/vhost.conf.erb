@@ -1,0 +1,76 @@
+<VirtualHost *:80>
+  ServerName www.<%= node['app']['domain'] %>
+  Redirect permanent / http://<%= node['app']['domain'] %>/
+</VirtualHost>
+
+<% if node['web']['do_ssl'] %>
+  <VirtualHost *:443>
+    ServerName www.<%= node['app']['domain'] %>
+    Redirect permanent / https://<%= node['app']['domain'] %>/
+
+    Include /etc/letsencrypt/options-ssl-apache.conf
+    SSLCertificateFile /etc/letsencrypt/live/<%= node['app']['domain'] %>/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/<%= node['app']['domain'] %>/privkey.pem
+  </VirtualHost>
+
+  <VirtualHost *:443>
+    Include /etc/letsencrypt/options-ssl-apache.conf
+    SSLCertificateFile /etc/letsencrypt/live/<%= node['app']['domain'] %>/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/<%= node['app']['domain'] %>/privkey.pem
+
+    <Location /server-status>
+      SetHandler server-status
+      Order Deny,Allow
+      Allow from all
+    </Location>
+
+    <Location /server-info>
+      SetHandler server-info
+      Order Deny,Allow
+      Allow from all
+    </Location>
+<% else %>
+  <VirtualHost *:80>
+<% end %>
+    ServerName <%= node['app']['domain'] %> 
+
+    <IfModule mod_expires.c>
+      <FilesMatch "\.(jpe?g|png|gif|js|css)$">
+        ExpiresActive On
+        ExpiresDefault "access plus 1 week"
+      </FilesMatch>
+    </IfModule>
+
+    <% if node['web']['static'] %>
+    <% node['web']['static'].each do |static| -%>
+    Alias <%= static['uri'] %> <%= node['working-dir'] %>/<%= static['path'] %>
+
+    <% end -%>
+    <% end -%>
+    
+    <% if node['web']['wsgi'] %>
+    
+    WSGIDaemonProcess <%= node['app']['name'] %> python-path=<%= node['python']['working-dir'] %> python-home=<%= node['python']['env_path'] %>
+    WSGIProcessGroup <%= node['app']['name'] %>
+    WSGIScriptAlias / <%= node['working-dir'] %>/<%= node['web']['wsgi']['wsgi_path'] %>
+
+    <Directory "<%= node['working-dir'] %>">
+        Require all granted
+    </Directory>
+
+    <% end %>
+
+    <% if node['web']['socket.io'] %>
+    
+    # socket.io conf
+    RewriteEngine On
+    RewriteCond %{HTTP:UPGRADE} ^WebSocket$ [NC]
+    RewriteCond %{HTTP:CONNECTION} Upgrade$ [NC]
+    RewriteRule .* ws://<%= node['web']['socket.io']['host']%>:<%= node['web']['socket.io']['port']%>%{REQUEST_URI} [P]
+    RewriteCond %{REQUEST_URI}  ^/socket.io/$1/websocket  [NC]
+    RewriteRule socket.io/(.*)           ws://<%= node['web']['socket.io']['host']%>:<%= node['web']['socket.io']['port']%>/socket.io/$1 [P,L]
+    ProxyPass /socket.io http://<%= node['web']['socket.io']['host']%>:<%= node['web']['socket.io']['port']%>/socket.io
+    ProxyPassReverse /socket.io http://<%= node['web']['socket.io']['host']%>:<%= node['web']['socket.io']['port']%>/socket.io
+
+    <% end %>
+  </VirtualHost>

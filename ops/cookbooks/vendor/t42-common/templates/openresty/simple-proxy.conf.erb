@@ -1,0 +1,28 @@
+server {
+    listen   80;
+    <% if node['web']['do_ssl'] %>
+    listen  443 ssl;
+    <% end %>
+    server_name <%= node['app']['domain'] %>;
+
+    <% if node['web']['do_ssl'] %>
+    include autossl.conf;
+    <% end %>
+
+    proxy_set_header X-Forwarded-For $remote_addr;
+
+    location / {
+         proxy_pass         http://localhost:3000;
+         proxy_set_header   Host $host;
+         proxy_set_header   X-Real-IP $remote_addr;
+         proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+         proxy_set_header   X-Forwarded-Host $server_name;
+         proxy_read_timeout  1200s;
+
+         # used for view/edit office file via Office Online Server
+         client_max_body_size 0;
+    }
+
+     access_log      /var/log/nginx/<%= node['app']['name'] %>.access.log;
+     error_log       /var/log/nginx/<%= node['app']['name'] %>.error.log;
+}

@@ -1,0 +1,35 @@
+{
+  "name": "app",
+  "description": "Installs/Configures django-backend",
+  "long_description": "Installs/Configures django-backend",
+  "maintainer": "The Authors",
+  "maintainer_email": "you@example.com",
+  "license": "All Rights Reserved",
+  "platforms": {
+
+  },
+  "dependencies": {
+    "t42-common": ">= 0.0.0"
+  },
+  "providing": {
+
+  },
+  "recipes": {
+
+  },
+  "version": "0.1.0",
+  "source_url": "",
+  "issues_url": "",
+  "privacy": false,
+  "chef_versions": [
+    [
+      ">= 13.0"
+    ]
+  ],
+  "ohai_versions": [
+
+  ],
+  "gems": [
+
+  ]
+}
