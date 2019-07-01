@@ -1,6 +1,0 @@
-source 'https://supermarket.chef.io'
-	# cookbook 'mysql', '~> 8.5.1'
-metadata
-
-cookbook 'app', path: 'app'
-cookbook 't42-common', git: 'https://git.theta42.com/theta42/t42-common.git'
