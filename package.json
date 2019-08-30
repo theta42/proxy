@@ -12,9 +12,10 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
-    "authenticate-pam": "^1.0.2",
+    "authenticate-pam": "github:WeiAnAn/node-authenticate-pam",
     "express": "~4.16.1",
-    "forever": "^0.15.3",
+    "forever": "^1.0.0",
+    "linux-sys-user": "github:wmantly/linux-user",
     "linux-user": "github:wmantly/linux-user",
     "redis": "^2.8.0"
   },
