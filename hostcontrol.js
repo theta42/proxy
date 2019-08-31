@@ -3,10 +3,15 @@
 //you must add the absolute path to hosts.js on line 4, or this file will NOT work
 const hosts = require("./models/hosts.js")
 
+const command = process.argv[2];
 
-if (process.argv[2] == "--list"){
-	console.log(hosts.listAll())
-}
+(async function(command){
+	if (command == "--list"){
+		console.log(await hosts.listAll())
+		process.exit(0)
+	}
+
+})(command)
 /* 
 	if process.argv[2] == "--info"
 
