@@ -78,7 +78,11 @@ Vagrant.configure("2") do |config|
     cd /vagrant/ops/cookbooks
     rm -rf vendor
     rm -rf $HOME/.berksfile
-    berks update
+    if [ -f ".Berksfile.lock" ]; then
+      berks update
+    else 
+      berks install
+    fi
     berks vendor vendor
   SHELL
 
@@ -94,20 +98,23 @@ Vagrant.configure("2") do |config|
       'working-dir': '/vagrant',
       'app': {
         'name': 'proxy',
+        'run_user': 'vagrant',
         'domain': 'localhost',
       },
       'nodejs': {
         'working-dir': 'nodejs',
-        'port': '8001'
+        'port': '8001',
+        'install_version': 12
       },
       'redis':{
         'unix': {
           'perm': '777'
         }
       },
-      # 'python': {
-      #   'working-dir': 'django',
-      # },
+      'python': {
+        # 'working-dir': 'django',
+        'version': '2.7'
+      },
       # 'db':{},
       # 'django': {
       #   'settings_path': 'project/settings',
