@@ -93,22 +93,22 @@ Vagrant.configure("2") do |config|
     chef.json = {
       'working-dir': '/vagrant',
       'app': {
-        'name': 'change_me',
+        'name': 'proxy',
         'domain': 'localhost',
       },
-      # 'nodejs': {
-      #   'working-dir': 'node_rtc',
-      #   'port': '8001'
-      # },
+      'nodejs': {
+        'working-dir': 'nodejs',
+        'port': '8001'
+      },
+      'redis':{
+        'unix': {
+          'perm': '777'
+        }
+      },
       # 'python': {
       #   'working-dir': 'django',
       # },
       # 'db':{},
-      # 'redis':{
-      #   'unix': {
-      #     'perm': '777'
-      #   }
-      # },
       # 'django': {
       #   'settings_path': 'project/settings',
       #   'email': {
