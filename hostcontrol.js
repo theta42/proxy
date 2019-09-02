@@ -9,8 +9,18 @@ const command = process.argv[2];
 	if (command == "--list"){
 		console.log(await hosts.listAll())
 		process.exit(0)
-	}
+	
+	} else if (command == "--add"){
+		let data = {'host': process.argv[3],
+					'ip': process.argv[4],
+					'username': USER}
+		console.log(await hosts.add(data))
+		process.exit(0)
 
+	} else {
+		console.log("PLACEHOLDER FOR HELP TEXT")
+		process.exit(0)
+	}
 })(command)
 /* 
 	if process.argv[2] == "--info"
