@@ -19,23 +19,29 @@ const command = process.argv[2];
 			let data = {'host': process.argv[3],
 						'ip': process.argv[4],
 						'username': process.env.USER}
-			console.log(await hosts.add(data))
+			await hosts.add(data)
+			console.log(data.host + " has been added successfully")
 			process.exit(0)
 		} catch (e){
 			console.error(e)
 			process.exit(2)
 		}
+	} else if (command == "--info") {
+		try{
+			let data = {'host': process.argv[3]}
+			console.log(await hosts.getInfo(data))
+			process.exit(0)
+		}catch(e){
+			console.error(e)
+			process.exit(2)
+		}
+
 	} else {
 		console.log("PLACEHOLDER FOR HELP TEXT")
 		process.exit(0)
 	}
 })(command)
 /* 
-	if process.argv[2] == "--info"
-s
 	if process.argv[2] == "--remove"
 
-	else{
-		console.log("help text")
-	}
 */
