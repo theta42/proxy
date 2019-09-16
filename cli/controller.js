@@ -1,20 +1,36 @@
 #! /usr/bin/env node
 
-//you must add the absolute path to hosts.js on line 4, or this file will NOT work
-const hosts = require("./models/hosts.js")
+//Import required modules
+const hosts = require("../models/hosts")
+const views = require("./views")
 
+//set command variable
 const command = process.argv[2];
 
 (async function(command){
 	if (command == "--list"){
 		try{
-		console.log(await hosts.listAll())
-		process.exit(0)
+			await views.list(await hosts.listAll())
+			process.exit(0)
 		} catch(e){
 			console.error(e)
 			process.exit(1)
 		}
 		
+	} else if (command == "--ls-f"){
+		try{
+			let data = await hosts.listAll()
+			let output =[]
+			for (i =0; i > data.length; i++){
+				line = await hosts.getInfo(data[i])
+				output[i] = line
+			}
+			views.listFancy(output)
+		} catch(e){
+			console.error(e)
+			process.exit(1)
+		}
+
 	} else if (command == "--add"){
 		try{
 			let data = {'host': process.argv[3],
