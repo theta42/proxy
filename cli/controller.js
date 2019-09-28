@@ -21,11 +21,13 @@ const command = process.argv[2];
 		try{
 			let data = await hosts.listAll()
 			let output =[]
+			await views.ppHeader()
 			for (i =0; i > data.length; i++){
 				line = await hosts.getInfo(data[i])
-				output[i] = line
+				views.info(data[i], line)
 			}
-			views.listFancy(output)
+			process.exit(0)
+
 		} catch(e){
 			console.error(e)
 			process.exit(1)
@@ -47,7 +49,8 @@ const command = process.argv[2];
 	} else if (command == "--info") {
 		try{
 			let data = {'host': process.argv[3]}
-			console.log(await hosts.getInfo(data))
+			let line = await hosts.getInfo(data)
+			views.info(data, line)
 			process.exit(0)
 		}catch(e){
 			console.error(e)
@@ -66,18 +69,7 @@ const command = process.argv[2];
 		}
 
 	} else if (command == '--help'){
-		console.log("hostctrl.js help text \n")
-		console.log("\n")
-		console.log("--help  :    This help text. \n")
-		console.log("--list  :    Provides a list of all hosts in the database. \n")
-		console.log("--add   :    Add a new host. Usage: --add <hostname> <ipaddress> \n")
-		console.log("--info  :    Provides detailed info on a host. Usage: --info <hostname> \n")
-		console.log("--remove:    Not yet implemented. Using this will raise an error \n")
-		console.log("\n")
-		console.log("Error code map: \n")
-		console.log("0 -- ok \n")
-		console.log("1 -- data error \n")
-		console.log("127 -- invalid command used \n")
+		views.help()
 		process.exit(0)
 
 	} else {
