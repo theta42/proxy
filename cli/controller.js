@@ -19,12 +19,11 @@ const command = process.argv[2];
 		
 	} else if (command == "--ls-f"){
 		try{
-			let data = await hosts.listAll()
-			let output =[]
-			await views.ppHeader()
-			for (i =0; i > data.length; i++){
-				line = await hosts.getInfo(data[i])
-				views.info(data[i], line)
+			let list = await hosts.listAll()
+			views.ppHeader()
+			for (i = 0; i < list.length; i++){
+				let data = {'host': list[i]}
+				views.info(data, await hosts.getInfo(data))
 			}
 			process.exit(0)
 
