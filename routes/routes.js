@@ -35,7 +35,10 @@ router.post('/', async function(req, res){
 	}
 
 	try{
-		Host.add({host, ip, username: req.user.username});
+		await Host.add({host, ip,
+			  username: req.user.username,
+			  forceSSL: req.body.forceSSL
+		});
 
 		return res.json({
 			message: `Host ${host} Added`
