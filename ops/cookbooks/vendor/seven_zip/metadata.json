@@ -14,13 +14,10 @@
   "providing": {
 
   },
-  "attributes": {
-
-  },
   "recipes": {
 
   },
-  "version": "3.1.1",
+  "version": "3.1.2",
   "source_url": "https://github.com/windowschefcookbooks/seven_zip",
   "issues_url": "https://github.com/windowschefcookbooks/seven_zip/issues",
   "privacy": false,

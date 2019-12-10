@@ -12,8 +12,13 @@ module MysqlCookbook
       false
     end
 
-    def wheezy?
-      return true if node['platform'] == 'debian' && node['platform_version'].to_i == 7
+    def fedora?
+      return true if node['platform_family'] == 'fedora'
+      false
+    end
+
+    def suse?
+      return true if node['platform_family'] == 'suse'
       false
     end
 
@@ -38,6 +43,11 @@ module MysqlCookbook
       false
     end
 
+    def bionic?
+      return true if node['platform'] == 'ubuntu' && node['platform_version'] == '18.04'
+      false
+    end
+
     def defaults_file
       "#{etc_dir}/my.cnf"
     end
@@ -58,22 +68,22 @@ module MysqlCookbook
 
     def default_major_version
       # rhelish
-      return '5.1' if el6?
+      return '5.6' if el6?
       return '5.6' if el7?
       return '5.6' if node['platform'] == 'amazon'
 
       # debian
-      return '5.5' if wheezy?
       return '5.5' if jessie?
 
       # ubuntu
       return '5.5' if trusty?
       return '5.7' if xenial?
+      return '5.7' if bionic?
 
       # misc
       return '5.6' if node['platform'] == 'freebsd'
-      return '5.6' if node['platform'] == 'fedora'
-      return '5.6' if node['platform_family'] == 'suse'
+      return '5.7' if fedora?
+      return '5.6' if suse?
     end
 
     def major_from_full(v)
@@ -81,7 +91,11 @@ module MysqlCookbook
     end
 
     def mysql_name
-      "mysql-#{instance}"
+      if instance == 'default'
+        'mysql'
+      else
+        "mysql-#{instance}"
+      end
     end
 
     def default_socket_file
@@ -89,20 +103,23 @@ module MysqlCookbook
     end
 
     def default_client_package_name
-      return ['mysql', 'mysql-devel'] if major_version == '5.1' && el6?
+      return %w(mysql mysql-devel) if major_version == '5.1' && el6?
+      return %w(mysql mysql-devel) if el7?
       return ['mysql55', 'mysql55-devel.x86_64'] if major_version == '5.5' && node['platform'] == 'amazon'
       return ['mysql56', 'mysql56-devel.x86_64'] if major_version == '5.6' && node['platform'] == 'amazon'
+      return ['mysql57', 'mysql57-devel.x86_64'] if major_version == '5.7' && node['platform'] == 'amazon'
       return ['mysql-client-5.5', 'libmysqlclient-dev'] if major_version == '5.5' && node['platform_family'] == 'debian'
       return ['mysql-client-5.6', 'libmysqlclient-dev'] if major_version == '5.6' && node['platform_family'] == 'debian'
       return ['mysql-client-5.7', 'libmysqlclient-dev'] if major_version == '5.7' && node['platform_family'] == 'debian'
       return 'mysql-community-server-client' if major_version == '5.6' && node['platform_family'] == 'suse'
-      ['mysql-community-client', 'mysql-community-devel']
+      %w(mysql-community-client mysql-community-devel)
     end
 
     def default_server_package_name
       return 'mysql-server' if major_version == '5.1' && el6?
       return 'mysql55-server' if major_version == '5.5' && node['platform'] == 'amazon'
       return 'mysql56-server' if major_version == '5.6' && node['platform'] == 'amazon'
+      return 'mysql57-server' if major_version == '5.7' && node['platform'] == 'amazon'
       return 'mysql-server-5.5' if major_version == '5.5' && node['platform_family'] == 'debian'
       return 'mysql-server-5.6' if major_version == '5.6' && node['platform_family'] == 'debian'
       return 'mysql-server-5.7' if major_version == '5.7' && node['platform_family'] == 'debian'
@@ -189,7 +206,6 @@ module MysqlCookbook
         set -e
         rm -rf /tmp/#{mysql_name}
         mkdir /tmp/#{mysql_name}
-
         cat > /tmp/#{mysql_name}/my.sql <<-'EOSQL'
 UPDATE mysql.user SET #{password_column_name}=PASSWORD('#{sql_escaped_password}')#{password_expired} WHERE user = 'root';
 DELETE FROM mysql.user WHERE USER LIKE '';
@@ -198,15 +214,24 @@ FLUSH PRIVILEGES;
 DELETE FROM mysql.db WHERE db LIKE 'test%';
 DROP DATABASE IF EXISTS test ;
 EOSQL
-
        #{db_init}
        #{record_init}
-
        while [ ! -f #{pid_file} ] ; do sleep 1 ; done
        kill `cat #{pid_file}`
        while [ -f #{pid_file} ] ; do sleep 1 ; done
        rm -rf /tmp/#{mysql_name}
-       EOS
+      EOS
+    end
+
+    def wait_for_init
+      cmd = <<-EOS
+              while [ ! -f #{pid_file} ] ; do sleep 1 ; done
+              kill `cat #{pid_file}`
+              while [ -f #{pid_file} ] ; do sleep 1 ; done
+              rm -rf /tmp/#{mysql_name}
+            EOS
+      cmd = '' if v57plus
+      cmd
     end
 
     def password_column_name
@@ -256,10 +281,24 @@ EOSQL
     def mysqld_bin
       return "#{prefix_dir}/libexec/mysqld" if node['platform_family'] == 'smartos'
       return "#{base_dir}/bin/mysqld" if node['platform_family'] == 'omnios'
-      return '/usr/sbin/mysqld' if node['platform_family'] == 'fedora' && v56plus
-      return '/usr/libexec/mysqld' if node['platform_family'] == 'fedora'
+      return '/usr/sbin/mysqld' if fedora? && v56plus
+      return '/usr/libexec/mysqld' if fedora?
       return 'mysqld' if scl_package?
       "#{prefix_dir}/usr/sbin/mysqld"
+    end
+
+    def mysql_systemd_start_pre
+      return '/usr/bin/mysqld_pre_systemd' if v57plus && (el7? || fedora?)
+      return '/usr/bin/mysql-systemd-start pre' if node['platform_family'] == 'rhel'
+      return '/usr/lib/mysql/mysql-systemd-helper install' if suse?
+      '/usr/share/mysql/mysql-systemd-start pre'
+    end
+
+    def mysql_systemd
+      return "/usr/libexec/#{mysql_name}-wait-ready $MAINPID" if v57plus && (el7? || fedora?)
+      return '/usr/bin/mysql-systemd-start' if node['platform_family'] == 'rhel'
+      return '/usr/share/mysql/mysql-systemd-start' if v57plus
+      "/usr/libexec/#{mysql_name}-wait-ready $MAINPID"
     end
 
     def mysqld_initialize_cmd

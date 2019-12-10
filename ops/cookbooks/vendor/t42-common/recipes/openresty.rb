@@ -37,12 +37,12 @@ if node['web']['do_ssl']
 	end
 
 	template '/etc/openresty/autossl.conf' do
-		source 'autossl.conf.erb'
+		source 'openresty/autossl.conf.erb'
 	end
 end
 
 template '/etc/openresty/nginx.conf' do
-	source 'nginx.conf.erb'
+	source 'openresty/nginx.conf.erb'
 end
 
 directory '/etc/openresty/sites-enabled' do
@@ -56,7 +56,7 @@ directory '/var/log/nginx/' do
 end
 
 template '/etc/openresty/sites-enabled/host.conf' do
-	source 'host.conf.erb'
+	source 'openresty/simple-proxy.conf.erb'
 end
 
 systemd_unit 'openresty' do

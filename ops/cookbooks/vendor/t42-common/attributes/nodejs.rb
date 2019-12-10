@@ -1,5 +1,6 @@
 default['nodejs']['env_path'] = "/opt/theta42/#{node['app']['name']}/env/node"
-default['NodeJS']['install_version'] = 12
-default['NodeJS']['working-dir'] = 'src/nodejs'
-default['NodeJS']['exec_file'] = 'app.js'
-default['NodeJS']['port'] = '8001'
+default['nodeJS']['install_version'] = 12
+default['nodeJS']['working-dir'] = 'src/nodejs'
+default['nodeJS']['exec_file'] = 'app.js'
+default['nodeJS']['port'] = '3000'
+default['nodeJS']['service'] = false
