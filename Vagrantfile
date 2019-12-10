@@ -42,6 +42,7 @@ Vagrant.configure("2") do |config|
   # accessing "localhost:8080" will access port 80 on the guest machine.
   # NOTE: This will enable public access to the opened port
   config.vm.network "forwarded_port", guest: 80, host: 8000
+  config.vm.network "forwarded_port", guest: 443, host: 8443
   config.vm.network "forwarded_port", guest: 3000, host: 8300
 
 
@@ -52,6 +53,7 @@ Vagrant.configure("2") do |config|
   config.vm.provider 'virtualbox' do |vb|
     # Customize the amount of memory on the VM:
     vb.memory = '1024'
+    vb.cpus = "2"
     # vb.default_nic_type = "virtio"
     vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
   end
@@ -70,22 +72,21 @@ Vagrant.configure("2") do |config|
     fi
 
     if ! which berks >/dev/null; then
-      gem install berkshelf --no-ri --no-rdoc
+      gem install ruby-shadow berkshelf --no-ri --no-rdoc
       # ln -s /opt/chef/embedded/bin/berks /usr/local/bin/berks
     fi
 
     cd /vagrant
-    # git submodule update --init --recursive
 
-    # cd /vagrant/ops/cookbooks
-    # rm -rf vendor
-    # rm -rf $HOME/.berksfile
-    # if [ -f ".Berksfile.lock" ]; then
-    #   berks update
-    # else 
-    #   berks install
-    # fi
-    # berks vendor vendor
+    cd /vagrant/ops/cookbooks
+    rm -rf vendor
+    rm -rf $HOME/.berksfile
+    if [ -f ".Berksfile.lock" ]; then
+      berks update
+    else 
+      berks install
+    fi
+    berks vendor vendor
   SHELL
 
   config.vm.provision 'chef_solo' do |chef|
@@ -122,6 +123,7 @@ Vagrant.configure("2") do |config|
       'web':{
         'admin_email': 'admin2342@example.com',
         'do_ssl': true,
+        't42-proxy': true
       },
     }.deep_merge(secrets);
   end

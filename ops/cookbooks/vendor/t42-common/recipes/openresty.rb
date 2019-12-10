@@ -55,8 +55,14 @@ directory '/var/log/nginx/' do
 	action :create
 end
 
-template '/etc/openresty/sites-enabled/host.conf' do
-	source 'openresty/simple-proxy.conf.erb'
+if node['web']['t42-proxy']
+	template '/etc/openresty/sites-enabled/proxy.conf' do
+		source 'openresty/010-proxy.conf.erb'
+	end
+else
+	template '/etc/openresty/sites-enabled/host.conf' do
+		source 'openresty/simple-proxy.conf.erb'
+	end
 end
 
 systemd_unit 'openresty' do

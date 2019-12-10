@@ -21,13 +21,18 @@ async function listAll(){
 
 
 async function add(data){
+
 	try{
 		await client.SADD('hosts', data.host);
 		await client.HSET('host_' + data.host, 'ip', data.ip);
 		await client.HSET('host_' + data.host, 'updated', (new Date).getTime());
 		await client.HSET('host_' + data.host, 'username', data.username);
+		await client.HSET('host_' + data.host, 'targetPort', data.targetPort);
 		if(data.forceSSL !== undefined){
-			await client.HSET('host_' + data.host, 'force_ssl', !!data.forceSSL);
+			await client.HSET('host_' + data.host, 'forcessl', !!data.forceSSL);
+		}
+		if(data.targetSSL !== undefined){
+			await client.HSET('host_' + data.host, 'targetssl', !!data.targetSSL);
 		}
 	} catch (error){
 		

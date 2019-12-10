@@ -27,17 +27,19 @@ router.get('/', async function(req, res){
 router.post('/', async function(req, res){
 	let ip = req.body.ip;
 	let host = req.body.host;
+	let targetPort = req.body.targetPort;
 
-	if(!host || !ip){
+	if(!host || !ip || !targetPort ){
 		return res.status(400).json({
-			message: `Missing fields: ${!host ? 'host' : ''} ${!ip ? 'ip' : ''}` 
+			message: `Missing fields: ${!host ? 'host' : ''} ${!ip ? 'ip' : ''} ${!targetPort ? 'targetPort' : ''}` 
 		});
 	}
 
 	try{
-		await Host.add({host, ip,
+		await Host.add({host, ip, targetPort,
 			  username: req.user.username,
-			  forceSSL: req.body.forceSSL
+			  forceSSL: req.body.forceSSL,
+			  targetSSL: req.body.targetSSL,
 		});
 
 		return res.json({
