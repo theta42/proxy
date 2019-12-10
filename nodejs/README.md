@@ -141,87 +141,11 @@ http {
 ```
 
 
-add the SSL config file `/etc/openresty/autossl.conf`
-
-```
-  ssl_protocols     TLSv1 TLSv1.1 TLSv1.2;
-  ssl_prefer_server_ciphers  on;
-  ssl_ciphers EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:EECDH+3DES:RSA+3DES:!MD5;
-
-  ssl_certificate_by_lua_block {
-    auto_ssl:ssl_certificate()
-  }
-
-  location /.well-known/acme-challenge/ {
-    content_by_lua_block {
-      auto_ssl:challenge_server()
-    }
-  }
-
-  ssl_certificate /etc/ssl/resty-auto-ssl-fallback.crt;
-  ssl_certificate_key /etc/ssl/resty-auto-ssl-fallback.key;
-
-```
+add the SSL config file `/etc/openresty/autossl.conf`, contents from here https://github.com/theta42/t42-common/blob/master/templates/openresty/autossl.conf.erb
 
 
-Add the proxy config `/etc/openresty/sites-enabled/000-proxy`
 
-
-```
-server {
-	listen 80;
-	listen 443 ssl;
-
-	include autossl.conf;
-
-	location / {
-		resolver 10.0.3.1;  #8.8.4.4;  # use Google's open DNS server
-
-		set $target '';
-		access_by_lua '
-		    local key = ngx.var.host
-		    if not key then
-			ngx.log(ngx.ERR, "no user-agent found")
-			return ngx.exit(400)
-		    end
-
-		    local redis = require "resty.redis"
-		    local red = redis:new()
-
-		    red:set_timeout(1000) -- 1 second
-
-		    local ok, err = red:connect("127.0.0.1", 6379)
-		    if not ok then
-			ngx.log(ngx.ERR, "failed to connect to redis: ", err)
-			return ngx.exit(500)
-		    end
-
-		    local host, err = red:hget("proxy_host_"..key, "ip")
-		    if not host then
-			ngx.log(ngx.ERR, "failed to get redis key: ", err)
-			return ngx.exit(500)
-		    end
-
-		    if host == ngx.null then
-			ngx.log(ngx.ERR, "no host found for key ", key)
-			return ngx.exit(400)
-		    end
-		    ngx.log(ngx.WARN, "==Found match!!!  ", key, host)
-		    ngx.var.target = host
-		';
-
-
-		proxy_pass http://$target;
-		proxy_set_header X-Real-IP  $remote_addr;
-		proxy_set_header X-Forwarded-For  $remote_addr;
-		proxy_set_header Host $host;
-		add_header X-Target-Host $target;
-		proxy_set_header Upgrade $http_upgrade;
-		proxy_set_header Connection "upgrade";
-	}
-}
-```
-
+Add the proxy config `/etc/openresty/sites-enabled/000-proxy` contents from here https://github.com/theta42/t42-common/blob/master/templates/openresty/010-proxy.conf.erb
 
 
 ## ref
