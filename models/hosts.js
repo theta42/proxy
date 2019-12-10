@@ -25,7 +25,8 @@ async function add(data){
 		await client.SADD('hosts', data.host);
 		await client.HSET('host_' + data.host, 'ip', data.ip);
 		await client.HSET('host_' + data.host, 'updated', (new Date).getTime());
-		await client.HSET('host_' + data.host, 'username', data.username);	
+		await client.HSET('host_' + data.host, 'username', data.username);
+		await client.HSET('host_' + data.host, 'force_ssl', data.forceSSL || 'false');
 	} catch (error){
 		
 		return new Error(error);
