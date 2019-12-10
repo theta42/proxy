@@ -26,7 +26,7 @@ curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" https://admin.rubyisf
 **post** `/api/`
 
 ```bash
-curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d "{\"host\": \"yours.com\", \"ip\": \"127.0.0.1:4000\"}" https://admin.rubyisforpussys.com/api/
+curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d '{"host": "yours.com", "ip": "127.0.0.1:4000", "forceSSL": true}' https://admin.rubyisforpussys.com/api/
 ```
 
 * 200 {"message":"Host yours.com Added"}
