@@ -1,0 +1,5 @@
+# frozen_string_literal: true
+source 'https://supermarket.chef.io'
+	# cookbook 'mysql', '~> 8.5.1'
+	cookbook "library-cookbook", "~> 0.1.1", git: "https://github.com/example/library-cookbook.git"
+metadata

@@ -1,0 +1,77 @@
+server {
+  listen 80;
+  listen 443 ssl;
+
+  include autossl.conf;
+
+  location / {
+
+	set $target '';
+	set $target_scheme 'http';
+	set $target_port '';
+	access_by_lua '
+		local host = ngx.var.host
+		local uri = ngx.var.uri
+		local scheme = ngx.var.scheme
+
+		if not host then
+			ngx.log(ngx.ERR, "no host header found")
+			return ngx.exit(499)
+		end
+
+		local redis = require "resty.redis"
+		local red = redis:new()
+
+		red:set_timeout(1000) -- 1 second
+
+		local ok, err = red:connect("127.0.0.1", 6379)
+		if not ok then
+			ngx.log(ngx.ERR, "failed to connect to redis: ", err)
+			return ngx.exit(598)
+		end
+
+		local res, err = red:hgetall("proxy_host_"..host)
+		local res = red:array_to_hash(res)
+
+		if not res["ip"] then
+			ngx.log(ngx.ERR, "no host found for key ", host)
+			return ngx.exit(406)
+		end
+
+		if scheme == "http" then
+			if res["forcessl"] == "true" then
+				return ngx.redirect("https://"..host..uri, 301)
+			end
+		end
+
+		if res["targetssl"] == "true" then
+			ngx.var.target_scheme = "https"
+		end
+	  
+		ngx.var.target = res["ip"]
+		ngx.var.target_port = res["targetPort"]
+	';
+
+
+	resolver 10.0.3.1;  #8.8.4.4;  # use Google's open DNS server
+	proxy_set_header Host $target;
+	proxy_set_header X-Forwarded-Proto $target_scheme;
+	proxy_set_header Upgrade-Insecure-Requests 0;
+	proxy_set_header User-Agent $http_user_agent;
+	proxy_set_header X-Real-IP $remote_addr;
+	proxy_set_header Accept-Encoding "";
+	proxy_set_header Accept-Language $http_accept_language;
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header Upgrade $http_upgrade;
+	proxy_set_header Connection "upgrade";
+	proxy_set_header Referer $target_scheme://$target;
+
+	proxy_pass $target_scheme://$target:$target_port;
+	proxy_ssl_session_reuse on;
+	proxy_pass_request_headers	on;
+    proxy_intercept_errors on;
+
+    sub_filter $target $host;
+    sub_filter_once off;
+  }
+}
