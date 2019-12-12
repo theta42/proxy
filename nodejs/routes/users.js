@@ -3,6 +3,10 @@
 const router = require('express').Router();
 const Users = require('../models/users'); 
 
+router.get('/me', async function(req, res){
+	return res.json({username: req.user.username});
+});
+
 router.post('/invite', async function(req, res){
 	let token = await Users.makeInviteToken({
 		username: res.user
