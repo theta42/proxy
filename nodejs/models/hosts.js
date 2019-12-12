@@ -20,6 +20,22 @@ async function listAll(){
 }
 
 
+async function listAllDetail(){
+	try{
+		let out = [];
+		let hosts = await listAll();
+
+		for(let host of hosts){
+			out.push(await getInfo({host}));
+		}
+
+		return out
+	}catch(error){
+		return new Error(error);
+	}
+}
+
+
 async function add(data){
 
 	try{
@@ -53,4 +69,4 @@ async function remove(data){
 }
 
 
-module.exports = {getInfo, listAll, add, remove};
+module.exports = {getInfo, listAll, listAllDetail, add, remove};

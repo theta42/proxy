@@ -17,8 +17,9 @@ router.get('/:host', async function(req, res){
 
 router.get('/', async function(req, res){
 	try{
-		let hosts = await Host.listAll();
-		return res.json({hosts: hosts});
+		return res.json({
+			hosts: req.query.detail ? await host.listAllDetail() : await Host.listAll()
+		});
 	}catch(error){
 		return res.status(500).json({message: `ERROR ${error}`});
 	}
@@ -36,10 +37,11 @@ router.post('/', async function(req, res){
 	}
 
 	try{
-		await Host.add({host, ip, targetPort,
-			  username: req.user.username,
-			  forceSSL: req.body.forceSSL,
-			  targetSSL: req.body.targetSSL,
+		await Host.add({
+			host, ip, targetPort,
+			username: req.user.username,
+			forceSSL: req.body.forceSSL,
+			targetSSL: req.body.targetSSL,
 		});
 
 		return res.json({
@@ -54,28 +56,21 @@ router.post('/', async function(req, res){
 
 });
 
-router.delete('/', async function(req, res){
-	let host = req.body.host;
-	let count;
-
-	if(!host){
-		return res.status(400).json({
-			message: `Missing fields: ${!host ? 'host' : ''}` 
-		});
-	}
+router.delete('/:host', async function(req, res, next){
+	let host = req.params.host;
 	
 	try{
-		count = await Host.remove({host});
+		let count = await Host.remove({host});
+
+		return res.json({
+			message: `Host ${host} deleted`,
+		});
 
 	}catch(error){
 		return res.status(500).json({
 			message: `ERROR: ${error}`
 		});
 	}
-
-	return res.json({
-		message: `Host ${host} deleted`,
-	});
 });
 
 module.exports = router;
