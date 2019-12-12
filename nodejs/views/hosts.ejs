@@ -1,0 +1,159 @@
+<%- include('top') %>
+<script id="rowTemplate" type="text/html">
+	<tr action="api" class="<<fresh>>">
+		<input type="hidden" name="host" value="<< host >>" />
+		<td><a target="_blank" href="http://<<host>>"><<host>></a></td>
+		<td><<ip>></td>
+		<td class="hidden-xs"><<date>></td>
+		<td>
+			<button type="button" data-host="<< host >>" onclick="editHost(this);" class="btn btn-sm btn-default">Edit</button>
+			<button type="button" onclick="formAJAX(this, true)" class="btn btn-sm btn-default">Delete</button>
+		</td>
+	</tr>
+</script>
+<script type="text/javascript">
+	var currentEditHost;
+
+	function editHost(btn){
+		var btn = $(btn);
+		currentEditHost = btn.data('host');
+		$.getJSON('api/' + btn.data('host'), function( data ) {
+			$('.editWindow').slideDown('fast');
+			$('.editWindow .panel-body').slideDown('fast');
+			$('.editWindow .panel-title .pull-left').html("Edit "+btn.data('host'))
+			$.each( data, function( key, val ) {
+				$(".editWindow input[name='" + key + "']").attr('value', val);
+			});
+			$("input[name='old_host']").attr('value', btn.data('host'));
+		});
+	}
+
+	function tableAJAX(actionMessage){
+		$('#tableAJAX').html('').hide();
+		$('div.actionMessage').html('Refreshing host list...').show();
+		$.get('hosts' ,function(data){
+			var c = 0;
+			$.each( data, function( key, value ) {
+				if(currentEditHost ==  value.host){c++}
+				host_row = ich.rowTemplate(value);
+				$('#tableAJAX').append(host_row);
+			});
+
+			$('#tableAJAX').fadeIn('slow');
+			if(c == 0){//host is not in list
+				if(currentEditHost){
+					$('div.editWindow').slideUp('fast');
+					actionMessage = 'Host, <i>'+ currentEditHost+' gone! Editor sleeping...';
+					currentEditHost = null;
+				}
+			}
+
+			if(!actionMessage){
+				$('div.actionMessage').slideUp('fast'); 
+			}else{
+				$('div.actionMessage').html(actionMessage).slideDown('fast');
+			}
+		});
+	}
+
+	/*$.validateSettings(
+	});*/
+
+	$(document).ready(function(){
+		tableAJAX(); //populate the table
+		setInterval(tableAJAX, 30000);
+	});
+</script>
+<div class="row" style="display:none">
+	<div class="col-md-4">
+		<div class="panel panel-danger editWindow" style="display:none">
+			<div class="panel-heading">
+				<div class="panel-title">
+					<div class="pull-left">Edit $host!</div>
+					&nbsp;
+					<div class="pull-right">
+						<label class="glyphicon glyphicon-circle-arrow-down"></label>
+						<label class="glyphicon glyphicon-remove-circle"></label>
+					</div>
+				</div>
+			</div>
+			<div class="panel-body">
+				<form action="api" evalAJAX="$('div.editWindow').slideUp();currentEditHost = null;">
+					<input type="hidden" name="old_host" value="" />
+					<div class="form-group">
+						<label class="control-label">Host</label>
+						<input type="text" class="form-control" name="host" value="" validate="host:3"/>
+					</div>
+					<div class="form-group">
+						<label class="control-label">Mapped IP</label>
+						<input type="text" class="form-control" name="ip" value=""/>
+					</div>
+					<div class="form-group">
+						<label class="control-label">Last Updated</label>
+						<input type="text" class="form-control" name="updated" value="" />
+					</div>
+					<button type="button" onclick="formAJAX(this)" class="btn btn-danger">Update</button>
+					<button class="btn btn-link" type="reset" onclick="$('div.editWindow').slideUp();">Cancel</button>
+				</form>
+			</div>
+		</div>
+
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<div class="panel-title">
+					Add New Proxy
+					<div class="pull-right">
+						<label class="glyphicon glyphicon-circle-arrow-down panel-toggle"></label>
+					</div>
+				</div>
+			</div>
+			<div class="panel-body">
+				<form action="api" evalAJAX="$form.trigger('reset')" valRules=''>
+					<div class="form-group">
+						<label class="control-label">Hostname</label>
+						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate="host:3" >
+					</div>
+					<div class="form-group">
+						<label class="control-label">IP</label>
+						<input type="text" onkeyup="$(this).validate()" name="ip" class="form-control" placeholder="ex: 10.10.10.10" validate="ip:7" />
+					</div>
+	
+					<button type="button" onclick="formAJAX(this)" class="btn btn-default">Add</button>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-md-8">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<div class="panel-title">
+					Proxy List
+					<div class="pull-right">
+						<label class="glyphicon glyphicon-circle-arrow-down panel-toggle"></label>
+						<label class="glyphicon glyphicon-refresh"></label>
+					</div>
+				</div>
+			</div>
+			<div class="panel-body" style="padding-bottom:0">
+				<div class="alert alert-warning actionMessage" style="display:none">
+					<!-- Message after AJAX action is preformed -->
+				</div>
+				<div class="table-responsive">
+					<table class="table">
+						<thead>
+							<th>Hostname</th>
+							<th>target</th>
+							<th class="hidden-xs">Updated</th>
+							<th>Actions</th>
+						</thead>
+						<tbody id="tableAJAX">
+							<!-- ajax loaded table -->
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<%- include('bottom') %>

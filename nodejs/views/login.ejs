@@ -1,0 +1,69 @@
+<%- include('top') %>
+<script type="text/javascript">
+	function actionMessage(message, $target){
+		$target = $target || $('div.actionMessage');
+
+		if($target.html() === message) return;
+
+		if($target.html()){
+			$target.slideUp('fast', function(){
+				$target.html('')
+				if(message) actionMessage(message);
+			})
+			return;
+		}else{
+			$target.html(message).slideDown('fast');
+		}
+	}
+
+	$(document).ready(function(){
+		$( "form[action='login']" ).submit(function( event ) {
+			$form = $(this);
+			actionMessage('')
+			if($form.attr('isValid') === 'true'){
+
+				app.auth.logIn($form.serializeObject(), function(error, data){
+
+					if(data){
+						actionMessage('Login successful!');
+						window.location.href = app.util.getUrlParameter('redirect') || '/hosts/';
+
+					}else{
+						actionMessage('Login Failed, please try again');						
+					}
+				});
+
+			}else{
+				actionMessage('Please fix the errors bellow!')
+			}
+			event.preventDefault();
+		});
+	});
+</script>
+
+<div class="row">
+	<div class="col-md-4">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<div class="panel-title">Log in</div>
+			</div>
+			<div class="panel-body">
+				<div class="alert alert-warning actionMessage" style="display:none">
+				</div>
+				<form method="post" action="login" onsubmit="$(this).validate()">
+					<input type="hidden" name="redirect" value="<%= redirect %>">
+					<div class="form-group">
+						<label class="control-label">User name</label>
+						<input type="text" name="username" class="form-control" placeholder="User" validate="user:3" />
+					</div>
+					<div class="form-group">
+						<label class="control-label">Password</label>
+						<input type="password" name="password" class="form-control" placeholder="Password" validate="password:5" />
+					</div>
+					<button type="submit" class="btn btn-default" >Log in</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+<%- include('bottom') %>
