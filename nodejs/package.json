@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "authenticate-pam": "github:WeiAnAn/node-authenticate-pam",
+    "ejs": "^3.0.1",
     "express": "~4.16.1",
     "forever": "^1.0.0",
     "linux-sys-user": "github:wmantly/linux-user",
