@@ -36,6 +36,11 @@ if node['web']['do_ssl']
 		command "openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509   -subj '/CN=sni-support-required-for-valid-ssl'   -keyout /etc/ssl/resty-auto-ssl-fallback.key   -out /etc/ssl/resty-auto-ssl-fallback.crt"
 	end
 
+# 	execute 'dhparam.pem 4096' do
+# 		command "openssl dhparam -out /etc/nginx/dhparam.pem 4096"
+# 	end
+	
+	
 	template '/etc/openresty/autossl.conf' do
 		source 'openresty/autossl.conf.erb'
 	end

@@ -1,8 +1,5 @@
 server {
     listen   80;
-    <% if node['web']['do_ssl'] %>
-    listen  443 ssl;
-    <% end %>
     server_name <%= node['app']['domain'] %>;
 
     <% if node['web']['do_ssl'] %>
