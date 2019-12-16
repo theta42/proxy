@@ -26,7 +26,19 @@ class proxyctrl:
 		else:
 			print('MY LOGIC HAS DIED!!!! WHY!!!! OH GOD WHY!!!!!')
 
+	def get_all():
+		r = requests.get(self.base_url+'/api/', json={'auth-token':self.token})
+		print(r.json())
+
+	# At current this function assumes the http:// is left out of host
+	def get_info(host)
+		r = requests.get(self.base_url+'/api/'+host, json={'auth-token':self.token})
+		print(r.json())
+
+	def add()
+
 # From this point forward we are interacting with the user
+print('Welcome to Proxy Control\n')
 
 # username and password required to continue
 # the user and pass correspond to the linux user management where the proxy app is runnning
@@ -39,3 +51,8 @@ console = proxyctrl()
 
 #login to proxy app
 console.login(username, password)
+
+
+while console.token:
+	command = input('$: ')
+	if (command == 
