@@ -17,51 +17,61 @@
 	function editHost(btn){
 		var btn = $(btn);
 		currentEditHost = btn.data('host');
-		$.getJSON('api/' + btn.data('host'), function( data ) {
-			$('.editWindow').slideDown('fast');
-			$('.editWindow .panel-body').slideDown('fast');
-			$('.editWindow .panel-title .pull-left').html("Edit "+btn.data('host'))
-			$.each( data, function( key, val ) {
-				$(".editWindow input[name='" + key + "']").attr('value', val);
+		$('.editWindow').slideDown('fast');
+		$('.editWindow .panel-body').slideDown('fast');
+		$('.editWindow .panel-title .pull-left').html("Edit "+btn.data('host'))
+
+		$('div.editWindow .panel-body span').html($('#addHost').html())
+		$('div.editWindow .panel-body span button').remove()
+
+		app.hosts.get(currentEditHost, function(error, data){
+			console.log(data)
+			$.each( data.results, function( key, val ) {
+
+				$(".editWindow input[name='" + key + "']").val(val);
 			});
-			$("input[name='old_host']").attr('value', btn.data('host'));
 		});
+		// $.getJSON('api/hosts/' + btn.data('host'), function( data ) {
+		// 	$("input[name='old_host']").attr('value', btn.data('host'));
+		// });
 	}
 
 	function tableAJAX(actionMessage){
+
 		$('#tableAJAX').html('').hide();
-		$('div.actionMessage').html('Refreshing host list...').show();
-		$.get('hosts' ,function(data){
-			var c = 0;
-			$.each( data, function( key, value ) {
-				if(currentEditHost ==  value.host){c++}
-				host_row = ich.rowTemplate(value);
-				$('#tableAJAX').append(host_row);
-			});
+		app.util.actionMessage('')
 
-			$('#tableAJAX').fadeIn('slow');
-			if(c == 0){//host is not in list
-				if(currentEditHost){
-					$('div.editWindow').slideUp('fast');
-					actionMessage = 'Host, <i>'+ currentEditHost+' gone! Editor sleeping...';
-					currentEditHost = null;
-				}
-			}
-
-			if(!actionMessage){
-				$('div.actionMessage').slideUp('fast'); 
+		app.hosts.list(function(err, data){
+			if(err) return app.util.actionMessage(err);	
+			if(data){
+				$.each(data, function( key, value ) {
+					host_row = ich.rowTemplate(value);
+					$('#tableAJAX').append(host_row);
+				});
+				$('#tableAJAX').fadeIn('slow');
 			}else{
-				$('div.actionMessage').html(actionMessage).slideDown('fast');
+				app.util.actionMessage('No hosts...')
 			}
 		});
 	}
-
-	/*$.validateSettings(
-	});*/
 
 	$(document).ready(function(){
 		tableAJAX(); //populate the table
 		setInterval(tableAJAX, 30000);
+
+		$('#addHost').on('submit', function(){
+			event.preventDefault();
+
+			$form = $(this);
+			app.util.actionMessage('')
+
+			if($form.attr('isValid') === 'true'){
+				app.hosts.add($form.serializeObject(), function(error, data){					
+					app.util.actionMessage(data.message || 'Error!');
+					if(!error) $form.trigger('reset');
+				})
+			}
+		});
 	});
 </script>
 <div class="row" style="display:none">
@@ -79,21 +89,9 @@
 			</div>
 			<div class="panel-body">
 				<form action="api" evalAJAX="$('div.editWindow').slideUp();currentEditHost = null;">
-					<input type="hidden" name="old_host" value="" />
-					<div class="form-group">
-						<label class="control-label">Host</label>
-						<input type="text" class="form-control" name="host" value="" validate="host:3"/>
-					</div>
-					<div class="form-group">
-						<label class="control-label">Mapped IP</label>
-						<input type="text" class="form-control" name="ip" value=""/>
-					</div>
-					<div class="form-group">
-						<label class="control-label">Last Updated</label>
-						<input type="text" class="form-control" name="updated" value="" />
-					</div>
-					<button type="button" onclick="formAJAX(this)" class="btn btn-danger">Update</button>
-					<button class="btn btn-link" type="reset" onclick="$('div.editWindow').slideUp();">Cancel</button>
+					<span></span>
+					<button type="button" class="btn btn-danger">Update</button>
+					<button class="btn btn-link" type="reset">Cancel</button>
 				</form>
 			</div>
 		</div>
@@ -108,17 +106,58 @@
 				</div>
 			</div>
 			<div class="panel-body">
-				<form action="api" evalAJAX="$form.trigger('reset')" valRules=''>
+				<form id="addHost" onsubmit="$(this).validate()">
+					
+					<div class="form-group">
+						<label class="control-label">Incoming SSL</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="forceSSL" id="forceSSL1" value="true" checked>
+								Force incoming connections over HTTPS <b>Recommended</b>
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="forceSSL" id="forceSSL2" value="false">
+								Allow use of both HTTP and HTTPS
+							</label>
+						</div>
+					</div>
+
 					<div class="form-group">
 						<label class="control-label">Hostname</label>
 						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate="host:3" >
 					</div>
+
+					<hr />
+
 					<div class="form-group">
-						<label class="control-label">IP</label>
-						<input type="text" onkeyup="$(this).validate()" name="ip" class="form-control" placeholder="ex: 10.10.10.10" validate="ip:7" />
+						<label class="control-label">Target IP or Host Name</label>
+						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10" />
+					</div>
+
+					<div class="form-group">
+						<label class="control-label">Target TCP Port</label>
+						<input type="number"  name="targetPort" class="form-control" value="80" min="0" max="65535" />
+					</div>
+
+					<div class="form-group">
+						<label class="control-label">Target SSL</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="targetSSL" id="targetSSL1" value="true">
+								Proxt to HTTPS 
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="targetSSL" id="targetSSL2" value="false" checked>
+								Proxy to HTTP <b>Recommended</b>
+							</label>
+						</div>
 					</div>
 	
-					<button type="button" onclick="formAJAX(this)" class="btn btn-default">Add</button>
+					<button type="submit" class="btn btn-default">Add</button>
 				</form>
 			</div>
 		</div>

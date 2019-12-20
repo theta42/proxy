@@ -1,40 +1,25 @@
 <%- include('top') %>
 <script type="text/javascript">
-	function actionMessage(message, $target){
-		$target = $target || $('div.actionMessage');
-
-		if($target.html() === message) return;
-
-		if($target.html()){
-			$target.slideUp('fast', function(){
-				$target.html('')
-				if(message) actionMessage(message);
-			})
-			return;
-		}else{
-			$target.html(message).slideDown('fast');
-		}
-	}
 
 	$(document).ready(function(){
 		$( "form[action='login']" ).submit(function( event ) {
 			$form = $(this);
-			actionMessage('')
+			app.util.actionMessage('')
 			if($form.attr('isValid') === 'true'){
 
 				app.auth.logIn($form.serializeObject(), function(error, data){
 
 					if(data){
-						actionMessage('Login successful!');
+						app.util.actionMessage('Login successful!');
 						window.location.href = app.util.getUrlParameter('redirect') || '/hosts/';
 
 					}else{
-						actionMessage('Login Failed, please try again');						
+						app.util.actionMessage('Login Failed, please try again');						
 					}
 				});
 
 			}else{
-				actionMessage('Please fix the errors bellow!')
+				app.util.actionMessage('Please fix the errors bellow!')
 			}
 			event.preventDefault();
 		});

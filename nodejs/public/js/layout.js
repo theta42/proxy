@@ -13,9 +13,12 @@ app.api = (function(app){
 			data: JSON.stringify(data),
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
-			success: callack,
-			error: function(info, error, type){
-				callack(JSON.parse(info.responseText), info)
+			complete: function(res, text){
+				callack(
+					text !== 'success' ? res.statusText : null,
+					JSON.parse(res.responseText),
+					res.status
+				)
 			}
 		});
 	}
@@ -29,8 +32,13 @@ app.api = (function(app){
 			},
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
-			success: callack,
-			error: callack
+			complete: function(res, text){
+				callack(
+					text !== 'success' ? res.statusText : null,
+					JSON.parse(res.responseText),
+					res.status
+				)
+			}
 		});
 	}
 
@@ -48,8 +56,8 @@ app.auth = (function(app) {
 
 	function isLoggedIn(callack){
 		if(getToken()){
-			return app.api.get('users/me', function(data){
-				return callack(null, data.username);
+			return app.api.get('users/me', function(error, data){
+				return callack(error, data.username);
 			})
 		}else{
 			callack(false, false);
@@ -57,11 +65,11 @@ app.auth = (function(app) {
 	}
 
 	function logIn(args, callack){
-		app.api.post('auth/login', args, function(data){
+		app.api.post('auth/login', args, function(error, data){
 			if(data.login){
 				setToken(data.token);
 			}
-			callack(!data.token, !!data.token);
+			callack(error, !!data.token);
 		});
 	}
 
@@ -75,18 +83,44 @@ app.auth = (function(app) {
 
 app.users = (function(app){
 	function createInvite(callack){
-		app.api.post('users/invite', function(data){
-			
-			callack(!data.token, data.token);	
+		app.api.post('users/invite', function(error, data, status){
+			callack(error, data.token);	
 		});
 	}
 	function consumeInvite(args){
-		app.api.post('/auth/invite/'+args.token, args, function(data){
+		app.api.post('/auth/invite/'+args.token, args, function(error, data){
 			if(data.token){
 				app.auth.setToken(data.token)
 				return callack(null, true)
 			}
+			callack(error)
 		});
+	}
+})(app);
+
+app.hosts = (function(app){
+	function list(callack){
+		app.api.get('hosts/?detail=true', function(error, data){
+			callack(error, data.hosts)
+		});
+	}
+
+	function get(host, callack){
+		app.api.get('hosts/' + host, function(error, data){
+			callack(error, data)
+		});
+	}
+
+	function add(args, callack){
+		app.api.post('hosts/', args, function(error, data){
+			callack(error, data);
+		});
+	}
+
+	return {
+		list: list,
+		get: get,
+		add: add
 	}
 })(app);
 
@@ -99,6 +133,21 @@ app.util = (function(app){
 	    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 	};
 
+	function actionMessage(message, $target){
+		$target = $target || $('div.actionMessage');
+
+		if($target.html() === message) return;
+
+		if($target.html()){
+			$target.slideUp('fast', function(){
+				$target.html('')
+				if(message) actionMessage(message);
+			})
+			return;
+		}else{
+			$target.html(message).slideDown('fast');
+		}
+	}
 
 	$.fn.serializeObject = function() {
 	    var 
@@ -119,20 +168,10 @@ app.util = (function(app){
 	};
 
 	return {
-		getUrlParameter: getUrlParameter
+		getUrlParameter: getUrlParameter,
+		actionMessage: actionMessage
 	}
 })(app);
-
-// app.hosts = (function(app){
-// 	var hosts = []
-
-// 	function getHost(callack){
-// 		app.api.get('hosts/?detail=true', function(data){
-// 			hosts = data.hosts
-// 			callack(hosts)
-// 		});
-// 	}
-// })(app);
 
 
 
