@@ -5,6 +5,7 @@ const client = require('../redis');
 
 async function getInfo(data){
 	let info = await client.HGETALL('host_' + data.host);
+	info['host'] = data.host;
 
 	return info
 }
@@ -21,40 +22,31 @@ async function listAll(){
 
 
 async function listAllDetail(){
-	try{
-		let out = [];
-		let hosts = await listAll();
+	let out = [];
 
-		for(let host of hosts){
-			out.push(await getInfo({host}));
-		}
-
-		return out
-	}catch(error){
-		return new Error(error);
+	for(let host of await listAll()){
+		out.push(await getInfo({host}));
 	}
+
+	return out
 }
 
 
 async function add(data){
 
-	try{
-		await client.SADD('hosts', data.host);
-		await client.HSET('host_' + data.host, 'ip', data.ip);
-		await client.HSET('host_' + data.host, 'updated', (new Date).getTime());
-		await client.HSET('host_' + data.host, 'username', data.username);
-		await client.HSET('host_' + data.host, 'targetPort', data.targetPort);
-		if(data.forceSSL !== undefined){
-			await client.HSET('host_' + data.host, 'forcessl', !!data.forceSSL);
-		}
-		if(data.targetSSL !== undefined){
-			await client.HSET('host_' + data.host, 'targetssl', !!data.targetSSL);
-		}
-	} catch (error){
-		
-		return new Error(error);
 
+	await client.SADD('hosts', data.host);
+	await client.HSET('host_' + data.host, 'ip', data.ip);
+	await client.HSET('host_' + data.host, 'updated', (new Date).getTime());
+	await client.HSET('host_' + data.host, 'username', data.username);
+	await client.HSET('host_' + data.host, 'targetPort', data.targetPort);
+	if(data.forceSSL !== undefined){
+		await client.HSET('host_' + data.host, 'forcessl', !!data.forceSSL);
 	}
+	if(data.targetSSL !== undefined){
+		await client.HSET('host_' + data.host, 'targetssl', !!data.targetSSL);
+	}
+
 }
 
 

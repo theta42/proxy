@@ -15,13 +15,14 @@ router.get('/:host', async function(req, res){
 	});
 });
 
-router.get('/', async function(req, res){
+router.get('/', async function(req, res, next){
 	try{
 		return res.json({
-			hosts: req.query.detail ? await host.listAllDetail() : await Host.listAll()
+			hosts: req.query.detail ? await Host.listAllDetail() : await Host.listAll()
 		});
 	}catch(error){
-		return res.status(500).json({message: `ERROR ${error}`});
+		res.status(500)
+		next(error)
 	}
 });
 
