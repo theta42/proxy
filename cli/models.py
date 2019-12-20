@@ -30,20 +30,27 @@ class model:
 			# do stuff for bad login
 			pass
 		return res.reason
+
+	def __build_headers(self):
+		self.headers['auth-token'] = self.token
+		# explore using for header in self.headers pattern
 		
 	def __get(self, path):
+		self.__build_headers()
 		res = requests.get(self.base_url+path, headers=self.headers)
 		err = self.__process_error(res)
 		
 		return res, err
 	
 	def __post(self, path, json=None):
+		self.__build_headers()
 		res = requests.post(self.base_url+path, headers=self.headers, json=json or {})
 		err = self.__process_error(res)
 		
 		return res, err
 
 	def __delete(self, path, json=None):
+		self.__build_headers()
 		res = requests.delete(self.base_url+path, headers=self.headers, json=json or {})
 		err = self.__process_error(res)
 		
@@ -59,7 +66,7 @@ class model:
 		
 		if err:
 			return err
-		
+
 		self.token = res.json().get('token')
 		return True
 
@@ -81,15 +88,16 @@ class model:
 		return res.json()
 
 
-	def add(self, host, ip, targetPORT, targetSSL=False, forceSSL=False):
+	def add(self, host, ip, targetPort, targetSSL='False', forceSSL='False'):
 		data = {
 			'host'      : host,
 			'ip'        : ip,
-			'targetSSL' : targetSSL,
-			'targetPORT': targetPORT,
-			'forceSSL'  : forceSSL,
+			'targetPort': targetPort,
+			'targetSSL' : targetSSL or 'False',
+			'forceSSL'  : forceSSL or 'False',
 		}
 		res, err = self.__post('api', data)
+		print(res.content)
 
 		if err:
 			return err
