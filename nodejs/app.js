@@ -28,15 +28,13 @@ app.use(function(req, res, next) {
 
 // error handler
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
+  console.error(err.status || res.status, err.name, req.method, req.url);
+  console.error(err.message);
+  console.error(err.stack);
+  console.error('=========================================');
 
-  console.error(err.status || res.status, req.url, err);
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
-
-  // render the error page
   res.status(err.status || 500);
-  res.json({message: 'error!'});
+  res.json({name: err.name, message: err.message});
 });
 
 module.exports = app;
