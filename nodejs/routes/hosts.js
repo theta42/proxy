@@ -4,15 +4,17 @@ const router = require('express').Router();
 
 const Host = require('../models/hosts');
 
-router.get('/:host', async function(req, res){
-	let host = req.params.host;
+router.get('/:host', async function(req, res, next){
+	try{
 
-	let info = await Host.getInfo({host});
+		return res.json({
+			host: req.params.host,
+			results: await Host.getInfo({host: req.params.host})
+		});
+	}catch(error){
+		return next(error);
+	}
 
-	return res.status(info ? 200 : 404).json({
-		host: req.params.host,
-		results: info
-	});
 });
 
 router.get('/', async function(req, res, next){
@@ -21,56 +23,49 @@ router.get('/', async function(req, res, next){
 			hosts: req.query.detail ? await Host.listAllDetail() : await Host.listAll()
 		});
 	}catch(error){
-		res.status(500)
 		next(error)
 	}
 });
 
-router.post('/', async function(req, res){
-	let ip = req.body.ip;
-	let host = req.body.host;
-	let targetPort = req.body.targetPort;
-
-	if(!host || !ip || !targetPort ){
-		return res.status(400).json({
-			message: `Missing fields: ${!host ? 'host' : ''} ${!ip ? 'ip' : ''} ${!targetPort ? 'targetPort' : ''}` 
-		});
-	}
-
+router.put('/:host', async function(req, res, next){
 	try{
-		await Host.add({
-			host, ip, targetPort,
-			username: req.user.username,
-			forceSSL: req.body.forceSSL,
-			targetSSL: req.body.targetSSL,
-		});
+		req.body.username = req.user.username;
+		await Host.edit(req.body, req.params.host);
 
 		return res.json({
-			message: `Host ${host} Added`
+			message: `Host "${req.params.host}" updated.`
+		});
+	}catch(error){
+		return next(error)
+	}
+});
+
+router.post('/', async function(req, res, next){
+	try{
+		req.body.username = req.user.username;
+		await Host.add(req.body);
+
+		return res.json({
+			message: `Host "${req.body.host}" added.`
 		});
 	} catch (error){
-
-		return res.status(500).json({
-			message: `ERROR: ${error}`
-		});
+		next(error)
 	}
 
 });
 
 router.delete('/:host', async function(req, res, next){
-	let host = req.params.host;
 	
 	try{
+		let host = req.params.host;
 		let count = await Host.remove({host});
 
 		return res.json({
-			message: `Host ${host} deleted`,
+			message: `Host ${req.params.host} deleted`,
 		});
 
 	}catch(error){
-		return res.status(500).json({
-			message: `ERROR: ${error}`
-		});
+		return next(error)
 	}
 });
 
