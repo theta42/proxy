@@ -18,10 +18,6 @@ class model:
 		self.base_url = base_url or 'http://localhost:8300/'
 		self.token = token or ''
 		
-		self.headers = {
-			'auth-token'  : self.token
-		}
-		
 	def __process_error(self, res):
 		if res.status_code in range(200, 299):
 			return None
@@ -32,25 +28,26 @@ class model:
 		return res.reason
 
 	def __build_headers(self):
-		self.headers['auth-token'] = self.token
-		# explore using for header in self.headers pattern
-		
+		return {
+			'auth-token': self.token
+		}		
+
 	def __get(self, path):
-		self.__build_headers()
+		headers = self.__build_headers()
 		res = requests.get(self.base_url+path, headers=self.headers)
 		err = self.__process_error(res)
 		
 		return res, err
 	
 	def __post(self, path, json=None):
-		self.__build_headers()
+		headers = self.__build_headers()
 		res = requests.post(self.base_url+path, headers=self.headers, json=json or {})
 		err = self.__process_error(res)
 		
 		return res, err
 
 	def __delete(self, path, json=None):
-		self.__build_headers()
+		headers = self.__build_headers()
 		res = requests.delete(self.base_url+path, headers=self.headers, json=json or {})
 		err = self.__process_error(res)
 		
@@ -88,16 +85,15 @@ class model:
 		return res.json()
 
 
-	def add(self, host, ip, targetPort, targetSSL='False', forceSSL='False'):
+	def add(self, host, ip, targetPort, targetSSL=False, forceSSL=False):
 		data = {
 			'host'      : host,
 			'ip'        : ip,
 			'targetPort': targetPort,
-			'targetSSL' : targetSSL or 'False',
-			'forceSSL'  : forceSSL or 'False',
+			'targetSSL' : targetSSL,
+			'forceSSL'  : forceSSL,
 		}
 		res, err = self.__post('api', data)
-		print(res.content)
 
 		if err:
 			return err
