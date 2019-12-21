@@ -29,6 +29,7 @@ async function getInfo(data){
 	}
 
 	let error = new Error('HostNotFound');
+	error.name = 'HostNotFound';
 	error.message = 'Host does not exists';
 	error.status = 404;
 	throw error;
@@ -68,6 +69,7 @@ async function add(data, edit){
 
 		if(data.host && await exists(data.host)){
 			let error = new Error('HostNameUsed');
+			error.name = 'HostNameUsed';
 			error.message = 'Host already exists';
 			error.status = 409;
 			throw error;
