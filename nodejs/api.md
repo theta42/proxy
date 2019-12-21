@@ -1,29 +1,29 @@
 ## get host info 
 
-**get** `/api/<HOST>`
+**GET** `/api/hosts<HOST>`
 
 ```bash
-curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" https://admin.rubyisforpussys.com/api/mine.com
+curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" https://admin.rubyisforpussys.com/api/hostsmine.com
 ```
 
 * 200 {"host":"yours.com","results":{"ip":"127.0.0.1:4000","updated":"1518595297563","username":"test10","forceSSL": false, "targetSSL": true, "targetPort": "443"}}
-* 404 {"host":"mine.comf","results":null}
+* 404 {"name": "HostNotFound", "message": "Host does not exists"}
 
 
 ## view all hosts 
 
-**get** `/api/`
+**GET** `/api/hosts`
 
 ```bash
-curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" https://admin.rubyisforpussys.com/api/
+curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" https://admin.rubyisforpussys.com/api/hosts
 ```
 
 * 200 {"hosts":["mine.com","mine2.com"]}
 
 
-## add/edit host 
+## Add host 
 
-**post** `/api/`
+**POST** `/api/hosts`
 
 Params
 * **host** -- Required, The domain name for the new record.
@@ -37,22 +37,37 @@ the proxy. The default is false and this is HIGHLY recommended.
 * **
 
 ```bash
-curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d '{"host": "test.vm42.com", "ip": "192.168.1.21", "targetSSL": false, "targetPort": "443", "forceSSL": true} https://admin.rubyisforpussys.com/api/
+curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d '{"host": "test.vm42.com", "ip": "192.168.1.21", "targetSSL": false, "targetPort": "443", "forceSSL": true} https://admin.rubyisforpussys.com/api/hosts
 ```
 
-* 200 {"message":"Host yours.com Added"}
-* 400 {"message":"Missing fields:  ip"}
+* 200 {"message":"Host yours.com added."}
+* 409 {"name":"HostNameUsed", "message":"Host already exists"} 
+* 422 {"name":"ObjectValidateError","message":[{"key":"ip","message":"ip is required."}]} Missing or incorrect keys/values. Returns a list with a message per key error.
+
+## Edit
+
+**PUT** `/api/hosts<host>`
+
+Takes the same params as add, but none are required
+
+curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d '{"host": "test.vm42.com", "ip": "192.168.1.21", "targetSSL": false, "targetPort": "443", "forceSSL": true} https://admin.rubyisforpussys.com/api/hosts
+
+* 200 {"message":"Host yours.com updated."}
+* 404 {"name": "HostNotFound", "message": "Host does not exists"}
+* 409 {"name":"HostNameUsed", "message":"Host already exists"} 
+* 422 {"name":"ObjectValidateError","message":[{"key":"ip","message":"ip is required."}]} Missing or incorrect keys/values. Returns a list with a message per key error.
 
 
 ## delete host
 
-**delete** /`api`
+**DELETE** /`api/hosts/<host>`
 
 ```bash
-curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X DELETE -d "{\"host\": \"yours.com\"}" https://admin.rubyisforpussys.com/api/
+curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X DELETE https://admin.rubyisforpussys.com/api/hosts
 ```
 
 * 200 {"message":"Host yours.com deleted"}
+* 404 {"name": "HostNotFound", "message": "Host does not exists"}
 
 
 ## create invite token
