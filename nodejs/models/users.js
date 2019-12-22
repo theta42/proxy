@@ -1,7 +1,7 @@
 'use strict';
 
 const {promisify} = require('util');
-const client = require('../redis');
+const client = require('../utils/redis');
 const linuxUser = require('linux-sys-user');
 const pam = require('authenticate-pam');
 
@@ -20,7 +20,7 @@ const setPassword = promisify(linuxUser.setPassword);
 */
 async function makeInviteToken(data){
 	let token = UUID();
-	await client.HSET('users_tokens', token, JSON.stringify({
+	await client.HSET('users_tokens_invite', token, JSON.stringify({
 		created_by: data.username,
 		isAdmin: data.isAdmin,
 		invited: false
@@ -30,7 +30,7 @@ async function makeInviteToken(data){
 }
 
 async function checkInvite(data){
-	let token = await client.HGET('users_tokens', data.token);
+	let token = await client.HGET('users_tokens_invite', data.token);
 
 	return JSON.parse(token);
 }
@@ -40,7 +40,7 @@ async function consumeInvite(data){
 
 	invite.invited = data.username;
 
-	await client.HSET('users_tokens', data.token, JSON.stringify(invite));
+	await client.HSET('users_tokens_invite', data.token, JSON.stringify(invite));
 }
 
 /*
