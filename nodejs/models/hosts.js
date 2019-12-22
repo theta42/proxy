@@ -2,7 +2,7 @@
 
 const {promisify} = require('util');
 const client = require('../utils/redis');
-const {processKeys, ObjectValidateError} = require('../utils/object_validate');
+const objValidate = require('../utils/object_validate');
 
 const hostKeysMap = {
 	'host': {isRequired: true, type: 'string', min: 3, max: 500},
@@ -21,7 +21,7 @@ async function getInfo(data){
 		if(info){
 			info['host'] = data.host;
 
-			return info
+			return objValidate.parseFromString(hostKeysMap, info);
 		}
 
 	}catch(error){
@@ -63,9 +63,11 @@ async function listAllDetail(){
 	return out
 }
 
-async function add(data, edit){
+async function add(data){
 	try{
-		data = processKeys(hostKeysMap, data, edit);
+		console.log('host', data)
+		data = objValidate.processKeys(hostKeysMap, data);
+
 
 		if(data.host && await exists(data.host)){
 			let error = new Error('HostNameUsed');
@@ -96,18 +98,23 @@ async function edit(data, host){
 		// Check to see if host name changed
 		if(data.host && data.host !== host){
 
+			console.log('pre assign', hostData, data)
+
 			// Merge the current data into with the updated data 
-			data = Object.assign({}, hostData, data);
+			let newData = Object.assign({}, hostData, data);
+
+			// Remove the updated failed so it doesnt keep it
+			delete newData.updated;
 
 			// Create a new record for the updated host. If that succeeds,
 			// delete the old recored
-			if(await add(hostData)) await remove({host}); 
+			if(await add(newData)) await remove({host});
 
 		}else{
 			// Update what ever fields that where passed.
 
 			// Validate the passed data, ignoring required fields.
-			data = processKeys(hostKeysMap, data, true);
+			data = objValidate.processKeys(hostKeysMap, data, true);
 			
 			// Loop over the data fields and apply them to redis
 			for(let key of Object.keys(data)){
