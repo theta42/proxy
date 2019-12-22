@@ -1,7 +1,7 @@
 'use strict';
 
 const {promisify} = require('util');
-const client = require('../redis');
+const client = require('../utils/redis');
 const {processKeys, ObjectValidateError} = require('../utils/object_validate');
 
 const hostKeysMap = {
@@ -89,21 +89,33 @@ async function add(data, edit){
 
 async function edit(data, host){
 	try{
+
+		// Get the current host and trow a 404 if it doesnt exist.
 		let hostData = await getInfo({host});
 
+		// Check to see if host name changed
 		if(data.host && data.host !== host){
+
+			// Merge the current data into with the updated data 
 			data = Object.assign({}, hostData, data);
 
-			if(await add('hosts', hostData)) await remove({host}); 
+			// Create a new record for the updated host. If that succeeds,
+			// delete the old recored
+			if(await add(hostData)) await remove({host}); 
 
 		}else{
+			// Update what ever fields that where passed.
+
+			// Validate the passed data, ignoring required fields.
 			data = processKeys(hostKeysMap, data, true);
-			// console.log('host edit data', data);
+			
+			// Loop over the data fields and apply them to redis
 			for(let key of Object.keys(data)){
 				await client.HSET('host_' + host, key, data[key]);
 			}
 		}
 	} catch(error){
+		// Pass any error to the calling function
 		throw error;
 	}
 }
