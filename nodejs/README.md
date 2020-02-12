@@ -41,10 +41,6 @@ The steps below are for a new ubuntu server, they should be mostly the same for 
 ```bash
 apt install luarocks
 sudo luarocks install lua-resty-auto-ssl
-```
-
-* Configure sshd for tunneling
-
 
 * openresty config
 
