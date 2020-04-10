@@ -14,6 +14,7 @@ const _client = client();
 module.exports = {
 	client: client,
 	HGET: promisify(_client.HGET).bind(_client),
+	HDEL: promisify(_client.HDEL).bind(_client),
 	SADD: promisify(_client.SADD).bind(_client),
 	SREM: promisify(_client.SREM).bind(_client),
 	DEL: promisify(_client.DEL).bind(_client),

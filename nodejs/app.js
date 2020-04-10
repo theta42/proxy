@@ -1,32 +1,56 @@
 'use strict';
 
+const path = require('path');
+const ejs = require('ejs')
 const express = require('express');
-const app = express();
-
 const middleware = require('./middleware/auth');
 
+// Set up the express app.
+const app = express();
+
+// load the JSON parser middleware. Express will parse JSON into native objects
+// for any request that has JSON in its content type. 
 app.use(express.json());
 
-app.use('/auth',  require('./routes/auth'));
-app.use('/users', middleware.auth, require('./routes/users'));
-app.use('/api', middleware.auth, require('./routes/routes'));
+// Set up the templating engine to build HTML for the front end.
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'ejs');
 
-// catch 404 and forward to error handler
+// Have express server static content( images, CSS, browser JS) from the public
+// local folder.
+app.use('/static', express.static(path.join(__dirname, 'public')))
+
+// Routes for front end content.
+app.use('/',  require('./routes/index'));
+
+// API routes for authentication. 
+app.use('/api/auth',  require('./routes/auth'));
+
+// API routes for working with users. All endpoints need to be have valid user.
+app.use('/api/user', middleware.auth, require('./routes/user'));
+
+// API routes for working with hosts. All endpoints need to be have valid user.
+app.use('/api/host', middleware.auth, require('./routes/host'));
+
+// Catch 404 and forward to error handler. If none of the above routes are
+// used, this is what will be called.
 app.use(function(req, res, next) {
   var err = new Error('Not Found');
+  err.message = 'Page not found'
   err.status = 404;
   next(err);
 });
 
-// error handler
+// Error handler. This is where `next()` will go on error
 app.use(function(err, req, res, next) {
-  // set locals, only providing error in development
-  res.locals.message = err.message;
-  res.locals.error = req.app.get('env') === 'development' ? err : {};
+  console.error(err.status || res.status, err.name, req.method, req.url);
+  console.error(err.message);
+  console.error(err.stack);
+  console.error('=========================================');
 
-  // render the error page
   res.status(err.status || 500);
-  res.json({message: 'error!'});
+  res.json({name: err.name, message: err.message});
 });
 
+// Allow the express app to be exported into other files. 
 module.exports = app;
