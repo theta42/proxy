@@ -27,15 +27,16 @@ app.use('/',  require('./routes/index'));
 app.use('/api/auth',  require('./routes/auth'));
 
 // API routes for working with users. All endpoints need to be have valid user.
-app.use('/api/users', middleware.auth, require('./routes/users'));
+app.use('/api/user', middleware.auth, require('./routes/user'));
 
 // API routes for working with hosts. All endpoints need to be have valid user.
-app.use('/api/hosts', middleware.auth, require('./routes/hosts'));
+app.use('/api/host', middleware.auth, require('./routes/host'));
 
 // Catch 404 and forward to error handler. If none of the above routes are
 // used, this is what will be called.
 app.use(function(req, res, next) {
   var err = new Error('Not Found');
+  err.message = 'Page not found'
   err.status = 404;
   next(err);
 });

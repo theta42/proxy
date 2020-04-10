@@ -32,7 +32,7 @@ function processKeys(map, data, partial){
 			continue;
 		}
 
-		out[key] = data.hasOwnProperty(key) ? data[key] : returnOrCall(map[key].default);
+		out[key] = data.hasOwnProperty(key) && data[key] !== undefined ? data[key] : returnOrCall(map[key].default);
 
 		if(data.hasOwnProperty(key) && process_type[map[key].type]){
 			let typeError = process_type[map[key].type](map[key], data[key]);
@@ -54,15 +54,13 @@ function processKeys(map, data, partial){
 
 function parseFromString(map, data){
 	let types = {
-		boolean: function(value){ return value === 'true' ? true : false },
+		boolean: function(value){ return value === 'false' ? false : true },
 		number: Number,
 		string: String,
 	};
 
 	for(let key of Object.keys(data)){
-		console.log('looking at', key)
 		if(map[key] && map[key].type){
-			console.log('converting', data[key], 'to', map[key].type)
 			data[key] = types[map[key].type](data[key]);
 		}
 	}
@@ -75,41 +73,8 @@ function ObjectValidateError(message) {
 	this.message = (message || {});
 	this.status = 422;
 }
+
 ObjectValidateError.prototype = Error.prototype;
 
 
 module.exports = {processKeys, parseFromString, ObjectValidateError};
-
-if (require.main === module) {
-	const keys_map = {
-		'host': {isRequired: true, type: 'string', min: 3, max: 500},
-		'ip': {isRequired: true, type: 'string', min: 3, max: 500},
-		'updated': {default: function(){return (new Date).getTime()}, always:true},
-		'username': {isRequired: true, type: 'string', always: true},
-		'targetport': {isRequired: true, type: 'number', min:0, max:65535},
-		'forcessl': {isRequired: false, default: true, type: 'boolean'},
-		'targetssl': {isRequired: false, default: false, type: 'boolean'},
-	}
-
-	console.log(processKeys(keys_map, {
-		host:'asdqwwd',
-		ip: 'sdfwef',
-		username: '',
-		targetport: 8000,
-		updated: 'dqwqwdq'
-	}));
-
-
-	console.log(parseFromString(keys_map, {
-		host: 'stest.theta42.com',
-		ip: 'googs',
-		updated: '1577054966047',
-		username: 'william',
-		targetport: '8080',
-		forcessl: 'true',
-		targetssl: 'false' }
-	))
-
-}
-
-
