@@ -41,10 +41,6 @@ The steps below are for a new ubuntu server, they should be mostly the same for 
 ```bash
 apt install luarocks
 sudo luarocks install lua-resty-auto-ssl
-```
-
-* Configure sshd for tunneling
-
 
 * openresty config
 
@@ -56,7 +52,7 @@ openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509   -subj '/CN=sni-suppo
 
 openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509   -subj '/CN=sni-support-required-for-valid-ssl'   -keyout /etc/ssl/resty-auto-ssl-fallback.key   -out /etc/ssl/resty-auto-ssl-fallback.crt
 
-openssl dhparam -out /etc/nginx/dhparam.pem 4096
+# openssl dhparam -out /etc/nginx/dhparam.pem 4096 # This takes a LONG time and is not needed.
 
 ```
 
