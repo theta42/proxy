@@ -1,38 +1,45 @@
-<% include top %>
+<%- include('top') %>
 <script id="rowTemplate" type="text/html">
-	<tr action="users" evalAJAX="$form.trigger('reset')">
-		<td><< user >></td>
-		<input type="hidden" name="username" value="<< user >>" />
+	<tr action="user/password/<< username >>" method="put" evalAJAX="$form.trigger('reset')">
 		<td>
-			<label></label>
-			<div class="col-xs-10 form-group">
-				<input type="password" size="30" class="form-control" name="password" placeholder="New password" validate="password:5"/>
-			</div>
-			<button type="button" onclick="formAJAX(this)" class="btn btn-sm btn-default">Change</button>
+			<< uid >>:<< username >>	
 		</td>
-		<td><button type="button" onclick="formAJAX(this, true)" class="btn btn-sm btn-default">Delete</button><td>
+		<td>
+			<input type="hidden" name="username" value="<< username >>" />
+			<div class="col-xs-10 form-group">
+				<label class="control-label"></label>
+				<input type="password" size="15" class="form-control" name="password" placeholder="New password" validate="password:5"/>
+			</div>
+
+			<button type="button btn-warn" onclick="formAJAX(this)" class="btn btn-sm btn-warn">
+				Change
+			</button>
+		</td>
+		<td>
+			<button type="button" onclick="app.user.remove({username: '<<username>>'}, function(){tableAJAX('username <<username>> delete.')})" class="btn btn-sm btn-danger">
+				Delete
+			</button>
+		</td>
 	</tr>
 </script>
 <script type="text/javascript">
 
 	function tableAJAX(actionMessage){
 		$('#tableAJAX').html('').hide();
-		$('div.actionMessage').html('Refreshing user list...').show();
-		$.get('users',function(data){
-			$.each( data, function(key, value) {
-				user_row = ich.rowTemplate({user : value});
+		app.util.actionMessage('Refreshing user list...')
+
+		app.user.list(function(error, data){
+			$.each( data.results, function(key, value) {
+				if(value.uid+'' && value.uid < 1000) return;
+				user_row = ich.rowTemplate(value);
 				$('#tableAJAX').append(user_row);
 			});
 
 			$('#tableAJAX').fadeIn('slow');
 
-			if(!actionMessage){
-				$('div.actionMessage').slideUp('fast'); 
-			}else{
-				$('div.actionMessage').html(actionMessage).slideDown('fast');
-			}
-		});
+			app.util.actionMessage(actionMessage || '', {type: 'info'});
 
+		});
 	}
 
 	$(document).ready(function(){
@@ -51,7 +58,7 @@
 				</div>
 			</div>
 			<div class="panel-body">
-			<form action="users" evalAJAX="$form.trigger('reset')">
+			<form action="user/" evalAJAX="$form.trigger('reset')">
 				<input type="hidden" class="form-control" name="delete" value="false" />
 				<div class="form-group">
 					<label class="control-label">User-name</label>
@@ -100,4 +107,4 @@
 		</div>
 	</div>
 </div>
-<% include bottom %>
+<%- include('bottom') %>

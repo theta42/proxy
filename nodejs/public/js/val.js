@@ -140,7 +140,7 @@ $.validateSettings({
 		password: function( value ) {
 			var reg = /^(?=[^\d_].*?\d)\w(\w|[!@#$%]){1,48}/;
 			if ( reg.test( value ) === false ) {
-				return "Try again";
+				return "Weak password, Try again";
 			}
 		}
 	}

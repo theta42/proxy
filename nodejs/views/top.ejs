@@ -13,7 +13,7 @@
 		<script type="text/javascript" src='/static/js/jquery.min.js'></script>
 		<script type="text/javascript" src='/static/js/bootstrap.min.js'></script>
 		<script type="text/javascript" src='/static/js/ICanHaz.js'></script>
-		<script type="text/javascript" src="/static/js/layout.js"></script>
+		<script type="text/javascript" src="/static/js/app.js"></script>
 		<script type="text/javascript" src="/static/js/val.js"></script>
 
 
@@ -21,7 +21,6 @@
 		<!--[if lt IE 9]>
 		<script src="http://html5shim.googlecode.com/svn/trunk/html5.js"></script>
 		<![endif]-->
-
 	</head>
         <body>
 		<nav class="navbar navbar-default" role="navigation">
@@ -37,9 +36,9 @@
 			</div>
 			<div id="navbar-collapse-1" class="collapse navbar-collapse navbar-ex4-collapse">
 				<ul class="nav navbar-nav navbar-right">
-					<li><a href="hosts">Hosts</a>
-					<li><a href="users">User Panel</a>
-					<li><a href="logout">Log out</a>
+					<li><a href="/hosts">Hosts</a>
+					<li><a href="/users">User Panel</a>
+					<li><a href="/" onclick="app.auth.logOut()">Log out</a>
 				</ul>
 			</div>
 		</div>

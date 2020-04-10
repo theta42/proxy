@@ -1,27 +1,32 @@
 <%- include('top') %>
 <script type="text/javascript">
 
+	app.auth.isLoggedIn(function(error, isLoggedIn){
+		if(isLoggedIn){
+			window.location.href = app.util.getUrlParameter('redirect') || '/';
+		}
+	})
+
 	$(document).ready(function(){
 		$( "form[action='login']" ).submit(function( event ) {
+			event.preventDefault();
 			$form = $(this);
 			app.util.actionMessage('')
-			if($form.attr('isValid') === 'true'){
 
-				app.auth.logIn($form.serializeObject(), function(error, data){
-
-					if(data){
-						app.util.actionMessage('Login successful!');
-						window.location.href = app.util.getUrlParameter('redirect') || '/hosts/';
-
-					}else{
-						app.util.actionMessage('Login Failed, please try again');						
-					}
-				});
-
-			}else{
-				app.util.actionMessage('Please fix the errors bellow!')
+			if($form.attr('isValid') !== 'true'){
+				console.log('')
+				return app.util.actionMessage('Please fix the errors bellow!')
 			}
-			event.preventDefault();
+
+			app.auth.logIn($form.serializeObject(), function(error, data){
+				if(data){
+					app.util.actionMessage('Login successful!');
+					window.location.href = app.util.getUrlParameter('redirect') || '/';
+
+				}else{
+					app.util.actionMessage('Login Failed, please try again');						
+				}
+			});
 		});
 	});
 </script>
@@ -35,7 +40,7 @@
 			<div class="panel-body">
 				<div class="alert alert-warning actionMessage" style="display:none">
 				</div>
-				<form method="post" action="login" onsubmit="$(this).validate()">
+				<form action="login" onsubmit="$(this).validate()">
 					<input type="hidden" name="redirect" value="<%= redirect %>">
 					<div class="form-group">
 						<label class="control-label">User name</label>

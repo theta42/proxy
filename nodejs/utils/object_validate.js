@@ -27,7 +27,7 @@ function processKeys(map, data, partial){
 			continue;
 		} 
 
-		if(data.hasOwnProperty(key) && typeof(data[key]) !== map[key].type){
+		if(data.hasOwnProperty(key) && map[key].type && typeof(data[key]) !== map[key].type){
 			errors.push({key, message:`${key} is not ${map[key].type} type.`});
 			continue;
 		}

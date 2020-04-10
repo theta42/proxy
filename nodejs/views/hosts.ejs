@@ -4,10 +4,10 @@
 		<input type="hidden" name="host" value="<< host >>" />
 		<td><a target="_blank" href="http://<<host>>"><<host>></a></td>
 		<td><<ip>></td>
-		<td class="hidden-xs"><<date>></td>
+		<td class="hidden-xs"><<updated_on>></td>
 		<td>
 			<button type="button" data-host="<< host >>" onclick="editHost(this);" class="btn btn-sm btn-default">Edit</button>
-			<button type="button" onclick="formAJAX(this, true)" class="btn btn-sm btn-default">Delete</button>
+			<button type="button" onclick="app.host.remove({host:'<<host>>'}, function(){tableAJAX('Host <<host>> delete.')})" class="btn btn-sm btn-default">Delete</button>
 		</td>
 	</tr>
 </script>
@@ -18,22 +18,24 @@
 		var btn = $(btn);
 		currentEditHost = btn.data('host');
 		$('.editWindow').slideDown('fast');
-		$('.editWindow .panel-body').slideDown('fast');
-		$('.editWindow .panel-title .pull-left').html("Edit "+btn.data('host'))
+		$('.editWindow .panel-title .pull-left').html("Edit "+ btn.data('host'))
 
 		$('div.editWindow .panel-body span').html($('#addHost').html())
 		$('div.editWindow .panel-body span button').remove()
 
-		app.hosts.get(currentEditHost, function(error, data){
-			console.log(data)
-			$.each( data.results, function( key, val ) {
+		$(".editWindow input[name='edit_host']").val(btn.data('host'));
 
-				$(".editWindow input[name='" + key + "']").val(val);
+		app.host.get(currentEditHost, function(error, data){
+			console.log(data)
+			$.each( data.results, function( key, value ) {
+				if(typeof value == "boolean"){
+					$(".editWindow #"+ key +"-"+ value).prop('checked', true)
+				}else{
+					$(".editWindow input[name='" + key + "']").val(value);
+				}
+				$('.editWindow .panel-body').slideDown('fast');
 			});
 		});
-		// $.getJSON('api/hosts/' + btn.data('host'), function( data ) {
-		// 	$("input[name='old_host']").attr('value', btn.data('host'));
-		// });
 	}
 
 	function tableAJAX(actionMessage){
@@ -41,16 +43,17 @@
 		$('#tableAJAX').html('').hide();
 		app.util.actionMessage('')
 
-		app.hosts.list(function(err, data){
-			if(err) return app.util.actionMessage(err);	
+		app.host.list(function(err, data){
+			if(err) return app.util.actionMessage(err, {type: 'danger'});	
 			if(data){
 				$.each(data, function( key, value ) {
 					host_row = ich.rowTemplate(value);
 					$('#tableAJAX').append(host_row);
 				});
+				app.util.actionMessage(actionMessage || '', {type: 'info'});
 				$('#tableAJAX').fadeIn('slow');
 			}else{
-				app.util.actionMessage('No hosts...')
+				app.util.actionMessage('No hosts...', {type: 'info'});
 			}
 		});
 	}
@@ -59,16 +62,33 @@
 		tableAJAX(); //populate the table
 		setInterval(tableAJAX, 30000);
 
-		$('#addHost').on('submit', function(){
+		$('form.addHost').on('submit', function(){
 			event.preventDefault();
 
 			$form = $(this);
+
+			var action = $($form.find('button[type="submit"]')[0]).data('type')
+
 			app.util.actionMessage('')
 
 			if($form.attr('isValid') === 'true'){
-				app.hosts.add($form.serializeObject(), function(error, data){					
-					app.util.actionMessage(data.message || 'Error!');
-					if(!error) $form.trigger('reset');
+				var formdata = $form.serializeObject();
+				if(formdata.targetport) formdata.targetport = Number(formdata.targetport);
+				if(formdata.targetssl) formdata.targetssl = formdata.targetssl == 'true' ? true : false;
+				if(formdata.forcessl) formdata.forcessl = formdata.forcessl == 'true' ? true : false;
+
+				app.host[action](formdata, function(error, data){
+					if(error){
+						console.log('error data',data)
+						app.util.actionMessage(error + data.message, {type: 'danger'});
+						return;
+					}
+					
+					if(action == 'edit') $('.editWindow').slideUp('fast');
+
+					app.util.actionMessage(data.message || 'Error!', {type: 'info'});
+					tableAJAX("Added "+ formdata.host);
+					$form.trigger('reset');
 				})
 			}
 		});
@@ -88,9 +108,10 @@
 				</div>
 			</div>
 			<div class="panel-body">
-				<form action="api" evalAJAX="$('div.editWindow').slideUp();currentEditHost = null;">
+				<form class="addHost" onsubmit="$(this).validate()">
 					<span></span>
-					<button type="button" class="btn btn-danger">Update</button>
+					<input type="hidden" name="edit_host" />
+					<button type="submit" data-type="edit" class="btn btn-danger host-submit">Update</button>
 					<button class="btn btn-link" type="reset">Cancel</button>
 				</form>
 			</div>
@@ -106,19 +127,19 @@
 				</div>
 			</div>
 			<div class="panel-body">
-				<form id="addHost" onsubmit="$(this).validate()">
+				<form class="addHost" id="addHost" onsubmit="$(this).validate()">
 					
 					<div class="form-group">
 						<label class="control-label">Incoming SSL</label>
 						<div class="radio">
 							<label>
-								<input type="radio" name="forceSSL" id="forceSSL1" value="true" checked>
+								<input type="radio" name="forcessl" id="forcessl-true" value="true" checked>
 								Force incoming connections over HTTPS <b>Recommended</b>
 							</label>
 						</div>
 						<div class="radio">
 							<label>
-								<input type="radio" name="forceSSL" id="forceSSL2" value="false">
+								<input type="radio" name="forcessl" id="forcessl-false" value="false">
 								Allow use of both HTTP and HTTPS
 							</label>
 						</div>
@@ -126,38 +147,38 @@
 
 					<div class="form-group">
 						<label class="control-label">Hostname</label>
-						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate="host:3" >
+						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
 					</div>
 
 					<hr />
 
 					<div class="form-group">
 						<label class="control-label">Target IP or Host Name</label>
-						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10" />
+						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10" validate=":3" />
 					</div>
 
 					<div class="form-group">
 						<label class="control-label">Target TCP Port</label>
-						<input type="number"  name="targetPort" class="form-control" value="80" min="0" max="65535" />
+						<input type="number"  name="targetport" class="form-control" value="80" min="0" max="65535" />
 					</div>
 
 					<div class="form-group">
 						<label class="control-label">Target SSL</label>
 						<div class="radio">
 							<label>
-								<input type="radio" name="targetSSL" id="targetSSL1" value="true">
+								<input type="radio" name="targetssl" id="targetssl-true" value="true">
 								Proxt to HTTPS 
 							</label>
 						</div>
 						<div class="radio">
 							<label>
-								<input type="radio" name="targetSSL" id="targetSSL2" value="false" checked>
+								<input type="radio" name="targetssl" id="targetssl-false" value="false" checked>
 								Proxy to HTTP <b>Recommended</b>
 							</label>
 						</div>
 					</div>
 	
-					<button type="submit" class="btn btn-default">Add</button>
+					<button type="submit" data-type="add" class="btn btn-default host-submit">Add</button>
 				</form>
 			</div>
 		</div>

@@ -17,6 +17,18 @@ router.post('/login', async function(req, res, next){
 	}
 });
 
+router.all('/logout', async function(req, res, next){
+	try{
+		if(req.user){
+			await req.user.logout();
+		}
+
+		res.json({message: 'Bye'})
+	}catch(error){
+		next(error);
+	}
+});
+
 router.post('/invite/:token', async function(req, res, next) {
 	try{
 		req.body.token = req.params.token;
