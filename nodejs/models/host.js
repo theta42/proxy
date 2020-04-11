@@ -10,7 +10,7 @@ const Host = require('../utils/redis_model')({
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
 		'host': {isRequired: true, type: 'string', min: 3, max: 500},
 		'ip': {isRequired: true, type: 'string', min: 3, max: 500},
-		'targetport': {isRequired: true, type: 'number', min:0, max:65535},
+		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
 	}

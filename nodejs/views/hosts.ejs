@@ -73,7 +73,7 @@
 
 			if($form.attr('isValid') === 'true'){
 				var formdata = $form.serializeObject();
-				if(formdata.targetport) formdata.targetport = Number(formdata.targetport);
+				if(formdata.targetPort) formdata.targetPort = Number(formdata.targetPort);
 				if(formdata.targetssl) formdata.targetssl = formdata.targetssl == 'true' ? true : false;
 				if(formdata.forcessl) formdata.forcessl = formdata.forcessl == 'true' ? true : false;
 
@@ -159,7 +159,7 @@
 
 					<div class="form-group">
 						<label class="control-label">Target TCP Port</label>
-						<input type="number"  name="targetport" class="form-control" value="80" min="0" max="65535" />
+						<input type="number"  name="targetPort" class="form-control" value="80" min="0" max="65535" />
 					</div>
 
 					<div class="form-group">
