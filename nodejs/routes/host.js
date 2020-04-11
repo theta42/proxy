@@ -30,7 +30,8 @@ router.get('/', async function(req, res, next){
 router.put('/:host', async function(req, res, next){
 	try{
 		req.body.updated_by = req.user.username;
-		await Host.update(req.body, req.params.host);
+		let host = await Host.get(req.params.host);
+		await host.update(req.body);
 
 		return res.json({
 			message: `Host "${req.params.host}" updated.`

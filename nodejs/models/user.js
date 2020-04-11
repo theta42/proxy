@@ -110,13 +110,17 @@ User.addByInvite = async function(data){
 
 };
 
+User.remove = async function(data){
+	try{
+		return await linuxUser.removeUser(this.username);
+	}catch(error){
+		throw error;
+	}
+};
+
 User.setPassword = async function(data){
 	try{
-		if(!data.password1 || data.password1 !== data.password2){
-			throw new Error('PasswordMismatch');
-		}
-
-		await linuxUser.setPassword(this.username, data.password1);
+		await linuxUser.setPassword(this.username, data.password);
 
 		return this;
 	}catch(error){

@@ -3,10 +3,52 @@
 const router = require('express').Router();
 const {User} = require('../models/user'); 
 
+router.get('/', async function(req, res, next){
+	try{
+		return res.json({results: await User.list()});
+	}catch(error){
+		next(error);
+	}
+});
 
-router.get('/me', async function(req, res){
+router.post('/', async function(req, res, next){
+	try{
+		return res.json({results: await User.add(req.body)});
+	}catch(error){
+		next(error);
+	}
+});
+
+router.delete('/:username', async function(req, res, next){
+	try{
+		let user = await User.get(req.params.username);
+
+		return res.json({username: req.params.username, results: await user.remove()})
+	}catch(error){
+		next(error);
+	}
+});
+
+router.get('/me', async function(req, res, next){
 	try{
 		return res.json({username: req.user.username});
+	}catch(error){
+		next(error);
+	}
+});
+
+router.put('/password', async function(req, res, next){
+	try{
+		return res.json({results: await req.user.setPassword(req.body)})
+	}catch(error){
+		next(error);
+	}
+});
+
+router.put('/password/:username', async function(req, res, next){
+	try{
+		let user = await User.get(req.params.username);
+		return res.json({results: await user.setPassword(req.body)});
 	}catch(error){
 		next(error);
 	}

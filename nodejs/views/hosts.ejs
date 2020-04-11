@@ -1,0 +1,219 @@
+<%- include('top') %>
+<script id="rowTemplate" type="text/html">
+	<tr action="api" class="<<fresh>>">
+		<input type="hidden" name="host" value="<< host >>" />
+		<td><a target="_blank" href="http://<<host>>"><<host>></a></td>
+		<td><<ip>></td>
+		<td class="hidden-xs"><<updated_on>></td>
+		<td>
+			<button type="button" data-host="<< host >>" onclick="editHost(this);" class="btn btn-sm btn-default">Edit</button>
+			<button type="button" onclick="app.host.remove({host:'<<host>>'}, function(){tableAJAX('Host <<host>> delete.')})" class="btn btn-sm btn-default">Delete</button>
+		</td>
+	</tr>
+</script>
+<script type="text/javascript">
+	var currentEditHost;
+
+	function editHost(btn){
+		var btn = $(btn);
+		currentEditHost = btn.data('host');
+		$('.editWindow').slideDown('fast');
+		$('.editWindow .panel-title .pull-left').html("Edit "+ btn.data('host'))
+
+		$('div.editWindow .panel-body span').html($('#addHost').html())
+		$('div.editWindow .panel-body span button').remove()
+
+		$(".editWindow input[name='edit_host']").val(btn.data('host'));
+
+		app.host.get(currentEditHost, function(error, data){
+			console.log(data)
+			$.each( data.results, function( key, value ) {
+				if(typeof value == "boolean"){
+					$(".editWindow #"+ key +"-"+ value).prop('checked', true)
+				}else{
+					$(".editWindow input[name='" + key + "']").val(value);
+				}
+				$('.editWindow .panel-body').slideDown('fast');
+			});
+		});
+	}
+
+	function tableAJAX(actionMessage){
+
+		$('#tableAJAX').html('').hide();
+		app.util.actionMessage('')
+
+		app.host.list(function(err, data){
+			if(err) return app.util.actionMessage(err, {type: 'danger'});	
+			if(data){
+				$.each(data, function( key, value ) {
+					host_row = ich.rowTemplate(value);
+					$('#tableAJAX').append(host_row);
+				});
+				app.util.actionMessage(actionMessage || '', {type: 'info'});
+				$('#tableAJAX').fadeIn('slow');
+			}else{
+				app.util.actionMessage('No hosts...', {type: 'info'});
+			}
+		});
+	}
+
+	$(document).ready(function(){
+		tableAJAX(); //populate the table
+		setInterval(tableAJAX, 30000);
+
+		$('form.addHost').on('submit', function(){
+			event.preventDefault();
+
+			$form = $(this);
+
+			var action = $($form.find('button[type="submit"]')[0]).data('type')
+
+			app.util.actionMessage('')
+
+			if($form.attr('isValid') === 'true'){
+				var formdata = $form.serializeObject();
+				if(formdata.targetPort) formdata.targetPort = Number(formdata.targetPort);
+				if(formdata.targetssl) formdata.targetssl = formdata.targetssl == 'true' ? true : false;
+				if(formdata.forcessl) formdata.forcessl = formdata.forcessl == 'true' ? true : false;
+
+				app.host[action](formdata, function(error, data){
+					if(error){
+						console.log('error data',data)
+						app.util.actionMessage(error + data.message, {type: 'danger'});
+						return;
+					}
+					
+					if(action == 'edit') $('.editWindow').slideUp('fast');
+
+					app.util.actionMessage(data.message || 'Error!', {type: 'info'});
+					tableAJAX("Added "+ formdata.host);
+					$form.trigger('reset');
+				})
+			}
+		});
+	});
+</script>
+<div class="row" style="display:none">
+	<div class="col-md-4">
+		<div class="panel panel-danger editWindow" style="display:none">
+			<div class="panel-heading">
+				<div class="panel-title">
+					<div class="pull-left">Edit $host!</div>
+					&nbsp;
+					<div class="pull-right">
+						<label class="glyphicon glyphicon-circle-arrow-down"></label>
+						<label class="glyphicon glyphicon-remove-circle"></label>
+					</div>
+				</div>
+			</div>
+			<div class="panel-body">
+				<form class="addHost" onsubmit="$(this).validate()">
+					<span></span>
+					<input type="hidden" name="edit_host" />
+					<button type="submit" data-type="edit" class="btn btn-danger host-submit">Update</button>
+					<button class="btn btn-link" type="reset">Cancel</button>
+				</form>
+			</div>
+		</div>
+
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<div class="panel-title">
+					Add New Proxy
+					<div class="pull-right">
+						<label class="glyphicon glyphicon-circle-arrow-down panel-toggle"></label>
+					</div>
+				</div>
+			</div>
+			<div class="panel-body">
+				<form class="addHost" id="addHost" onsubmit="$(this).validate()">
+					
+					<div class="form-group">
+						<label class="control-label">Incoming SSL</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="forcessl" id="forcessl-true" value="true" checked>
+								Force incoming connections over HTTPS <b>Recommended</b>
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="forcessl" id="forcessl-false" value="false">
+								Allow use of both HTTP and HTTPS
+							</label>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="control-label">Hostname</label>
+						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
+					</div>
+
+					<hr />
+
+					<div class="form-group">
+						<label class="control-label">Target IP or Host Name</label>
+						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10" validate=":3" />
+					</div>
+
+					<div class="form-group">
+						<label class="control-label">Target TCP Port</label>
+						<input type="number"  name="targetPort" class="form-control" value="80" min="0" max="65535" />
+					</div>
+
+					<div class="form-group">
+						<label class="control-label">Target SSL</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="targetssl" id="targetssl-true" value="true">
+								Proxt to HTTPS 
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="targetssl" id="targetssl-false" value="false" checked>
+								Proxy to HTTP <b>Recommended</b>
+							</label>
+						</div>
+					</div>
+	
+					<button type="submit" data-type="add" class="btn btn-default host-submit">Add</button>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-md-8">
+		<div class="panel panel-default">
+			<div class="panel-heading">
+				<div class="panel-title">
+					Proxy List
+					<div class="pull-right">
+						<label class="glyphicon glyphicon-circle-arrow-down panel-toggle"></label>
+						<label class="glyphicon glyphicon-refresh"></label>
+					</div>
+				</div>
+			</div>
+			<div class="panel-body" style="padding-bottom:0">
+				<div class="alert alert-warning actionMessage" style="display:none">
+					<!-- Message after AJAX action is preformed -->
+				</div>
+				<div class="table-responsive">
+					<table class="table">
+						<thead>
+							<th>Hostname</th>
+							<th>target</th>
+							<th class="hidden-xs">Updated</th>
+							<th>Actions</th>
+						</thead>
+						<tbody id="tableAJAX">
+							<!-- ajax loaded table -->
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<%- include('bottom') %>

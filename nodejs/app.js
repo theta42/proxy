@@ -21,7 +21,7 @@ app.set('view engine', 'ejs');
 app.use('/static', express.static(path.join(__dirname, 'public')))
 
 // Routes for front end content.
-app.use('/',  require('./routes/index'));
+app.use('/', require('./routes/index'));
 
 // API routes for authentication. 
 app.use('/api/auth',  require('./routes/auth'));

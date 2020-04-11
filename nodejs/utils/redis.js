@@ -21,4 +21,5 @@ module.exports = {
 	HSET: promisify(_client.HSET).bind(_client),
 	HGETALL: promisify(_client.HGETALL).bind(_client),
 	SMEMBERS: promisify(_client.SMEMBERS).bind(_client),
+	RENAME: promisify(_client.RENAME).bind(_client),
 };
