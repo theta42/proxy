@@ -3,7 +3,7 @@
 const client = require('../utils/redis');
 
 (async function(){
-	await client.rename('hosts', 'host');
+	await client.RENAME('hosts', 'host');
 	let hosts = await client.SMEMBERS('host');
 
 	for(let host of hosts){
