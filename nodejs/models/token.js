@@ -27,7 +27,7 @@ Token.check = async function(data){
 }
 
 var InviteToken = Object.create(Token({
-	name: 'invite_test1',
+	name: 'invite',
 	keyMap:{
 		claimed_by: {default:"__NONE__", isRequired: false, type: 'string',}
 	}
@@ -49,7 +49,7 @@ InviteToken.consume = async function(data){
 }
 
 var AuthToken = Object.create(Token({
-	name: 'auth_test1',
+	name: 'auth',
 }));
 
 AuthToken.add = async function(data){
