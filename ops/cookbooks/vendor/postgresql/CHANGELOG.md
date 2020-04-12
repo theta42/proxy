@@ -2,7 +2,19 @@
 
 This file is used to list changes made in the last 3 major versions of the postgresql cookbook.
 
-## Unreleased
+## v7.1.8 (2020-02-22)
+
+- Fix incorrect ubuntu platform family value in `postgresql_server_install`
+- Re-add unit tests that were skipped
+
+## v7.1.7 (2020-02-21)
+
+- Correctly configure postgres-common on Ubuntu hosts (fixes #596)
+
+## v7.1.6 (2020-02-20)
+
+- Remove unnecessary nil default in resource properties
+- Migrate to GitHub Actions for testing
 
 ## v7.1.5 (2019-11-18)
 

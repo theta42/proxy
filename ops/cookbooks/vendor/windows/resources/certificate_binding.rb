@@ -19,7 +19,6 @@
 # limitations under the License.
 #
 
-include Chef::Mixin::PowershellOut
 include Windows::Helper
 
 property :cert_name, String, name_property: true
@@ -28,7 +27,7 @@ property :address, String, default: '0.0.0.0'
 property :port, Integer, default: 443
 property :app_id, String, default: '{4dc3e181-e14b-4a21-b022-59fc669b0914}'
 property :store_name, String, default: 'MY', equal_to: ['TRUSTEDPUBLISHER', 'CLIENTAUTHISSUER', 'REMOTE DESKTOP', 'ROOT', 'TRUSTEDDEVICES', 'WEBHOSTING', 'CA', 'AUTHROOT', 'TRUSTEDPEOPLE', 'MY', 'SMARTCARDROOT', 'TRUST']
-property :exists, [true, false], desired_state: true
+property :exists, [true, false]
 
 load_current_value do |desired|
   mode = desired.address.match(/(\d+\.){3}\d+|\[.+\]/).nil? ? 'hostnameport' : 'ipport'

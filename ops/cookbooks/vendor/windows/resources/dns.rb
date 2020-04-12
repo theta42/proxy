@@ -18,10 +18,9 @@
 # limitations under the License.
 #
 
-actions :create, :delete
 default_action :create
 
-attribute :host_name, kind_of: String, name_property: true, required: true
+attribute :host_name, kind_of: String, required: true
 attribute :record_type, kind_of: String, default: 'A', regex: /^(?:A|CNAME)$/
 attribute :dns_server, kind_of: String, default: '.'
 attribute :target, kind_of: [Array, String], required: true
