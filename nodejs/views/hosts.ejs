@@ -2,8 +2,8 @@
 <script id="rowTemplate" type="text/html">
 	<tr action="api" class="<<fresh>>">
 		<input type="hidden" name="host" value="<< host >>" />
-		<td><a target="_blank" href="http://<<host>>"><<host>></a></td>
-		<td><<ip>></td>
+		<td><a target="_blank" href="<<forcessl>><<host>>"><<forcessl>><<host>></a></td>
+		<td><< targetssl >><< ip >>:<< targetPort >></td>
 		<td class="hidden-xs"><<updated_on>></td>
 		<td>
 			<button type="button" data-host="<< host >>" onclick="editHost(this);" class="btn btn-sm btn-default">Edit</button>
@@ -47,7 +47,9 @@
 			if(err) return app.util.actionMessage(err, {type: 'danger'});	
 			if(data){
 				$.each(data, function( key, value ) {
-					value['updated_on'] = moment(value['updated_on'], "x").fromNow()
+					value['updated_on'] = moment(value['updated_on'], "x").fromNow();
+					value['targetssl'] = value['targetssl'] ? "https://" : "http://";
+					value['forcessl'] = value['forcessl'] ? "https://" : "http://";
 					host_row = ich.rowTemplate(value);
 					$('#tableAJAX').append(host_row);
 				});
@@ -150,8 +152,6 @@
 						<label class="control-label">Hostname</label>
 						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
 					</div>
-
-					<hr />
 
 					<div class="form-group">
 						<label class="control-label">Target IP or Host Name</label>
