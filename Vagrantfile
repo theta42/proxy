@@ -34,7 +34,7 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "ubuntu/xenial64"
+  config.vm.box = "ubuntu/bionic64"
   config.vm.synced_folder '.', '/vagrant' # The vagrant dir just stopped automounting
 
   # Create a forwarded port mapping which allows access to a specific port
@@ -65,14 +65,14 @@ Vagrant.configure("2") do |config|
   # Puppet, Chef, Ansible, Salt, and Docker are also available. Please see the
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<~SHELL
-    if ! apt list ruby2.5 | grep installed; then
+    apt-get update
+    if ! apt list ruby2.6-dev | grep installed; then
       apt-add-repository ppa:brightbox/ruby-ng -y
-      apt-get update
-      sudo apt-get install -y build-essential resolvconf ruby2.5 ruby2.5-dev gem
+      sudo apt-get install -y build-essential resolvconf ruby2.6 ruby2.6-dev gem
     fi
 
     if ! which berks >/dev/null; then
-      gem install ruby-shadow berkshelf --no-ri --no-rdoc
+      gem install ruby-shadow berkshelf --no-document
       # ln -s /opt/chef/embedded/bin/berks /usr/local/bin/berks
     fi
 
@@ -111,7 +111,7 @@ Vagrant.configure("2") do |config|
       'nodejs': {
         'working-dir': 'nodejs',
         'port': '3000',
-        'install_version': 8,
+        'install_version': 13,
         'exec_file': 'bin/www',
         'service': true,
       },

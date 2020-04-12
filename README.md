@@ -7,44 +7,47 @@
 
 The server requires:
 * NodeJS 8.x
-* open ssh server(any modern version will do)
 * inbound Internet access
 * OpenResty
 * redis
 * lua rocks
 
-This has been tested on ubuntu 16.04, but should work on any modern Linux distro. It used the Linux users for its user management, so this will **ONLY** work on Linux, no macOS, BSD or Windows.
+This has been tested on ubuntu 16.04, but should work on any modern Linux
+distro. It used the Linux users for its user management, so this will
+**ONLY** work on Linux, no macOS, BSD or Windows.
 
-The steps below are for a new ubuntu server, they should be mostly the same for other distros, but the paths and availability of packages may vary. A dedicated server is highly recommended (since it will make ever user a system user), a VPS like Digital Ocean will do just fine.
-
-* Install other
-    These packages are needed for the PAM node package
-    ```bash
-    apt install libpam0g-dev build-essential
-    ```
-
-* Install open ssh server
-    ```bash
-    apt install ssh
-    ```
+The steps below are for a new ubuntu server, they should be mostly the same for
+other distros, but the paths and availability of packages may vary. A dedicated
+server is highly recommended (since it will make ever user a system user), a VPS
+like Digital Ocean will do just fine.
 
 * Install openresty
 
     [OpenResty® Linux Packages](https://openresty.org/en/linux-packages.html)
 
+* These packages are needed for the PAM node package
+
+    ```bash
+    apt install libpam0g-dev build-essential
+    ```
+
 * Install redis
+
     ```bash
     apt install redis-server
     ```
 
 * install lua plugin
+
 ```bash
 apt install luarocks
 sudo luarocks install lua-resty-auto-ssl
+```
 
 * openresty config
 
 Set up fail back SSL certs
+
 ```bash
 mkdir /etc/ssl/
 
@@ -56,8 +59,7 @@ openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509   -subj '/CN=sni-suppo
 
 ```
 
-
-change the `/etc/openresty/nginx.conf to have this config`
+Change the `/etc/openresty/nginx.conf to have this config`
 
 ```
 #user  nobody;
@@ -138,15 +140,9 @@ http {
 
 ```
 
-
-add the SSL config file `/etc/openresty/autossl.conf`, contents from here https://github.com/theta42/t42-common/blob/master/templates/openresty/autossl.conf.erb
-
-
-
-Add the proxy config `/etc/openresty/sites-enabled/000-proxy` contents from here https://github.com/theta42/t42-common/blob/master/templates/openresty/010-proxy.conf.erb
+add the SSL config file `/etc/openresty/autossl.conf`, contents from here
+https://github.com/theta42/t42-common/blob/master/templates/openresty/autossl.conf.erb
 
 
-## ref
-
-https://blog.trackets.com/2014/05/17/ssh-tunnel-local-and-remote-port-forwarding-explained-with-examples.html
-https://github.com/GUI/lua-resty-auto-ssl
+Add the proxy config `/etc/openresty/sites-enabled/000-proxy` contents from here
+https://github.com/theta42/t42-common/blob/master/templates/openresty/010-proxy.conf.erb
