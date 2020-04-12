@@ -47,6 +47,7 @@
 			if(err) return app.util.actionMessage(err, {type: 'danger'});	
 			if(data){
 				$.each(data, function( key, value ) {
+					value['updated_on'] = moment(value['updated_on'], "x").fromNow()
 					host_row = ich.rowTemplate(value);
 					$('#tableAJAX').append(host_row);
 				});
