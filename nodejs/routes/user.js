@@ -1,11 +1,13 @@
 'use strict';
 
 const router = require('express').Router();
-const {User} = require('../models/user'); 
+const {User} = require('../models/user_redis'); 
 
 router.get('/', async function(req, res, next){
 	try{
-		return res.json({results: await User.list()});
+		return res.json({
+			results:  await User[req.query.detail ? "listDetail" : "list"]()
+		});
 	}catch(error){
 		next(error);
 	}

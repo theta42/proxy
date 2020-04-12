@@ -1,6 +1,6 @@
 'use strict';
 
-const {Auth} = require('../models/auth'); 
+const {Auth} = require('../models/auth_redis'); 
 
 async function auth(req, res, next){
 	try{
