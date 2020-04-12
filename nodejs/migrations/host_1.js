@@ -15,4 +15,5 @@ const client = require('../utils/redis');
 		await client.HDEL('host_'+host, 'username');
 		await client.HDEL('host_'+host, 'updated');
 	}
+	process.exit(0);
 })()
