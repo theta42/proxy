@@ -1,6 +1,6 @@
 'use strict';
 
-const Host = new require('../utils/redis_model')({
+const Host = require('../utils/redis_model')({
 	_name: 'host',
 	_key: 'host',
 	_keyMap: {

@@ -177,14 +177,6 @@ table.remove = async function(data){
 	}
 };
 
-table.createInstance = function(data){
-
-	// this.__proto__ = data;
-
-	return this
-}
-
-
 function Table(data){
 	// Create a table instance.
 	let instance = Object.create(data);
