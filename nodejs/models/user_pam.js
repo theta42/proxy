@@ -3,6 +3,9 @@
 const linuxUser = require('linux-sys-user').promise();
 const objValidate = require('../utils/object_validate');
 const {Token, InviteToken} = require('./token');
+const {promisify} = require('util');
+const pam = require('authenticate-pam');
+const authenticate = promisify(pam.authenticate);
 
 var User = {}
 
@@ -10,6 +13,8 @@ User.keyMap = {
 	'username': {isRequired: true, type: 'string', min: 3, max: 500},
 	'password': {isRequired: true, type: 'string', min: 3, max: 500},
 }
+
+User.backing = "PAM";
 
 User.list = async function(){
 	try{
@@ -135,6 +140,20 @@ User.invite = async function(){
 		return token;
 
 	}catch(error){
+		throw error;
+	}
+};
+
+User.login = async function(data){
+	try{
+		let auth = await authenticate(data.username, data.password);
+		let user = await User.get(data);
+
+		return user;
+	}catch(error){
+		if (error == 'Authentication failure'){
+			throw this.errors.login()
+		}
 		throw error;
 	}
 };

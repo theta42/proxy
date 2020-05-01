@@ -19,6 +19,9 @@ const User = require('../utils/redis_model')({
 	}
 });
 
+User.backing = "redis";
+
+
 User.add = async function(data) {
 	try{
 		data['password'] = await bcrypt.hash(data['password'], saltRounds);
@@ -74,6 +77,25 @@ User.invite = async function(){
 		return token;
 
 	}catch(error){
+		throw error;
+	}
+};
+
+User.login = async function(data){
+	try{
+		let user = await User.get(data);
+
+		let auth = await bcrypt.compare(data.password, user.password);
+
+		if(auth){
+			return user
+		}else{
+			throw this.errors.login();
+		}
+	}catch(error){
+		if (error == 'Authentication failure'){
+			throw this.errors.login()
+		}
 		throw error;
 	}
 };

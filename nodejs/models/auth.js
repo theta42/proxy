@@ -1,17 +1,12 @@
-'use strict';
-
-const bcrypt = require('bcrypt');
-const saltRounds = 10;
-
-const {User} = require('./user_redis');
+const {User} = require('./user');
 const {Token, AuthToken} = require('./token');
 
-var Auth = {}
+Auth = {}
 Auth.errors = {}
 
 Auth.errors.login = function(){
-	let error = new Error('ResisLoginFailed');
-	error.name = 'RedisLoginFailed';
+	let error = new Error('PamLoginFailed');
+	error.name = 'PamLoginFailed';
 	error.message = `Invalid Credentials, login failed.`;
 	error.status = 401;
 
@@ -20,24 +15,15 @@ Auth.errors.login = function(){
 
 Auth.login = async function(data){
 	try{
-		let user = await User.get(data);
+		let user = await User.login(data);
+		let token = await AuthToken.add(user);
 
-		let auth = await bcrypt.compare(data.password, user.password);
-
-		if(auth){
-			let token = await AuthToken.add(user);
-
-			return {user, token}
-		}else{
-			throw this.errors.login();
-		}
+		return {user, token}
 	}catch(error){
-		if (error == 'Authentication failure'){
-			throw this.errors.login()
-		}
 		throw error;
 	}
 };
+
 
 Auth.checkToken = async function(data){
 	try{
