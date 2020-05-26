@@ -1,5 +1,7 @@
 # proxy
 
+A simple reverse proxy and https termination using openresty/nginx with a managment API and GUI. 
+
 ## API docs
 [API docs](api.md)
 
@@ -13,8 +15,9 @@ The server requires:
 * lua rocks
 
 This has been tested on ubuntu 16.04, but should work on any modern Linux
-distro. It used the Linux users for its user management, so this will
-**ONLY** work on Linux, no macOS, BSD or Windows.
+distro.
+**Optional** Linux users for its user management, so this will
+**ONLY** work on Linux, no macOS, BSD or Windows and require root.
 
 The steps below are for a new ubuntu server, they should be mostly the same for
 other distros, but the paths and availability of packages may vary. A dedicated
