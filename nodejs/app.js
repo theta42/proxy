@@ -3,10 +3,18 @@
 const path = require('path');
 const ejs = require('ejs')
 const express = require('express');
-const middleware = require('./middleware/auth');
 
 // Set up the express app.
 const app = express();
+
+// Allow the express app to be exported into other files. 
+module.exports = app;
+
+// Build the conf object from the conf files.
+app.conf = require('./conf/conf');
+
+// Hold onto the auth middleware 
+const middleware = require('./middleware/auth');
 
 // load the JSON parser middleware. Express will parse JSON into native objects
 // for any request that has JSON in its content type. 
@@ -51,6 +59,3 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.json({name: err.name, message: err.message});
 });
-
-// Allow the express app to be exported into other files. 
-module.exports = app;

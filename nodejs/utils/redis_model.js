@@ -88,6 +88,7 @@ table.add = async function(data){
 	try{
 
 		// Validate the passed data by the keyMap schema.
+
 		data = objValidate.processKeys(this._keyMap, data);
 
 		// Do not allow the caller to overwrite an existing index key,
@@ -178,13 +179,11 @@ table.remove = async function(data){
 
 function Table(data){
 	// Create a table instance.
-	let obj = Object.create(table);
-
-	// Insert the user assigned options
-	Object.assign(obj, data);
+	let instance = Object.create(data);
+	Object.assign(instance, table);
 
 	// Return the table instance to the caller.
-	return obj;
+	return Object.create(instance);
 
 };
 

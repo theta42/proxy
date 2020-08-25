@@ -1,7 +1,3 @@
-const {promisify} = require('util');
-const pam = require('authenticate-pam');
-const authenticate = promisify(pam.authenticate);
-
 const {User} = require('./user');
 const {Token, AuthToken} = require('./token');
 
@@ -19,18 +15,15 @@ Auth.errors.login = function(){
 
 Auth.login = async function(data){
 	try{
-		let auth = await authenticate(data.username, data.password);
-		let user = await User.get(data);
+		let user = await User.login(data);
 		let token = await AuthToken.add(user);
 
 		return {user, token}
 	}catch(error){
-		if (error == 'Authentication failure'){
-			throw this.errors.login()
-		}
 		throw error;
 	}
 };
+
 
 Auth.checkToken = async function(data){
 	try{
