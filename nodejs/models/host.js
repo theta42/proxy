@@ -47,8 +47,6 @@ Host.lookUp = async function(host){
 	let last_resort = {};
 
 	for(let fragment of host.split('.').slice().reverse()){
-		// console.log('fragment', fragment, last_resort)
-
 		if(place['**']) last_resort = place['**'];
 
 		if({...place, ...last_resort}[fragment]){
@@ -61,7 +59,6 @@ Host.lookUp = async function(host){
 	}
 
 	if(place && place['#record']) return place['#record'];
-
 }
 
 module.exports = {Host};
