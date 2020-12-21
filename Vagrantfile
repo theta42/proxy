@@ -73,7 +73,7 @@ Vagrant.configure("2") do |config|
 
     if ! which berks >/dev/null; then
       gem install ruby-shadow berkshelf --no-document
-      # ln -s /opt/chef/embedded/bin/berks /usr/local/bin/berks
+      ln -s /opt/chef/embedded/bin/berks /usr/local/bin/berks
     fi
 
     cd /vagrant
