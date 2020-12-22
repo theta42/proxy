@@ -188,9 +188,9 @@ fs.stat(SOCKETFILE, function (err, stats) {
 
 module.exports = {Host};
 
-(async function(){
+// (async function(){
 
-	await Host.lookUpReady();
+	// await Host.lookUpReady();
 
 	// console.log(Host.lookUpObj)
 
@@ -198,23 +198,23 @@ module.exports = {Host};
 
 	// console.log('test-res', await Host.lookUp('payments.718it.biz'))
 
-	let count = 6
-	console.log(count++, Host.lookUp('payments.718it.biz').host === 'payments.718it.biz')
-	console.log(count++, Host.lookUp('sd.blah.test.vm42.com') === undefined)
-	console.log(count++, Host.lookUp('payments.test.com').host === 'payments.**')
-	console.log(count++, Host.lookUp('test.sample.other.exmaple.com').host === '**.exmaple.com')
-	console.log(count++, Host.lookUp('stan.test.vm42.com').host === 'stan.test.vm42.com')
-	console.log(count++, Host.lookUp('test.vm42.com').host === 'test.vm42.com')
-	console.log(count++, Host.lookUp('blah.test.vm42.com').host === '*.test.vm42.com')
-	console.log(count++, Host.lookUp('payments.example.com').host === 'payments.**')	
-	console.log(count++, Host.lookUp('info.wma.users.718it.biz').host === 'info.*.users.718it.biz')
-	console.log(count++, Host.lookUp('infof.users.718it.biz') === undefined)
-	console.log(count++, Host.lookUp('blah.biz') === undefined)
-	console.log(count++, Host.lookUp('test.1.2.718it.net').host === 'test.*.*.718it.net')
-	console.log(count++, Host.lookUp('test1.exmaple.com').host === 'test1.exmaple.com')
-	console.log(count++, Host.lookUp('other.exmaple.com').host === '*.exmaple.com')
-	console.log(count++, Host.lookUp('info.payments.example.com').host === 'info.**')
-	console.log(count++, Host.lookUp('718it.biz').host === '718it.biz')
+	// let count = 6
+	// console.log(count++, Host.lookUp('payments.718it.biz').host === 'payments.718it.biz')
+	// console.log(count++, Host.lookUp('sd.blah.test.vm42.com') === undefined)
+	// console.log(count++, Host.lookUp('payments.test.com').host === 'payments.**')
+	// console.log(count++, Host.lookUp('test.sample.other.exmaple.com').host === '**.exmaple.com')
+	// console.log(count++, Host.lookUp('stan.test.vm42.com').host === 'stan.test.vm42.com')
+	// console.log(count++, Host.lookUp('test.vm42.com').host === 'test.vm42.com')
+	// console.log(count++, Host.lookUp('blah.test.vm42.com').host === '*.test.vm42.com')
+	// console.log(count++, Host.lookUp('payments.example.com').host === 'payments.**')	
+	// console.log(count++, Host.lookUp('info.wma.users.718it.biz').host === 'info.*.users.718it.biz')
+	// console.log(count++, Host.lookUp('infof.users.718it.biz') === undefined)
+	// console.log(count++, Host.lookUp('blah.biz') === undefined)
+	// console.log(count++, Host.lookUp('test.1.2.718it.net').host === 'test.*.*.718it.net')
+	// console.log(count++, Host.lookUp('test1.exmaple.com').host === 'test1.exmaple.com')
+	// console.log(count++, Host.lookUp('other.exmaple.com').host === '*.exmaple.com')
+	// console.log(count++, Host.lookUp('info.payments.example.com').host === 'info.**')
+	// console.log(count++, Host.lookUp('718it.biz').host === '718it.biz')
 
 
-})()
+// })()
