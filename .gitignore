@@ -82,3 +82,6 @@ Berksfile.lock
 Policyfile.lock.json
 
 ops/cookbooks/vendor
+
+secrets.json
+secrets.js

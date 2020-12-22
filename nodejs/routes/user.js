@@ -5,7 +5,9 @@ const {User} = require('../models/user');
 
 router.get('/', async function(req, res, next){
 	try{
-		return res.json({results: await User.list()});
+		return res.json({
+			results:  await User[req.query.detail ? "listDetail" : "list"]()
+		});
 	}catch(error){
 		next(error);
 	}
@@ -13,6 +15,8 @@ router.get('/', async function(req, res, next){
 
 router.post('/', async function(req, res, next){
 	try{
+		req.body.created_by = req.user.username
+
 		return res.json({results: await User.add(req.body)});
 	}catch(error){
 		next(error);
