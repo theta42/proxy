@@ -16,6 +16,39 @@ const Host = require('../utils/redis_model')({
 	}
 });
 
+Host.add = async function(){
+	try{
+		let out = await this.__proto__.add(...arguments)
+		await this.buildLookUpObj()
+
+		return out;
+	} catch(error){
+		throw error;
+	}
+};
+
+Host.update = async function(){
+	try{
+		let out = await this.__proto__.update(...arguments)
+		await this.buildLookUpObj()
+
+		return out;
+	} catch(error){
+		throw error;
+	}
+};
+
+Host.remove = async function(){
+	try{
+		let out = await this.__proto__.remove(...arguments)
+		await this.buildLookUpObj()
+
+		return out;
+	} catch(error){
+		throw error;
+	}
+};
+
 Host.lookUpObj = {};
 
 Host.buildLookUpObj = async function(){
@@ -117,80 +150,11 @@ Host.lookUpReady = async function(){
 	await Host.buildLookUpObj();
 })()
 
-
-var net = require('net');
-var fs = require('fs');
-
-// This server listens on a Unix socket at /var/run/mysocket
-var unixServer = net.createServer(function(client) {
-    // Do something with the client connection
-});
-
-unixServer.on('connection', function(clientSocket){
-	let buffer = '';
-
-	console.log('server EVENT connection from client:', clientSocket.remoteAddress);
-
-	// When a connection is started, send a message informing the remote
-	// peer of our ID
-
-	clientSocket.on('data', function(data){
-		buffer += data.toString();
-		try{
-			// p2p.__read(JSON.parse(buffer), clientSocket.remoteAddress, clientSocket);
-			console.log('buffer', buffer, Host.lookUp(buffer))
-			clientSocket.write(JSON.stringify(Host.lookUp(buffer)|| {host: 'none'}));
-		}catch(error){
-			;
-		}
-	});
-
-	clientSocket.on('close', function(){
-		console.log('info', `server Peer ${clientSocket.remoteAddress} - ${clientSocket.peerID} droped.`);
-
-	});
-	clientSocket.on('error', function(error){
-		console.log(error)
-	})
-
-});
-
-unixServer.on('error', function(error){
-	console.log(error)
-})
-
-var SOCKETFILE = '/var/run/mysocket'
-
-unixServer.on('listening', function(){
-	fs.chmodSync(SOCKETFILE, '777');
-	console.log('info','p2p server listening on')
-});
-
-
-
-fs.stat(SOCKETFILE, function (err, stats) {
-       if (err) {
-           // start server
-           console.log('No leftover socket found.');
-           server = createServer(SOCKETFILE); return;
-       }
-       // remove file then start server
-       console.log('Removing leftover socket.')
-       fs.unlink(SOCKETFILE, function(err){
-           if(err){
-               // This should never happen.
-               console.error(err); process.exit(0);
-           }
-			unixServer.listen(SOCKETFILE);
-       });  
-   });
-
-
 module.exports = {Host};
 
-// (async function(){
+(async function(){
 
-	// await Host.lookUpReady();
+	await Host.lookUpReady();
 
 	// console.log(Host.lookUpObj)
 
@@ -198,23 +162,23 @@ module.exports = {Host};
 
 	// console.log('test-res', await Host.lookUp('payments.718it.biz'))
 
-	// let count = 6
-	// console.log(count++, Host.lookUp('payments.718it.biz').host === 'payments.718it.biz')
-	// console.log(count++, Host.lookUp('sd.blah.test.vm42.com') === undefined)
-	// console.log(count++, Host.lookUp('payments.test.com').host === 'payments.**')
-	// console.log(count++, Host.lookUp('test.sample.other.exmaple.com').host === '**.exmaple.com')
-	// console.log(count++, Host.lookUp('stan.test.vm42.com').host === 'stan.test.vm42.com')
-	// console.log(count++, Host.lookUp('test.vm42.com').host === 'test.vm42.com')
-	// console.log(count++, Host.lookUp('blah.test.vm42.com').host === '*.test.vm42.com')
-	// console.log(count++, Host.lookUp('payments.example.com').host === 'payments.**')	
-	// console.log(count++, Host.lookUp('info.wma.users.718it.biz').host === 'info.*.users.718it.biz')
-	// console.log(count++, Host.lookUp('infof.users.718it.biz') === undefined)
-	// console.log(count++, Host.lookUp('blah.biz') === undefined)
-	// console.log(count++, Host.lookUp('test.1.2.718it.net').host === 'test.*.*.718it.net')
-	// console.log(count++, Host.lookUp('test1.exmaple.com').host === 'test1.exmaple.com')
-	// console.log(count++, Host.lookUp('other.exmaple.com').host === '*.exmaple.com')
-	// console.log(count++, Host.lookUp('info.payments.example.com').host === 'info.**')
-	// console.log(count++, Host.lookUp('718it.biz').host === '718it.biz')
+	let count = 6
+	console.log(count++, Host.lookUp('payments.718it.biz').host === 'payments.718it.biz')
+	console.log(count++, Host.lookUp('sd.blah.test.vm42.com') === undefined)
+	console.log(count++, Host.lookUp('payments.test.com').host === 'payments.**')
+	console.log(count++, Host.lookUp('test.sample.other.exmaple.com').host === '**.exmaple.com')
+	console.log(count++, Host.lookUp('stan.test.vm42.com').host === 'stan.test.vm42.com')
+	console.log(count++, Host.lookUp('test.vm42.com').host === 'test.vm42.com')
+	console.log(count++, Host.lookUp('blah.test.vm42.com').host === '*.test.vm42.com')
+	console.log(count++, Host.lookUp('payments.example.com').host === 'payments.**')	
+	console.log(count++, Host.lookUp('info.wma.users.718it.biz').host === 'info.*.users.718it.biz')
+	console.log(count++, Host.lookUp('infof.users.718it.biz') === undefined)
+	console.log(count++, Host.lookUp('blah.biz') === undefined)
+	console.log(count++, Host.lookUp('test.1.2.718it.net').host === 'test.*.*.718it.net')
+	console.log(count++, Host.lookUp('test1.exmaple.com').host === 'test1.exmaple.com')
+	console.log(count++, Host.lookUp('other.exmaple.com').host === '*.exmaple.com')
+	console.log(count++, Host.lookUp('info.payments.example.com').host === 'info.**')
+	console.log(count++, Host.lookUp('718it.biz').host === '718it.biz')
 
 
-// })()
+})()
