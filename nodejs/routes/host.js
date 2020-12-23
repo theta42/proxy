@@ -43,7 +43,7 @@ router.put('/:host', async function(req, res, next){
 	try{
 		req.body.updated_by = req.user.username;
 		let host = await Host.get(req.params.host);
-		await host.update(req.body);
+		await host.update.call(host, req.body);
 
 		return res.json({
 			message: `Host "${req.params.host}" updated.`
@@ -58,7 +58,7 @@ router.put('/:host', async function(req, res, next){
 router.delete('/:host', async function(req, res, next){
 	try{
 		let host = await Host.get(req.params);
-		let count = await host.remove(host);
+		let count = await host.remove.call(host, host);
 
 		return res.json({
 			message: `Host ${req.params.host} deleted`,

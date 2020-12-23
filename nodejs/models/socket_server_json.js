@@ -53,7 +53,6 @@ class SocketServerJson {
 			clientSocket.on('data', function(data){
 				buffer += data.toString();
 				try{
-					console.log('buffer', buffer)
 					instance.onData.call(JSON.parse(data), clientSocket)
 					buffer = ''
 					// clientSocket.write(JSON.stringify(Host.lookUp(buffer)|| {host: 'none'}));
