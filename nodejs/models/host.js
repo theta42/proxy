@@ -1,6 +1,8 @@
 'use strict';
 
-const Host = require('../utils/redis_model')({
+const RedisModel = require('../utils/redis_model');
+
+const Host = RedisModel({
 	_name: 'host',
 	_key: 'host',
 	_keyMap: {
@@ -13,8 +15,53 @@ const Host = require('../utils/redis_model')({
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
+		'created_by': {isRequired: true, type: 'string', min: 3, max: 500},
+		'is_cahced': {default: false, isRequired: false, type: 'boolean',},
+
+
 	}
 });
+
+const Cached = RedisModel({
+	_name: 'cached',
+	_key: 'host',
+	_keyMap: {
+		'host': {isRequired: true, type: 'string', min: 3, max: 500},
+		'parent': {isRequired: true, type: 'string', min: 3, max: 500},
+	}
+});
+
+
+Host.addCache = async function(host, parentOBJ){
+	try{
+		await Host.__proto__.add.apply(this, [{...parentOBJ, host, is_cahced: true}, true])
+		await Cached.add({
+			host: host,
+			parent: parentOBJ.host
+		});
+	}catch(error){
+		console.error('add cahce error', {...parentOBJ, host, is_cahced: true}, error)
+		throw error;
+	}
+};
+
+Host.bustCache = async function(parent){
+	try{
+		let cached = await Cached.listDetail();
+		for(let cache of cached){
+			if(cache.parent == parent){
+				let host = await Host.get(cache.host);
+				await Host.__proto__.remove.apply(host);
+				await cache.remove();
+			}
+		}
+
+	}catch(error){
+		console.error('bust cache error', error)
+
+		throw error;
+	}
+}
 
 Host.add = async function(){
 	try{
@@ -30,6 +77,7 @@ Host.add = async function(){
 Host.update = async function(data, key){
 	try{
 		let out = await Host.__proto__.update.apply(this, arguments)
+		await Host.bustCache(this.host)
 		await Host.buildLookUpObj()
 
 		return out;
@@ -42,6 +90,7 @@ Host.remove = async function(){
 	try{
 		let out = await Host.__proto__.remove.apply(this, arguments)
 		await Host.buildLookUpObj()
+		await Host.bustCache(this.host)
 
 		return out;
 	} catch(error){
@@ -153,33 +202,33 @@ Host.lookUpReady = async function(){
 
 module.exports = {Host};
 
-// (async function(){
+(async function(){
 
-// 	await Host.lookUpReady();
+	await Host.lookUpReady();
 
-// 	// console.log(Host.lookUpObj)
+	// console.log(Host.lookUpObj)
 
-// 	// console.log(Host.lookUpObj['com']['vm42'])
+	// console.log(Host.lookUpObj['com']['vm42'])
 
-// 	// console.log('test-res', await Host.lookUp('payments.718it.biz'))
+	// console.log('test-res', await Host.lookUp('payments.718it.biz'))
 
-// 	let count = 6
-// 	console.log(count++, Host.lookUp('payments.718it.biz').host === 'payments.718it.biz')
-// 	console.log(count++, Host.lookUp('sd.blah.test.vm42.com') === undefined)
-// 	console.log(count++, Host.lookUp('payments.test.com').host === 'payments.**')
-// 	console.log(count++, Host.lookUp('test.sample.other.exmaple.com').host === '**.exmaple.com')
-// 	console.log(count++, Host.lookUp('stan.test.vm42.com').host === 'stan.test.vm42.com')
-// 	console.log(count++, Host.lookUp('test.vm42.com').host === 'test.vm42.com')
-// 	console.log(count++, Host.lookUp('blah.test.vm42.com').host === '*.test.vm42.com')
-// 	console.log(count++, Host.lookUp('payments.example.com').host === 'payments.**')	
-// 	console.log(count++, Host.lookUp('info.wma.users.718it.biz').host === 'info.*.users.718it.biz')
-// 	console.log(count++, Host.lookUp('infof.users.718it.biz') === undefined)
-// 	console.log(count++, Host.lookUp('blah.biz') === undefined)
-// 	console.log(count++, Host.lookUp('test.1.2.718it.net').host === 'test.*.*.718it.net')
-// 	console.log(count++, Host.lookUp('test1.exmaple.com').host === 'test1.exmaple.com')
-// 	console.log(count++, Host.lookUp('other.exmaple.com').host === '*.exmaple.com')
-// 	console.log(count++, Host.lookUp('info.payments.example.com').host === 'info.**')
-// 	console.log(count++, Host.lookUp('718it.biz').host === '718it.biz')
+	let count = 6
+	console.log(count++, Host.lookUp('payments.718it.biz').host === 'payments.718it.biz')
+	console.log(count++, Host.lookUp('sd.blah.test.vm42.com') === undefined)
+	console.log(count++, Host.lookUp('payments.test.com').host === 'payments.**')
+	console.log(count++, Host.lookUp('test.sample.other.exmaple.com').host === '**.exmaple.com')
+	// console.log(count++, Host.lookUp('stan.test.vm42.com').host === 'stan.test.vm42.com')
+	console.log(count++, Host.lookUp('test.vm42.com').host === 'test.vm42.com')
+	console.log(count++, Host.lookUp('blah.test.vm42.com').host === '*.test.vm42.com')
+	console.log(count++, Host.lookUp('payments.example.com').host === 'payments.**')	
+	console.log(count++, Host.lookUp('info.wma.users.718it.biz').host === 'info.*.users.718it.biz')
+	console.log(count++, Host.lookUp('infof.users.718it.biz') === undefined)
+	console.log(count++, Host.lookUp('blah.biz') === undefined)
+	console.log(count++, Host.lookUp('test.1.2.718it.net').host === 'test.*.*.718it.net')
+	console.log(count++, Host.lookUp('test1.exmaple.com').host === 'test1.exmaple.com')
+	console.log(count++, Host.lookUp('other.exmaple.com').host === '*.exmaple.com')
+	console.log(count++, Host.lookUp('info.payments.example.com').host === 'info.**')
+	console.log(count++, Host.lookUp('718it.biz').host === '718it.biz')
 
 
-// })()
+})()

@@ -8,7 +8,15 @@ const conf = require('../app').conf;
 const socket = new SocketServerJson({
 	socketFile: conf.socketFile,
 	onData: function(data, clientSocket) {
-		clientSocket.write(JSON.stringify(Host.lookUp(data['domain']) || {host: 'none'}));
+		let host = Host.lookUp(data['domain']);
+		clientSocket.write(JSON.stringify(host || {host: 'none'}));
+		if(host){
+			try{
+				Host.addCache(data['domain'], host)
+			}catch(error){
+				console.error('Should never get this error...', error)
+			}
+		}
 	},
 	onListen: function(){
 		console.log('listening')
