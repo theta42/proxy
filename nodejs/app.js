@@ -40,6 +40,10 @@ app.use('/api/user', middleware.auth, require('./routes/user'));
 // API routes for working with hosts. All endpoints need to be have valid user.
 app.use('/api/host', middleware.auth, require('./routes/host'));
 
+app.controler = {
+  host: require('./controler/host')
+}
+
 // Catch 404 and forward to error handler. If none of the above routes are
 // used, this is what will be called.
 app.use(function(req, res, next) {

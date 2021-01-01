@@ -83,7 +83,7 @@ table.listDetail = async function(){
 	return out
 };
 
-table.add = async function(data){
+table.add = async function(data, noMemberAdd){
 	// Add a entry to this redis table.
 	try{
 
@@ -102,7 +102,7 @@ table.add = async function(data){
 		}
 
 		// Add the key to the members for this redis table
-		await client.SADD(this._name, data[this._key]);
+		if(!noMemberAdd) await client.SADD(this._name, data[this._key]);
 
 		// Add the values for this entry.
 		for(let key of Object.keys(data)){

@@ -45,6 +45,12 @@ like Digital Ocean will do just fine.
 ```bash
 apt install luarocks
 sudo luarocks install lua-resty-auto-ssl
+sudo luarocks install lua-resty-socket
+sudo luarocks install lua-socket
+sudo luarocks install socket
+sudo luarocks install luasocket
+sudo luarocks install luasocket-unix
+sudo luarocks install lua-cjson
 ```
 
 * openresty config

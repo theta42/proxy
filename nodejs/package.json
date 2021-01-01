@@ -13,10 +13,11 @@
   },
   "dependencies": {
     "authenticate-pam": "github:WeiAnAn/node-authenticate-pam",
-    "ldapts": "^2.2.1",
-    "extend": "^3.0.2",
+    "bcrypt": "^5.0.0",
     "ejs": "^3.0.1",
     "express": "~4.16.1",
+    "extend": "^3.0.2",
+    "ldapts": "^2.2.1",
     "linux-sys-user": "^1.1.0",
     "redis": "^2.8.0"
   },
