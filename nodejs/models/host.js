@@ -16,7 +16,7 @@ const Host = RedisModel({
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
 		'created_by': {isRequired: true, type: 'string', min: 3, max: 500},
-		'is_cahced': {default: false, isRequired: false, type: 'boolean',},
+		'is_cache': {default: false, isRequired: false, type: 'boolean',},
 
 
 	}
@@ -34,13 +34,13 @@ const Cached = RedisModel({
 
 Host.addCache = async function(host, parentOBJ){
 	try{
-		await Host.__proto__.add.apply(this, [{...parentOBJ, host, is_cahced: true}, true])
+		await Host.__proto__.add.apply(this, [{...parentOBJ, host, is_cache: true}, true])
 		await Cached.add({
 			host: host,
 			parent: parentOBJ.host
 		});
 	}catch(error){
-		console.error('add cahce error', {...parentOBJ, host, is_cahced: true}, error)
+		console.error('add cahce error', {...parentOBJ, host, is_cache: true}, error)
 		throw error;
 	}
 };
