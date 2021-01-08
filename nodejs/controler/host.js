@@ -8,9 +8,14 @@ const conf = require('../app').conf;
 const socket = new SocketServerJson({
 	socketFile: conf.socketFile,
 	onData: function(data, clientSocket) {
-		let host = Host.lookUp(data['domain']);
-		clientSocket.write(JSON.stringify(host || {host: 'none'}));
-		if(host){
+		let host = Host.lookUp(data['domain'])  || {host: 'none'};
+
+		for (const [key, value] of Object.entries(host)) {
+			host[key] = String(value);
+		};
+
+		clientSocket.write(JSON.stringify(host));
+		if(host.ip){
 			try{
 				Host.addCache(data['domain'], host)
 			}catch(error){
