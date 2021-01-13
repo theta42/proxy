@@ -27,7 +27,7 @@ router.post('/', async function(req, res, next){
 	}
 });
 
-router.get('/:host', async function(req, res, next){
+router.get('/:host(*)', async function(req, res, next){
 	try{
 
 		return res.json({
@@ -39,7 +39,7 @@ router.get('/:host', async function(req, res, next){
 	}
 });
 
-router.put('/:host', async function(req, res, next){
+router.put('/:host(*)', async function(req, res, next){
 	try{
 		req.body.updated_by = req.user.username;
 		let host = await Host.get(req.params.host);
@@ -55,7 +55,7 @@ router.put('/:host', async function(req, res, next){
 	}
 });
 
-router.delete('/:host', async function(req, res, next){
+router.delete('/:host(*)', async function(req, res, next){
 	try{
 		let host = await Host.get(req.params);
 		let count = await host.remove.call(host, host);
@@ -69,7 +69,7 @@ router.delete('/:host', async function(req, res, next){
 	}
 });
 
-router.get('/lookup/:host', async function(req, res, next){
+router.get('/lookup/:host(*)', async function(req, res, next){
 	try{
 		return res.json({
 			string: req.params.host,
