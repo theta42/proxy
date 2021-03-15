@@ -28,9 +28,9 @@ openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509   -subj '/CN=sni-suppo
 
 mkdir /etc/openresty/sites-enabled/
 wget -q https://raw.githubusercontent.com/theta42/proxy/master/ops/nginx.conf -O /etc/openresty/nginx.conf 
-wget -q https://github.com/theta42/t42-common/blob/master/templates/openresty/autossl.conf.erb -O /etc/openresty/autossl.conf 
-wget -q https://github.com/theta42/t42-common/blob/master/templates/openresty/010-proxy.conf.erb -O /etc/openresty/sites-enabled/000-proxy
-wget -q https://github.com/theta42/proxy/blame/master/ops/proxy.service -O /etc/systemd/system/proxy.service
+wget -q https://raw.githubusercontent.com/theta42/t42-common/master/templates/openresty/autossl.conf.erb -O /etc/openresty/autossl.conf 
+wget -q https://raw.githubusercontent.com/theta42/t42-common/master/templates/openresty/010-proxy.conf.erb -O /etc/openresty/sites-enabled/000-proxy
+wget -q https://raw.githubusercontent.com/theta42/proxy/master/ops/proxy.service -O /etc/systemd/system/proxy.service
 
 mkdir /var/log/nginx
 mkdir /var/www
