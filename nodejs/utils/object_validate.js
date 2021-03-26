@@ -8,7 +8,7 @@ const process_type = {
 	string: function(key, value){
 		if(key.min && value.length < key.min) return `is too short, min ${key.min}.`
 		if(key.max && value.length > key.max) return `is too short, max ${key.max}.`
-	}
+	},
 }
 
 function returnOrCall(value){
@@ -20,6 +20,7 @@ function processKeys(map, data, partial){
 	let out = {};
 
 	for(let key of Object.keys(map)){
+
 		if(!map[key].always && partial && !data.hasOwnProperty(key)) continue;
 
 		if(!partial && map[key].isRequired && !data.hasOwnProperty(key)){
@@ -57,6 +58,7 @@ function parseFromString(map, data){
 		boolean: function(value){ return value === 'false' ? false : true },
 		number: Number,
 		string: String,
+		object: JSON.parse
 	};
 
 	for(let key of Object.keys(data)){
@@ -68,6 +70,14 @@ function parseFromString(map, data){
 	return data;
 }
 
+function parseToString(data){
+	let types = {
+		object: JSON.stringify
+	}
+
+	return (types[typeof(data)] || String)(data);
+}
+
 function ObjectValidateError(message) {
 	this.name = 'ObjectValidateError';
 	this.message = (message || {});
@@ -77,4 +87,4 @@ function ObjectValidateError(message) {
 ObjectValidateError.prototype = Error.prototype;
 
 
-module.exports = {processKeys, parseFromString, ObjectValidateError};
+module.exports = {processKeys, parseFromString, ObjectValidateError, parseToString};

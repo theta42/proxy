@@ -10,10 +10,6 @@ const socket = new SocketServerJson({
 	onData: function(data, clientSocket) {
 		let host = Host.lookUp(data['domain'])  || {host: 'none'};
 
-		for (const [key, value] of Object.entries(host)) {
-			host[key] = String(value);
-		};
-
 		clientSocket.write(JSON.stringify(host));
 		if(host.ip){
 			try{
