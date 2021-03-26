@@ -5,8 +5,8 @@ Auth = {}
 Auth.errors = {}
 
 Auth.errors.login = function(){
-	let error = new Error('PamLoginFailed');
-	error.name = 'PamLoginFailed';
+	let error = new Error('LoginFailed');
+	error.name = 'LoginFailed';
 	error.message = `Invalid Credentials, login failed.`;
 	error.status = 401;
 
@@ -20,7 +20,7 @@ Auth.login = async function(data){
 
 		return {user, token}
 	}catch(error){
-		throw error;
+		throw this.errors.login();
 	}
 };
 
