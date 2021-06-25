@@ -4,10 +4,12 @@ const router = require('express').Router();
 const {Host} = require('../models/host');
 
 
+const Model = Host;
+
 router.get('/', async function(req, res, next){
 	try{
 		return res.json({
-			hosts:  await Host[req.query.detail ? "listDetail" : "list"]()
+			hosts:  await Model[req.query.detail ? "listDetail" : "list"]()
 		});
 	}catch(error){
 		return next(error);
@@ -17,36 +19,36 @@ router.get('/', async function(req, res, next){
 router.post('/', async function(req, res, next){
 	try{
 		req.body.created_by = req.user.username;
-		await Host.add(req.body);
+		let item = await Model.add(req.body);
 
 		return res.json({
-			message: `Host "${req.body.host}" added.`
+			message: `"${item[Model._key]}" added.`
 		});
 	} catch (error){
 		return next(error);
 	}
 });
 
-router.get('/:host(*)', async function(req, res, next){
+router.get('/:item(*)', async function(req, res, next){
 	try{
 
 		return res.json({
-			host: req.params.host,
-			results: await Host.get({host: req.params.host})
+			item: req.params.item,
+			results: await Model.get(req.params.item)
 		});
 	}catch(error){
 		return next(error);
 	}
 });
 
-router.put('/:host(*)', async function(req, res, next){
+router.put('/:item(*)', async function(req, res, next){
 	try{
 		req.body.updated_by = req.user.username;
-		let host = await Host.get(req.params.host);
-		await host.update.call(host, req.body);
+		let item = await Model.get(req.params.item);
+		await item.update(req.body);
 
 		return res.json({
-			message: `Host "${req.params.host}" updated.`
+			message: `"${req.params.item}" updated.`
 		});
 
 	}catch(error){
@@ -55,13 +57,13 @@ router.put('/:host(*)', async function(req, res, next){
 	}
 });
 
-router.delete('/:host(*)', async function(req, res, next){
+router.delete('/:item(*)', async function(req, res, next){
 	try{
-		let host = await Host.get(req.params);
-		let count = await host.remove.call(host, host);
+		let item = await Model.get(req.params.item);
+		let count = await item.remove();
 
 		return res.json({
-			message: `Host ${req.params.host} deleted`,
+			message: `${req.params.item} deleted`,
 		});
 
 	}catch(error){
@@ -69,11 +71,11 @@ router.delete('/:host(*)', async function(req, res, next){
 	}
 });
 
-router.get('/lookup/:host(*)', async function(req, res, next){
+router.get('/lookup/:item(*)', async function(req, res, next){
 	try{
 		return res.json({
-			string: req.params.host,
-			results: await Host.lookUp(req.params.host),
+			string: req.params.item,
+			results: await Model.lookUp(req.params.item),
 		});
 
 	}catch(error){

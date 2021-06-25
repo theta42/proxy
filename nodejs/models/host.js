@@ -204,9 +204,13 @@ module.exports = {Host};
 
 (async function(){
 try{
+
+
 	// await Host.lookUpReady();
 
 	// console.log(Host.lookUpObj)
+
+	// console.log(await Host.listDetail())
 
 // 	// console.log(Host.lookUpObj['com']['vm42'])
 
