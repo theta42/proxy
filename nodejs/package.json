@@ -12,14 +12,13 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
-    "authenticate-pam": "github:WeiAnAn/node-authenticate-pam",
     "bcrypt": "^5.0.0",
     "ejs": "^3.0.1",
-    "express": "~4.16.1",
+    "express": "^4.18.2",
     "extend": "^3.0.2",
     "ldapts": "^2.2.1",
     "linux-sys-user": "^1.1.0",
-    "redis": "^2.8.0"
+    "redis": "^4.6.5"
   },
   "license": "MIT",
   "repository": {

@@ -34,7 +34,7 @@ Vagrant.configure("2") do |config|
 
   # Every Vagrant development environment requires a box. You can search for
   # boxes at https://vagrantcloud.com/search.
-  config.vm.box = "ubuntu/bionic64"
+  config.vm.box = "ubuntu/jammy64"
   config.vm.synced_folder '.', '/vagrant' # The vagrant dir just stopped automounting
 
   # Create a forwarded port mapping which allows access to a specific port
@@ -66,9 +66,11 @@ Vagrant.configure("2") do |config|
   # documentation for more information about their specific syntax and use.
   config.vm.provision "shell", inline: <<~SHELL
     apt-get update
-    if ! apt list ruby2.6-dev | grep installed; then
-      apt-add-repository ppa:brightbox/ruby-ng -y
-      sudo apt-get install -y build-essential resolvconf ruby2.6 ruby2.6-dev gem
+    if ! apt list ruby-dev | grep installed; then
+      # apt-add-repository ppa:brightbox/ruby-ng -y
+      sudo apt-get install -y build-essential resolvconf ruby-full gem
+      gem install chef -v 17.10.0
+
     fi
 
     if ! which berks >/dev/null; then
@@ -90,7 +92,8 @@ Vagrant.configure("2") do |config|
   SHELL
 
   config.vm.provision 'chef_solo' do |chef|
-    chef.version = '14.12.3' # version 14.12.9 fails to run
+    chef.arguments = "--chef-license accept"
+    # chef.version = '15.7.31' # version 14.12.9 fails to run
     chef.cookbooks_path = [
       'ops/cookbooks/',
       'ops/cookbooks/vendor/'
@@ -111,7 +114,7 @@ Vagrant.configure("2") do |config|
       'nodejs': {
         'working-dir': 'nodejs',
         'port': '3000',
-        'install_version': 13,
+        'install_version': 18,
         'exec_file': 'bin/www',
         'service': true,
       },

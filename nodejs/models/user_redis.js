@@ -28,6 +28,8 @@ User.add = async function(data) {
 		data['backing'] = data['backing'] || 'redis';
 
 
+		console.log('set password', data)
+
 		return this.__proto__.add(data);
 
 	}catch(error){
@@ -104,17 +106,18 @@ module.exports = {User};
 
 
 (async function(){
+	var defaultUser = 'proxyadmin2'
 	try{
-		await User.get('proxyadmin1');
-		console.info('proxyadmin1 user exists');
+		let user = await User.get(defaultUser);
+
 	}catch(error){
 		try{
 			let user = await User.add({
-				username:'proxyadmin1',
-				password: 'proxyadmin1',
-				created_by:'proxyadmin1'
+				username:defaultUser,
+				password: defaultUser,
+				created_by:defaultUser
 			});
-			console.log('proxyadmin1 created', user);	
+			console.log(defaultUser, 'created', user);	
 		}catch(error){
 			console.error(error)
 		}

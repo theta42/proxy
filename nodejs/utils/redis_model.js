@@ -1,7 +1,10 @@
 'use strict';
 
-const client = require('../utils/redis');
+const {createClient} = require('redis');
 const objValidate = require('../utils/object_validate');
+
+var client = createClient({});
+client.connect()
 
 
 let table = {};
@@ -20,7 +23,7 @@ table.get = async function(data){
 		let res = await client.HGETALL(`${this._name}_${data[this._key]}`);
 
 		// If the redis query resolved to something, prepare the data.
-		if(res){
+		if(Object.keys(res).length){
 
 			// Redis always returns strings, use the keyMap schema to turn them
 			// back to native values.
@@ -106,12 +109,13 @@ table.add = async function(data, noMemberAdd){
 
 		// Add the values for this entry.
 		for(let key of Object.keys(data)){
-			await client.HSET(`${this._name}_${data[this._key]}`, key, data[key]);
+			await client.hSet(`${this._name}_${data[this._key]}`, key, String(data[key]));
 		}
 
 		// return the created redis entry as entry instance.
 		return await this.get(data[this._key]);
 	} catch(error){
+		console.error('redis model | table.add:', error)
 		throw error;
 	}
 };
