@@ -10,5 +10,8 @@ module.exports = {
 		userFilter: '(objectClass=inetOrgPerson)',
 		userNameAttribute: 'uid'
 	},
-	socketFile: '/var/run/proxy_lookup.socket'
+	socketFile: '/var/run/proxy_lookup.socket',
+	redis: {
+		prefix: 'proxy_'
+	}
 };

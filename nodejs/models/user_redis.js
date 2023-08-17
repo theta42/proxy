@@ -81,7 +81,11 @@ class User extends Table{
 	static async login(data){
 		try{
 
+			console.log('login data', data)
+
 			let user = await User.get(data);
+
+			console.log('login user', user)
 			let auth = await bcrypt.compare(data.password, user.password);
 
 			if(auth){
@@ -90,6 +94,7 @@ class User extends Table{
 				throw this.errors.login();
 			}
 		}catch(error){
+			console.error('!!!!!!!!!!', error)
 			if (error == 'Authentication failure'){
 				throw this.errors.login()
 			}
@@ -101,14 +106,12 @@ class User extends Table{
 }
 
 module.exports = {User};
-module.exports = {User};
 
 
 (async function(){
-	var defaultUser = 'proxyadmin2'
+	var defaultUser = 'proxyadmin3'
 	try{
 		let user = await User.get(defaultUser);
-
 	}catch(error){
 		try{
 			let user = await User.add({
