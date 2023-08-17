@@ -132,8 +132,8 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", inline: <<~SHELL
-    cp -a /etc/openresty/. /vagrant/openresty
-    rm -rf /etc/openresty
-    ln -s /vagrant/openresty /etc/openresty
+    # cp -a /etc/openresty/. /vagrant/openresty
+    # rm -rf /etc/openresty
+    # ln -s /vagrant/openresty /etc/openresty
   SHELL
 end
