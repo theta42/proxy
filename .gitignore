@@ -86,4 +86,5 @@ ops/cookbooks/vendor
 secrets.json
 secrets.js
 
-openresty/
+.openresty/**
+!.openresty/README.md
