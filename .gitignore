@@ -88,3 +88,6 @@ secrets.js
 
 openresty/**
 !openresty/README.md
+
+
+*.sqlite
