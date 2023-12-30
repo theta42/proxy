@@ -13,5 +13,9 @@ module.exports = {
 	socketFile: '/var/run/proxy_lookup.socket',
 	redis: {
 		prefix: 'proxy_'
+	},
+	sql: {
+		"storage": "database_test.sqlite",
+		"dialect": "sqlite"
 	}
 };
