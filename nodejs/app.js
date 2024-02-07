@@ -40,6 +40,9 @@ app.use('/api/user', middleware.auth, require('./routes/user'));
 // API routes for working with hosts. All endpoints need to be have valid user.
 app.use('/api/host', middleware.auth, require('./routes/host'));
 
+// API routes for working with hosts. All endpoints need to be have valid user.
+app.use('/api/cert', middleware.auth, require('./routes/cert'));
+
 app.controler = {
   host: require('./controler/host')
 }
