@@ -17,6 +17,21 @@
 	div.editWindow{
 		margin-bottom: 1em;
 	}
+	/* my Div class for my search bar */
+	.search-wrapper {
+    	display: flex;
+        gap: .5rem;
+        align-items: center;
+        margin-top: 10px;
+    }
+    /* The input bar  */
+    input {
+    	font-size: 1rem;
+        border-top-left-radius: 5px !important;
+        border-bottom-left-radius: 5px !important;
+        border-top-right-radius: 5px !important;
+        border-bottom-right-radius: 5px !important;    
+    }
 
 </style>
 
@@ -94,6 +109,23 @@
 				$el.remove()
 			});
 		});
+
+		//search bar html event logic stolen from here
+        // https://github.com/WebDevSimplified/js-search-bar/blob/main/script.js
+        $('[host-search]').on("input", function() {
+        let inputValue = $(this).val().toLowerCase();
+
+        //on each input detected we need to get all host list that was called by the populateHosts function which is store in 
+        // $.scope.hosts and then we need to loop through each host and check if the host name is equal to the input value
+        // if it is we will display the host if not we will hide it
+        for(let hostObj of $.scope.hosts){
+            if (hostObj.host.toLowerCase().includes(inputValue)) {
+            	hostObj.__jq_$el.show();
+            } else {
+            	hostObj.__jq_$el.hide();
+                }
+            }
+        });
 
 		$('form.addHost').on('submit', function(){
 			event.preventDefault();
@@ -263,7 +295,10 @@
 			</div>
 
 			<div class="card-header actionMessage" style="display:none"></div>
-
+			<div class="card-header search-wrapper">
+				<label class="control-label" for="search" style="margin-left: -5px;">Search Hosts: </label>
+				<input type="search" id="search" host-search>
+			</div>
 			<table class="card-body table table-striped" style="margin-bottom:0">
 	
 				<thead>
