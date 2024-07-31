@@ -22,7 +22,8 @@ router.post('/', async function(req, res, next){
 		let item = await Model.add(req.body);
 
 		return res.json({
-			message: `"${item[Model._key]}" added.`
+			message: `"${item[Model._key]}" added.`,
+			...item,
 		});
 	} catch (error){
 		return next(error);
@@ -45,10 +46,12 @@ router.put('/:item(*)', async function(req, res, next){
 	try{
 		req.body.updated_by = req.user.username;
 		let item = await Model.get(req.params.item);
-		await item.update(req.body);
+		item = await item.update(req.body);
 
 		return res.json({
-			message: `"${req.params.item}" updated.`
+			message: `"${req.params.item}" updated.`,
+			__requestedHost: req.params.item,
+			...item,
 		});
 
 	}catch(error){
@@ -64,6 +67,7 @@ router.delete('/:item(*)', async function(req, res, next){
 
 		return res.json({
 			message: `${req.params.item} deleted`,
+			...item,
 		});
 
 	}catch(error){

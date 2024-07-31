@@ -17,7 +17,7 @@ router.post('/', async function(req, res, next){
 	try{
 		req.body.created_by = req.user.username
 
-		return res.json({results: await User.add(req.body)});
+		return res.json(await User.add(req.body));
 	}catch(error){
 		next(error);
 	}

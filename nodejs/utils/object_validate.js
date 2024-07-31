@@ -46,6 +46,7 @@ function processKeys(map, data, partial){
 	}
 
 	if(errors.length !== 0){
+		console.log('errors', errors)
 		throw new ObjectValidateError(errors);
 		return {__errors__: errors};
 	}
@@ -62,7 +63,7 @@ function parseFromString(map, data){
 	};
 
 	for(let key of Object.keys(data)){
-		if(map[key] && map[key].type){
+		if(map[key] && map[key].type && data[key]){
 			data[key] = types[map[key].type](data[key]);
 		}
 	}

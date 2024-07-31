@@ -1,78 +1,106 @@
 <%- include('top') %>
-<script id="rowTemplate" type="text/html">
-	<tr action="api" class="<<fresh>>">
-		<input type="hidden" name="host" value="<< host >>" />
-		<td><a target="_blank" href="<<forcessl>><<host>>"><<forcessl>><<host>></a></td>
-		<td><< targetssl >><< ip >>:<< targetPort >></td>
-		<td class="hidden-xs"><<updated_on>></td>
-		<td>
-			<button type="button" data-host="<< host >>" onclick="editHost(this);" class="btn btn-sm btn-default">Edit</button>
-			<button type="button" onclick="app.host.remove({host:'<<host>>'}, function(){tableAJAX('Host <<host>> delete.')})" class="btn btn-sm btn-default">Delete</button>
-		</td>
-	</tr>
-</script>
 <script type="text/javascript">
-	var currentEditHost;
+	// Require login to see this page.
+	app.auth.forceLogin()
+</script>
 
-	function editHost(btn){
-		var btn = $(btn);
-		currentEditHost = btn.data('host');
+<style type="text/css">
+	label.control-label{
+		font-weight: bold;
+		margin-bottom: 1px;
+	}
+
+	.card-title{
+		font-weight: bold;
+	}
+
+	div.editWindow{
+		margin-bottom: 1em;
+	}
+
+</style>
+
+<script type="text/javascript">
+
+	function parseHostRow(host) {
+		host['updated_on_text'] = moment(host['updated_on'], "x").fromNow();
+		host['targetssl_text'] = host['targetssl'] ? 'https://' : 'http://';
+		host['forcessl_text'] = host['forcessl'] ? 'https://' : 'http://';
+
+		return host;
+	}
+
+	function populateHosts(){
+		app.host.list(function(error, res){
+			if(error) return app.util.actionMessage(error, $.scope.hosts.$this, 'danger');
+
+			for(let host of res){
+				$.scope.hosts.push(parseHostRow(host));
+			}
+
+			$.scope.hosts.__setPut(function($el, item, list){
+				$el.addClass('bg-success');
+				$el.fadeIn(1000, function(){
+					$el.removeClass('bg-success');
+				});
+			});
+		});
+	}
+
+	function cancleHostEdit(){
+		$('#hostsTable').find('tr').each(function(idx, el){
+			console.log('here?')
+			$(el).removeClass('table-warning');
+		});
+		$('.editWindow').slideUp('fast');
+	}
+
+	function editHost(btn, host){
+		cancleHostEdit();
+		$(btn).closest('tr').addClass('table-warning');
+		$('.editWindow .card-title').html("Edit "+ host);
+
+		$('div.editWindow .card-body span').html($('#addHost').html());
+		$('div.editWindow .card-body span button').remove();
+
+		$(".editWindow input[name='edit_host']").val(host);
+
 		$('.editWindow').slideDown('fast');
-		$('.editWindow .panel-title .pull-left').html("Edit "+ btn.data('host'))
 
-		$('div.editWindow .panel-body span').html($('#addHost').html())
-		$('div.editWindow .panel-body span button').remove()
-
-		$(".editWindow input[name='edit_host']").val(btn.data('host'));
-
-		app.host.get(currentEditHost, function(error, data){
-			console.log(data)
+		app.host.get(host, function(error, data){
 			$.each( data.results, function( key, value ) {
 				if(typeof value == "boolean"){
 					$(".editWindow #"+ key +"-"+ value).prop('checked', true)
 				}else{
 					$(".editWindow input[name='" + key + "']").val(value);
 				}
-				$('.editWindow .panel-body').slideDown('fast');
 			});
 		});
-	}
+	};
 
-	function tableAJAX(actionMessage){
-
-		$('#tableAJAX').html('').hide();
-		app.util.actionMessage('')
-
-		app.host.list(function(err, data){
-			if(err) return app.util.actionMessage(err, {type: 'danger'});	
-			if(data){
-				$.each(data, function( key, value ) {
-					value['updated_on'] = moment(value['updated_on'], "x").fromNow();
-					value['targetssl'] = value['targetssl'] ? "https://" : "http://";
-					value['forcessl'] = value['forcessl'] ? "https://" : "http://";
-					host_row = ich.rowTemplate(value);
-					$('#tableAJAX').append(host_row);
-				});
-				app.util.actionMessage(actionMessage || '', {type: 'info'});
-				$('#tableAJAX').fadeIn('slow');
-			}else{
-				app.util.actionMessage('No hosts...', {type: 'info'});
-			}
+	function deleteHost(host){
+		app.host.remove({host: host}, function(err, data){
+			// app.util.actionMessage(`Host ${host} deleted!`, $.scope.hosts.$this, 'danger');
+			$.scope.hosts.remove(host);
 		});
 	}
 
 	$(document).ready(function(){
-		tableAJAX(); //populate the table
-		setInterval(tableAJAX, 30000);
+		populateHosts(); //populate the table
+
+		$.scope.hosts.__setTake(function($el, item, list){
+			$el.addClass('bg-danger');
+			$el.fadeOut(1000, function(){
+				$el.remove()
+			});
+		});
 
 		$('form.addHost').on('submit', function(){
 			event.preventDefault();
 
 			$form = $(this);
-
-			var action = $($form.find('button[type="submit"]')[0]).data('type')
-
-			app.util.actionMessage('')
+			var action = $($form.find('button[type="submit"]')[0]).data('type');
+			app.util.actionMessage('', $form);
 
 			if($form.attr('isValid') === 'true'){
 				var formdata = $form.serializeObject();
@@ -82,15 +110,18 @@
 
 				app.host[action](formdata, function(error, data){
 					if(error){
-						console.log('error data',data)
-						app.util.actionMessage(error + data.message, {type: 'danger'});
+						app.util.actionMessage(error + data.message, $form, 'danger');
 						return;
 					}
 					
+					if($.scope.hosts.indexOf(data.__requestedHost) >= 0){
+						$.scope.hosts.update(data.__requestedHost, parseHostRow(data));
+					}else{
+						$.scope.hosts.splice(0,0, parseHostRow(data))
+					}
+
 					if(action == 'edit') $('.editWindow').slideUp('fast');
 
-					app.util.actionMessage(data.message || 'Error!', {type: 'info'});
-					tableAJAX("Added "+ formdata.host);
 					$form.trigger('reset');
 				})
 			}
@@ -98,38 +129,61 @@
 	});
 </script>
 <div class="row" style="display:none">
-	<div class="col-md-4">
-		<div class="panel panel-danger editWindow" style="display:none">
-			<div class="panel-heading">
-				<div class="panel-title">
-					<div class="pull-left">Edit $host!</div>
-					&nbsp;
-					<div class="pull-right">
-						<label class="glyphicon glyphicon-circle-arrow-down"></label>
-						<label class="glyphicon glyphicon-remove-circle"></label>
-					</div>
-				</div>
+	<div class="col col-md-12 col-lg-4 col-xl-3 col-xxl-2">
+	<!-- 
+		left column 
+	-->
+		<div class="card shadow-lg editWindow" style="display:none">
+			<!--
+				Edit host card
+			-->
+			<div class="card-header text-center bg-warning">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-pencil"></i>
+				</span>
+				<span class="card-title">
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+					<i class="fa-solid fa-circle-xmark" onclick="cancleHostEdit()"></i>
+				</span>
 			</div>
-			<div class="panel-body">
+
+			<div class="card-body">
 				<form class="addHost" onsubmit="$(this).validate()">
 					<span></span>
 					<input type="hidden" name="edit_host" />
-					<button type="submit" data-type="edit" class="btn btn-danger host-submit">Update</button>
-					<button class="btn btn-link" type="reset">Cancel</button>
+					<button type="submit" data-type="edit" class="btn btn-warning">
+						<i class="fa-solid fa-pencil"></i>
+						Update
+					</button>
+					<button class="btn btn-secondary" type="reset" onclick="cancleHostEdit()">
+						<i class="fa-solid fa-ban"></i>
+						Cancel
+					</button>
 				</form>
 			</div>
 		</div>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<div class="panel-title">
-					Add New Proxy
-					<div class="pull-right">
-						<label class="glyphicon glyphicon-circle-arrow-down panel-toggle"></label>
-					</div>
-				</div>
+		<div class="card shadow-lg">
+			<!--
+				Add new host card
+			-->
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-plus"></i>
+				</span>
+				<span class="card-title">
+					New Entry
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
 			</div>
-			<div class="panel-body">
+
+			<div class="card-header actionMessage" style="display:none"></div>
+
+			<div class="card-body">
 				<form class="addHost" id="addHost" onsubmit="$(this).validate()">
 					
 					<div class="form-group">
@@ -149,7 +203,7 @@
 					</div>
 
 					<div class="form-group">
-						<label class="control-label">Hostname</label>
+						<label class="control-label">Incoming Host Name</label>
 						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
 					</div>
 
@@ -178,42 +232,86 @@
 							</label>
 						</div>
 					</div>
-	
-					<button type="submit" data-type="add" class="btn btn-default host-submit">Add</button>
+					<hr />
+					<button type="submit" data-type="add" class="btn btn-success">
+						<i class="fa-solid fa-plus"></i>
+						Add
+					</button>
 				</form>
 			</div>
 		</div>
 	</div>
 
-	<div class="col-md-8">
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<div class="panel-title">
+	<div class="col col-md-12 col-lg-8 col-xl-9 col-xxl-10">
+		<!--
+			Right column
+		-->
+		<div class="card shadow-lg">
+			<!--
+				List current hosts
+			-->
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-network-wired"></i>
+				</span>
+				<span class="card-title">
 					Proxy List
-					<div class="pull-right">
-						<label class="glyphicon glyphicon-circle-arrow-down panel-toggle"></label>
-						<label class="glyphicon glyphicon-refresh"></label>
-					</div>
-				</div>
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
 			</div>
-			<div class="panel-body" style="padding-bottom:0">
-				<div class="alert alert-warning actionMessage" style="display:none">
-					<!-- Message after AJAX action is preformed -->
-				</div>
-				<div class="table-responsive">
-					<table class="table">
-						<thead>
-							<th>Hostname</th>
-							<th>target</th>
-							<th class="hidden-xs">Updated</th>
-							<th>Actions</th>
-						</thead>
-						<tbody id="tableAJAX">
-							<!-- ajax loaded table -->
-						</tbody>
-					</table>
-				</div>
-			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+
+			<table class="card-body table table-striped" style="margin-bottom:0">
+	
+				<thead>
+					<th>
+						Host Name
+					</th>
+					<th>
+						target
+					</th>
+					<th class="hidden-xs">
+						Updated
+					</th>
+					<th>
+						Actions
+					</th>
+				</thead>
+				<tbody id="hostsTable">
+					<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
+						<td>
+							<a target="_blank" href="{{ forcessl_text }}{{ host }}">
+								{{{ forcessl_text }}}{{ host }}
+							</a>
+						</td>
+						<td>
+							{{{ targetssl_text }}}{{ ip }}:{{ targetPort }}
+						</td>
+						<td class="hidden-xs momentFromNow" data-date="{{ updated_on }}">
+							{{ updated_on_text }}
+						</td>
+						<td>
+							<div class="btn-group">
+<!-- 								<button type="button" class="btn btn-info">
+									<i class="fa-brands fa-expeditedssl"></i>
+									Cert
+								</button> -->
+								<button type="button" onclick="editHost(this, '{{ host }}');" class="btn btn-sm btn-warning">
+									<i class="fa-solid fa-pencil"></i> Edit
+								</button>
+								<button type="button" onclick="deleteHost('{{ host }}')" class="btn btn-sm btn-danger">
+									<i class="fa-solid fa-trash-can"></i>
+									Delete
+								</button>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
 		</div>
 	</div>
 </div>

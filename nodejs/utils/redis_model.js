@@ -12,6 +12,8 @@ function redisPrefix(key){
 }
 
 class Table{
+	static redisClient = client;
+	
 	constructor(data){
 		for(let key in data){
 			this[key] = data[key];
@@ -86,7 +88,6 @@ class Table{
 		// Add a entry to this redis table.
 		try{
 			// Validate the passed data by the keyMap schema.
-
 			data = objValidate.processKeys(this._keyMap, data);
 
 			// Do not allow the caller to overwrite an existing index key,
@@ -107,6 +108,7 @@ class Table{
 
 			// Add the values for this entry.
 			for(let key of Object.keys(data)){
+				if(!data[key]) continue;
 				await client.HSET(
 					redisPrefix(`${this.prototype.constructor.name}_${data[this._key]}`), 
 					key,

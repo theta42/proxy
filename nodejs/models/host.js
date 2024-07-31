@@ -2,6 +2,17 @@
 
 const Table = require('../utils/redis_model');
 
+const tldExtract = require('tld-extract').parse_host;
+const PorkBun = require('../utils/porkbun');
+const LetsEncrypt = require('../utils/letsencrypt');
+const conf = require('../conf/conf');
+
+let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
+let letsEncrypt = new LetsEncrypt({
+	directoryUrl: LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
+});
+
+
 
 class Host extends Table{
 	static _key = 'host';
@@ -15,18 +26,36 @@ class Host extends Table{
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
-		'created_by': {isRequired: true, type: 'string', min: 3, max: 500},
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
+		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
+		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
 	}
 
 	static lookUpObj = {};
 	static __lookUpIsReady = false;
 
-
-
-	async addCache(host, parentOBJ){
+	static async addCache(host, parentOBJ){
 		try{
-			await this.add({...parentOBJ, host, is_cache: true}, true)
+
+			console.log('addCache host:', host, 'parentOBJ host', parentOBJ.host)
+			parentOBJ = await this.get(parentOBJ.host);
+
+			if(parentOBJ.is_cache){
+				console.log('addCache parentOBJ is chace, skipping')
+				return;
+			}
+
+			console.log('addCache, corrent parent?', parentOBJ.wildcard_parent || parentOBJ.host)
+			console.log('addCache, got parent', parentOBJ)
+
+			await this.add({
+				...parentOBJ,
+				host: host,
+				is_cache: true,
+				is_wildcard: false,
+				wildcard_parent: parentOBJ.host
+			}, true);
+
 			await Cached.add({
 				host: host,
 				parent: parentOBJ.host
@@ -55,15 +84,48 @@ class Host extends Table{
 		}
 	}
 
-	static async add(...args){
+	static async add(data, ...args){
 		try{
-			let out = await super.add(...args)
+
+			let out = await super.add(data, ...args)
 			await this.buildLookUpObj()
+			if(out.is_wildcard) await out.createWildcardCert()
 
 			return out;
+
 		} catch(error){
 			throw error;
 		}
+	}
+
+	async createWildcardCert(){
+		if(!this.host.startsWith('*.')) throw new Error('not wild card');
+
+		let cert = await letsEncrypt.dnsWildcard(this.host, {
+			challengeCreateFn: async (authz, challenge, keyAuthorization) => {
+				let parts = tldExtract(authz.identifier.value);
+				let res = await porkBun.createRecordForce(parts.domain, {type:'TXT', name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`, content: `${keyAuthorization}`});
+			},
+			challengeRemoveFn: async (authz, challenge, keyAuthorization)=>{
+				let parts = tldExtract(authz.identifier.value);
+				await porkBun.deleteRecords(parts.domain, {type:'TXT', name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`, content: `${keyAuthorization}`});
+			},
+		});
+
+		let toAdd = {
+			cert_pem: cert.cert.split('\n\n')[0],
+			fullchain_pem: cert.cert,
+			privkey_pem: cert.key.toString(),
+			csr_pem: cert.csr.toString(),
+			expiry: 4120307657,
+			real_expiry: +LetsEncrypt.AcmeClient.crypto.readCertificateInfo(cert.cert).notAfter/1000,
+		}
+
+
+		await this.constructor.redisClient.SET(`${this.host}:latest`, JSON.stringify(toAdd));
+		return toAdd;
+
+		// Get new wildcard cert from
 	}
 
 	async update(...args){
@@ -204,9 +266,24 @@ module.exports = {Host};
 
 (async function(){
 try{
+	await Host.lookUpReady();
+
+	// let res = await Host.add({
+	// 	host: '*.test.holycore.quest',
+	// 	ip: '192.168.1.47',
+	// 	'created_by': 'william',
+	// 	'targetPort': 8006,
+	// 	'forcessl': false,
+	// 	'targetssl': true,
+	// 	'is_wildcard': true,
+	// })
+	// console.log('IIFE res:\n', res)
 
 
-	// await Host.lookUpReady();
+	console.log(await Host.listDetail())
+	// console.log('IIFE lookup:', Host.lookUp('bld3324sdf.test.holycore.quest'))
+
+
 
 	// console.log(Host.lookUpObj)
 

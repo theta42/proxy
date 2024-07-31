@@ -13,6 +13,18 @@ module.exports = app;
 // Build the conf object from the conf files.
 app.conf = require('./conf/conf');
 
+// List of front end node modules to be served
+const frontEndModules = ['bootstrap', 'mustache', 'jquery', 'jquery-ui','@fortawesome',
+  'moment',
+];
+
+// Server front end modules
+// https://stackoverflow.com/a/55700773/3140931
+frontEndModules.forEach(dep => {
+  app.use(`/static-modules/${dep}`, express.static(path.join(__dirname, `node_modules/${dep}`)))
+});
+
+
 // Hold onto the auth middleware 
 const middleware = require('./middleware/auth');
 
@@ -29,10 +41,11 @@ app.set('view engine', 'ejs');
 app.use('/static', express.static(path.join(__dirname, 'public')))
 
 // Routes for front end content.
-app.use('/', require('./routes/index'));
+app.use('/', require('./routes/render'));
 
 // API routes for authentication. 
 app.use('/api/auth',  require('./routes/auth'));
+
 
 // API routes for working with users. All endpoints need to be have valid user.
 app.use('/api/user', middleware.auth, require('./routes/user'));
