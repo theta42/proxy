@@ -307,6 +307,8 @@ $( document ).ready(function(){
 
 	$('.fa-circle-minus').click(function(){
 		$(this).closest('.card').find('.card-body').slideToggle('fast');
+		// $(this).closest('.card').find('.card-header').slideToggle('fast');
+
 	});
 
 	$('.fa-circle-xmark').click(function(){
