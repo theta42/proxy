@@ -1,7 +1,9 @@
+'use strict';
+
 const {User} = require('./user');
 const {Token, AuthToken} = require('./token');
 
-Auth = {}
+let Auth = {}
 Auth.errors = {}
 
 Auth.errors.login = function(){

@@ -2,7 +2,7 @@
 
 const {Host} = require('../models/host');
 const {SocketServerJson} = require('../models/socket_server_json');
-const conf = require('../app').conf;
+const conf = require('../conf');
 
 
 const socket = new SocketServerJson({

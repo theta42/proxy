@@ -7,26 +7,35 @@ const express = require('express');
 // Set up the express app.
 const app = express();
 
+// Hold list of functions to run when the server is ready
+app.onListen = [];
+
 // Allow the express app to be exported into other files. 
 module.exports = app;
 
-// Build the conf object from the conf files.
-app.conf = require('./conf/conf');
-
-// List of front end node modules to be served
-const frontEndModules = ['bootstrap', 'mustache', 'jquery', 'jquery-ui','@fortawesome',
-  'moment',
-];
-
-// Server front end modules
-// https://stackoverflow.com/a/55700773/3140931
-frontEndModules.forEach(dep => {
-  app.use(`/static-modules/${dep}`, express.static(path.join(__dirname, `node_modules/${dep}`)))
-});
-
-
 // Hold onto the auth middleware 
 const middleware = require('./middleware/auth');
+
+// Grab the projects PubSub
+app.contoller = require('./controller');
+
+// Push pubsub over the socket and back.
+app.onListen.push(function(){
+  app.io.use(middleware.authIO);
+
+  app.contoller.ps.subscribe(/./g, function(data, topic){
+    app.io.emit('P2PSub', { topic, data });
+  });                                 
+
+  app.io.on('connection', (socket) => {
+    // console.log('socket', socket)
+    var user = socket.user;
+    socket.on('P2PSub', (msg) => {
+      app.contoller.ps.publish(msg.topic, {...msg.data, __from:socket.user});
+      // socket.broadcast.emit('P2PSub', msg);
+    });
+  });
+}); 
 
 // load the JSON parser middleware. Express will parse JSON into native objects
 // for any request that has JSON in its content type. 
@@ -36,29 +45,11 @@ app.use(express.json());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
-// Have express server static content( images, CSS, browser JS) from the public
-// local folder.
-app.use('/static', express.static(path.join(__dirname, 'public')))
-
 // Routes for front end content.
 app.use('/', require('./routes/render'));
 
-// API routes for authentication. 
-app.use('/api/auth',  require('./routes/auth'));
-
-
-// API routes for working with users. All endpoints need to be have valid user.
-app.use('/api/user', middleware.auth, require('./routes/user'));
-
-// API routes for working with hosts. All endpoints need to be have valid user.
-app.use('/api/host', middleware.auth, require('./routes/host'));
-
-// API routes for working with hosts. All endpoints need to be have valid user.
-app.use('/api/cert', middleware.auth, require('./routes/cert'));
-
-app.controler = {
-  host: require('./controler/host')
-}
+// Routes for API 
+app.use('/api', require('./routes/api'));
 
 // Catch 404 and forward to error handler. If none of the above routes are
 // used, this is what will be called.

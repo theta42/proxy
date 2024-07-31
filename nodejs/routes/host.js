@@ -3,7 +3,6 @@
 const router = require('express').Router();
 const {Host} = require('../models/host');
 
-
 const Model = Host;
 
 router.get('/', async function(req, res, next){

@@ -22,7 +22,6 @@ class Table{
 
 	static async get(index){
 		try{
-
 			if(typeof index === 'object'){
 				index = index[this._key];
 			}
@@ -43,7 +42,7 @@ class Table{
 			// back to native values.
 			result = objValidate.parseFromString(this._keyMap, result);
 
-			return new this.prototype.constructor(result);
+			return new this(result);
 
 		}catch(error){
 			throw error;
@@ -82,6 +81,10 @@ class Table{
 		}
 
 		return out;
+	}
+
+	static async create(...args){
+		return this.add(...args);
 	}
 
 	static async add(data){

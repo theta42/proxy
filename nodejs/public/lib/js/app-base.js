@@ -1,66 +1,76 @@
 var app = {};
 
-// app.pubsub = (function(){
-// 	app.topics = {};
+app.pubsub = (function(){
+	app.topics = {};
 
-// 	app.subscribe = function(topic, listener){
-// 		if(topic instanceof RegExp){
-// 			listener.match = topic;
-// 			topic = "__REGEX__";
-// 		}
+	app.subscribe = function(topic, listener){
+		if(topic instanceof RegExp){
+			listener.match = topic;
+			topic = "__REGEX__";
+		}
 
-// 		// create the topic if not yet created
-// 		if(!app.topics[topic]) app.topics[topic] = [];
+		// create the topic if not yet created
+		if(!app.topics[topic]) app.topics[topic] = [];
 
-// 		// add the listener
-// 		app.topics[topic].push(listener);
-// 	}
+		// add the listener
+		app.topics[topic].push(listener);
+	}
 
-// 	app.matchTopics = function(topic){
-// 		topic = topic || '';
-// 		var matches = [... app.topics[topic] ? app.topics[topic] : []];
+	app.matchTopics = function(topic){
+		topic = topic || '';
+		var matches = [... app.topics[topic] ? app.topics[topic] : []];
 
-// 		if(!app.topics['__REGEX__']) return matches;
+		if(!app.topics['__REGEX__']) return matches;
 
-// 		for(var listener of app.topics['__REGEX__']){
-// 			if(topic.match(listener.match)) matches.push(listener);
-// 		}
+		for(var listener of app.topics['__REGEX__']){
+			if(topic.match(listener.match)) matches.push(listener);
+		}
 
-// 		return matches;
-// 	}
+		return matches;
+	}
 
-// 	app.publish = function(topic, data){
+	app.publish = function(topic, data){
 
-// 		// send the event to all listeners
-// 		app.matchTopics(topic).forEach(function(listener){
-// 			setTimeout(function(data, topic){
-// 					listener(data || {}, topic);
-// 				}, 0, data, topic);
-// 		});
-// 	}
+		// send the event to all listeners
+		app.matchTopics(topic).forEach(function(listener){
+			setTimeout(function(data, topic){
+					listener(data || {}, topic);
+				}, 0, data, topic);
+		});
+	}
 
-// 	return this;
-// })(app);
+	return this;
+})(app);
 
-// app.socket = (function(app){
-// 	var socket = io();
-// 	// socket.emit('chat message', $('#m').val());
-// 	socket.on('P2PSub', function(msg){
-// 		msg.data.__noSocket	= true;
-// 		app.publish(msg.topic, msg.data);
-// 	});
+app.socket = (function(app){
+	// $.getScript('/socket.io/socket.io.js')
+	// <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+	
+	var socket;
+	$(document).ready(function(){
+		socket = io({
+			auth: {
+				token: app.auth.getToken()
+			}
+		});
+		// socket.emit('chat message', $('#m').val());
+		socket.on('P2PSub', function(msg){
+			msg.data.__noSocket	= true;
+			app.publish(msg.topic, msg.data);
+		});
 
-// 	app.subscribe(/./g, function(data, topic){
-// 	  // console.log('local_pubs', data, topic)
-// 	  if(data.__noSocket) return;
-// 	  // console.log('local_pubs 2', data, topic)
+		app.subscribe(/./g, function(data, topic){
+		  // console.log('local_pubs', data, topic)
+		  if(data.__noSocket) return;
+		  // console.log('local_pubs 2', data, topic)
 
-// 	  socket.emit('P2PSub', { topic, data })
-// 	});
+		  socket.emit('P2PSub', { topic, data });
+		});
+	})
 
-// 	return socket;
+	return socket;
 
-// })(app);
+})(app);
 
 app.api = (function(app){
 	var baseURL = '/api/'

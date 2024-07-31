@@ -1,17 +1,17 @@
 'use strict';
 
 const Table = require('../utils/redis_model');
+const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
 const PorkBun = require('../utils/porkbun');
 const LetsEncrypt = require('../utils/letsencrypt');
-const conf = require('../conf/conf');
+const conf = require('../conf');
 
 let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
 let letsEncrypt = new LetsEncrypt({
 	directoryUrl: LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
 });
-
 
 
 class Host extends Table{
@@ -86,7 +86,6 @@ class Host extends Table{
 
 	static async add(data, ...args){
 		try{
-
 			let out = await super.add(data, ...args)
 			await this.buildLookUpObj()
 			if(out.is_wildcard) await out.createWildcardCert()
@@ -246,7 +245,12 @@ class Host extends Table{
 		return true;
 	}
 
+	static test(pass){
+		return `yes ${pass}`
+	}
+
 }
+
 
 class Cached extends Table{
 	static _key = 'host';
@@ -262,7 +266,7 @@ class Cached extends Table{
 	await Host.buildLookUpObj();
 })()
 
-module.exports = {Host};
+module.exports = {Host: ModelPs(Host)};
 
 (async function(){
 try{
@@ -279,8 +283,8 @@ try{
 	// })
 	// console.log('IIFE res:\n', res)
 
-
-	console.log(await Host.listDetail())
+	// console.log(Host.test(55))
+	// console.log(await Host.listDetail())
 	// console.log('IIFE lookup:', Host.lookUp('bld3324sdf.test.holycore.quest'))
 
 

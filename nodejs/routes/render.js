@@ -1,12 +1,28 @@
 'use strict';
 
+const path = require('path');
+const express = require('express');
 const router = require('express').Router();
-const conf = require('../conf')
-const middleware = require('../middleware/auth');
+const conf = require('../conf');
 
 const values ={
   title: conf.environment !== 'production' ? `<i class="fa-brands fa-dev"></i>` : ''
 }
+
+// List of front end node modules to be served
+const frontEndModules = ['bootstrap', 'mustache', 'jquery', '@fortawesome',
+  'moment',
+];
+
+// Server front end modules
+// https://stackoverflow.com/a/55700773/3140931
+frontEndModules.forEach(dep => {
+  router.use(`/static-modules/${dep}`, express.static(path.join(__dirname, `../node_modules/${dep}`)))
+});
+
+// Have express server static content( images, CSS, browser JS) from the public
+// local folder.
+router.use('/static', express.static(path.join(__dirname, '../public')))
 
 router.get('/', async function(req, res, next) {
   res.render('hosts', {...values});

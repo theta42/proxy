@@ -1,7 +1,7 @@
 'use strict';
 
 const Table = require('../utils/redis_model');
-const {Token, InviteToken} = require('./token');
+// const {Token, InviteToken} = require('./token');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
@@ -32,7 +32,7 @@ class User extends Table{
 		}
 	}
 
-	static async addByInvite(data){
+/*	static async addByInvite(data){
 		try{
 			let token = await InviteToken.get(data.token);
 
@@ -55,7 +55,7 @@ class User extends Table{
 			throw error;
 		}
 
-	};
+	};*/
 
 	async setPassword(data){
 		try{
@@ -67,7 +67,7 @@ class User extends Table{
 		}
 	}
 
-	async invite(){
+/*	async invite(){
 		try{
 			let token = await InviteToken.add({created_by: this.username});
 			
@@ -76,7 +76,7 @@ class User extends Table{
 		}catch(error){
 			throw error;
 		}
-	}
+	}*/
 
 	static async login(data){
 		try{
