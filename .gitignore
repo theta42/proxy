@@ -88,3 +88,5 @@ secrets.js
 
 openresty/**
 !openresty/README.md
+
+le.cert
