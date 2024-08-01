@@ -68,6 +68,7 @@ MIT license
 			//re-factor element index's
 			for(var i = 0; i < this.length; i++){
 				if(  i >= index){
+
 					this[i].__jq_$el.attr( 'jq-repeat-index', i+shift );
 				}
 			}
@@ -81,7 +82,7 @@ MIT license
 					//figure out new elements index
 					var key = I + index;
 					// apply values to template
-					var render = Mustache.render(this.__jqTemplate, toAdd[I] );
+					var render = Mustache.render(this.__jqTemplate, toAdd[I]);
 					
 					//set call name and index keys to DOM element
 					var $render = $( render ).addClass( 'jq-repeat-'+ this.__jqRepeatId ).attr( 'jq-repeat-index', key );
@@ -195,13 +196,26 @@ MIT license
 				return [];
 			}
 			var object = $.extend( true, {}, this[index], update );
-			return this.splice( index, 1, object )[0];
+ 
+			var $render = $(Mustache.render(this.__jqTemplate, object));
+			$render.attr('jq-repeat-index', index);
+			this[index].__jq_$el.replaceWith($render);
+
+			this[index].__jq_$el = $render;
+			this.__update(this[index].__jq_$el, this[index], this);
 		};
+
 		result.__put = function($el, item, list){
 			$el.show();
 		};
+
 		result.__take = function($el, item, list){
 			$el.remove();
+		};
+
+		result.__update = function($el, item, list){
+			console.log('here', $el)
+			$el.show();
 		};
 
 		result.__setPut = function(fn) {
@@ -211,7 +225,7 @@ MIT license
 				enumerable: false,
 				configurable: true
 			});
-		}
+		};
 
 		result.__setTake = function(fn) {
 			Object.defineProperty(this, '__take', {
@@ -220,7 +234,16 @@ MIT license
 				enumerable: false,
 				configurable: true
 			});
-		}
+		};
+
+		result.__setUpdate = function(fn) {
+			Object.defineProperty(this, '__update', {
+				value: fn,
+				writable: true,
+				enumerable: false,
+				configurable: true
+			});
+		};
 
 		var $this = $( element ); 
 		result.__jqRepeatId = $this.attr( 'jq-repeat' );

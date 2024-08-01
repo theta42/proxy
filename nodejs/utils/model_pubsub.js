@@ -25,11 +25,11 @@ function ModelPs(model){
 		},
 		get(target, propKey, receiver) {
 			if(propKey == 'constructor') return target.constructor;
-			if(propKey === 'isproxy') return 'YESSSSSSSSS'
 			const targetValue = Reflect.get(target, propKey, receiver);
 			if (typeof targetValue === 'function') {
 				return function(...args){
-					let res = targetValue.apply(this, args); // (A)
+					// let res = targetValue.apply(this, args); // (A)
+					let res = Reflect.apply(targetValue, this, args);
 					if(targetValue.constructor.name === 'AsyncFunction'){
 						res.then(function(res){
 							publish(propKey, res, ...args);

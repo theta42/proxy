@@ -54,9 +54,9 @@
 			}
 
 			$.scope.hosts.__setPut(function($el, item, list){
-				$el.addClass('bg-success');
-				$el.fadeIn(1000, function(){
-					$el.removeClass('bg-success');
+				$el.addClass('table-success');
+				$el.fadeIn(2000, function(){
+					$el.removeClass('table-success');
 				});
 			});
 		});
@@ -64,7 +64,6 @@
 
 	function cancleHostEdit(){
 		$('#hostsTable').find('tr').each(function(idx, el){
-			console.log('here?')
 			$(el).removeClass('table-warning');
 		});
 		$('.editWindow').slideUp('fast');
@@ -104,7 +103,7 @@
 		populateHosts(); //populate the table
 
 		$.scope.hosts.__setTake(function($el, item, list){
-			$el.addClass('bg-danger');
+			$el.addClass('table-danger');
 			$el.fadeOut(1000, function(){
 				$el.remove()
 			});
@@ -112,6 +111,33 @@
 
 		app.subscribe(/^model:Host/, function(data, topic){
 			console.log(topic, data);
+		});
+
+		app.subscribe(/^model:Host:create/, function(data, topic){
+			let [a,b, action, host] = topic.split(':');
+
+			if($.scope.hosts.indexOf(host) >= 0){
+				$.scope.hosts.update(host, parseHostRow(data));
+			}else{
+				$.scope.hosts.splice(0,0, parseHostRow(data))
+			}
+		});
+
+		app.subscribe(/^model:Host:update/, function(data, topic){
+			let [a,b, action, host] = topic.split(':');
+
+			if($.scope.hosts.indexOf(host) >= 0){
+				$.scope.hosts.update(host, parseHostRow(data));
+			}else{
+				$.scope.hosts.splice(0,0, parseHostRow(data))
+			}
+		});
+
+
+		app.subscribe(/^model:Host:remove/, function(data, topic){
+			let [a,b, action, host] = topic.split(':');
+
+			$.scope.hosts.remove(host);
 		});
 
 		//search bar html event logic stolen from here
@@ -150,11 +176,11 @@
 						return;
 					}
 					
-					if($.scope.hosts.indexOf(data.__requestedHost) >= 0){
-						$.scope.hosts.update(data.__requestedHost, parseHostRow(data));
-					}else{
-						$.scope.hosts.splice(0,0, parseHostRow(data))
-					}
+					// if($.scope.hosts.indexOf(data.__requestedHost) >= 0){
+					// 	$.scope.hosts.update(data.__requestedHost, parseHostRow(data));
+					// }else{
+					// 	// $.scope.hosts.splice(0,0, parseHostRow(data))
+					// }
 
 					if(action == 'edit') $('.editWindow').slideUp('fast');
 

@@ -127,36 +127,33 @@ class Table{
 		try{
 			// Check to see if entry name changed.
 			if(data[this.constructor._key] && data[this.constructor._key] !== this[this.constructor._key]){
+				// Remove the index key from the tables members list.
+				await client.SREM(
+					redisPrefix(this.constructor.name),
+					this[this.constructor._key]
+				);
 
-				// Merge the current data into with the updated data 
-				let newData = Object.assign({}, this, data);
+				// Add the key to the members for this redis table
+				await client.SADD(
+					redisPrefix(this.constructor.name),
+					data[this.constructor._key]
+				);
 
-				// Remove the updated failed so it doesnt keep it
-				delete newData.updated;
-
-				// Create a new record for the updated entry. If that succeeds,
-				// delete the old recored
-				let newObject = await this.constructor.create(newData);
-
-				if(newObject){
-					await this.remove();
-					return newObject;
-				}
-			}else{
-				// Update what ever fields that where passed.
-
-				// Validate the passed data, ignoring required fields.
-				data = objValidate.processKeys(this.constructor._keyMap, data, true);
-				
-				// Loop over the data fields and apply them to redis
-				for(let key of Object.keys(data)){
-					this[key] = data[key];
-					await client.HSET(
-						redisPrefix(`${this.constructor.name}_${this[this.constructor._key]}`),
-						key, String(data[key])
-					);
-				}
 			}
+			// Update what ever fields that where passed.
+
+			// Validate the passed data, ignoring required fields.
+			data = objValidate.processKeys(this.constructor._keyMap, data, true);
+			
+			// Loop over the data fields and apply them to redis
+			for(let key of Object.keys(data)){
+				this[key] = data[key];
+				await client.HSET(
+					redisPrefix(`${this.constructor.name}_${this[this.constructor._key]}`),
+					key, String(data[key])
+				);
+			}
+			
 
 			return this;
 		
@@ -171,7 +168,6 @@ class Table{
 
 		try{
 			// Remove the index key from the tables members list.
-
 			await client.SREM(
 				redisPrefix(this.constructor.name),
 				this[this.constructor._key]
@@ -183,7 +179,7 @@ class Table{
 			);
 
 			// Return the number of removed values to the caller.
-			return count;
+			return this;
 
 		} catch(error) {
 			throw error;
