@@ -9,9 +9,7 @@ const socket = new SocketServerJson({
 	socketFile: conf.socketFile,
 	onData: function(data, clientSocket) {
 		try{
-			console.log('socket lookup for', data)
 			let parentHost = Host.lookUp(data['domain'])  || {host: 'none'};
-			console.log('found', parentHost)
 			if(!parentHost.wildcard_parent){
 				parentHost.wildcard_parent = parentHost.host;
 				Host.addCache(data['domain'], parentHost);
@@ -21,16 +19,12 @@ const socket = new SocketServerJson({
 				parentHost[key] = String(value);
 			};
 
-
-			console.log('To send socket', JSON.stringify(parentHost))
-
 			clientSocket.write(JSON.stringify(parentHost));
 		}catch(error){
 			console.error('controler/hosts onData error', error)
 		}
-
 	},
 	onListen: function(){
-		console.log('listening')
+		console.log('Unix socket listening on', conf.socketFile)
 	}
 });

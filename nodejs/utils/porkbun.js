@@ -1,7 +1,6 @@
 'use strict';
 
 const axios = require('axios');
-const conf = require('../conf/conf');
 
 class PorkBun{
 	baseUrl = 'https://api.porkbun.com/api/json/v3';
@@ -100,11 +99,12 @@ module.exports = PorkBun;
 
 
 if(require.main === module){(async function(){try{
-	let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
+	const conf = require('../conf');
+	// let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
 
 	// console.log(await porkBun.deleteRecordById('holycore.quest', '415509355'))
 	// console.log('IIFE', await porkBun.createRecordForce('holycore.quest', {type:'A', name: 'testapi', content: '127.0.0.5'}))
-	console.log('IIFE', await porkBun.getRecords('holycore.quest', {type:'A', name: 'testapi'}))
+	// console.log('IIFE', await porkBun.getRecords('holycore.quest', {type:'A', name: 'testapi'}))
 }catch(error){
 	console.log('IIFE Error:', error)
 }})()}

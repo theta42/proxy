@@ -270,8 +270,7 @@ module.exports = {Host: ModelPs(Host)};
 
 (async function(){
 try{
-	await Host.lookUpReady();
-
+	// await Host.lookUpReady();
 	// let res = await Host.create({
 	// 	host: '*.test.holycore.quest',
 	// 	ip: '192.168.1.47',

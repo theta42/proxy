@@ -2,7 +2,7 @@
 
 const { Client, Attribute, Change } = require('ldapts');
 const {Token, InviteToken} = require('./token');
-const conf = require('../app').conf.ldap;
+const conf = require('../conf').ldap;
 
 const client = new Client({
   url: conf.url,
