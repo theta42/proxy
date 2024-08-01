@@ -11,7 +11,7 @@ class LetsEncrypt{
 	static AcmeClient = AcmeClient;
 
 	constructor(options){
-		this.loadAccountKey(options.accountKeyPath || './le_key', (key)=>{
+		this.loadAccountKey(options.accountKeyPath || '~/le_key', (key)=>{
 			this.client = new AcmeClient.Client({
 				directoryUrl: options.directoryUrl || AcmeClient.directory.letsencrypt.production,
 				accountKey: key,
