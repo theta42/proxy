@@ -48,7 +48,7 @@ class Host extends Table{
 			console.log('addCache, corrent parent?', parentOBJ.wildcard_parent || parentOBJ.host)
 			console.log('addCache, got parent', parentOBJ)
 
-			await this.add({
+			await this.create({
 				...parentOBJ,
 				host: host,
 				is_cache: true,
@@ -56,7 +56,7 @@ class Host extends Table{
 				wildcard_parent: parentOBJ.host
 			}, true);
 
-			await Cached.add({
+			await Cached.create({
 				host: host,
 				parent: parentOBJ.host
 			});
@@ -86,7 +86,7 @@ class Host extends Table{
 
 	static async add(data, ...args){
 		try{
-			let out = await super.add(data, ...args)
+			let out = await super.create(data, ...args)
 			await this.buildLookUpObj()
 			if(out.is_wildcard) await out.createWildcardCert()
 
@@ -272,7 +272,7 @@ module.exports = {Host: ModelPs(Host)};
 try{
 	await Host.lookUpReady();
 
-	// let res = await Host.add({
+	// let res = await Host.create({
 	// 	host: '*.test.holycore.quest',
 	// 	ip: '192.168.1.47',
 	// 	'created_by': 'william',

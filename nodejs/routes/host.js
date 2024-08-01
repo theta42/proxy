@@ -18,7 +18,7 @@ router.get('/', async function(req, res, next){
 router.post('/', async function(req, res, next){
 	try{
 		req.body.created_by = req.user.username;
-		let item = await Model.add(req.body);
+		let item = await Model.create(req.body);
 
 		return res.json({
 			message: `"${item[Model._key]}" added.`,

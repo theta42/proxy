@@ -39,7 +39,7 @@ class AuthToken extends Token{
 
 	static async add(data){
 		data.created_by = data.username;
-		return super.add(data)
+		return super.create(data)
 
 	}
 

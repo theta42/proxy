@@ -25,7 +25,7 @@ class User extends Table{
 			data['backing'] = data['backing'] || 'redis';
 
 
-		return await super.add(data)
+		return await super.create(data)
 
 		}catch(error){
 			throw error;
@@ -44,7 +44,7 @@ class User extends Table{
 				throw error;
 			}
 
-			let user = await this.add(data);
+			let user = await this.create(data);
 
 			if(user){
 				await token.consume({claimed_by: user.username});
@@ -69,7 +69,7 @@ class User extends Table{
 
 /*	async invite(){
 		try{
-			let token = await InviteToken.add({created_by: this.username});
+			let token = await InviteToken.create({created_by: this.username});
 			
 			return token;
 
@@ -114,7 +114,7 @@ module.exports = {User};
 		let user = await User.get(defaultUser);
 	}catch(error){
 		try{
-			let user = await User.add({
+			let user = await User.create({
 				username:defaultUser,
 				password: defaultUser,
 				created_by:defaultUser

@@ -83,11 +83,7 @@ class Table{
 		return out;
 	}
 
-	static async create(...args){
-		return this.add(...args);
-	}
-
-	static async add(data){
+	static async create(data){
 		// Add a entry to this redis table.
 		try{
 			// Validate the passed data by the keyMap schema.
@@ -140,7 +136,7 @@ class Table{
 
 				// Create a new record for the updated entry. If that succeeds,
 				// delete the old recored
-				let newObject = await this.constructor.add(newData);
+				let newObject = await this.constructor.create(newData);
 
 				if(newObject){
 					await this.remove();

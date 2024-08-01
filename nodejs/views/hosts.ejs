@@ -110,8 +110,8 @@
 			});
 		});
 
-		app.subscribe(/./g, function(data, topic){
-			console.log('topic', data);
+		app.subscribe(/^model:Host/, function(data, topic){
+			console.log(topic, data);
 		});
 
 		//search bar html event logic stolen from here
@@ -299,7 +299,7 @@
 			</div>
 
 			<div class="card-header actionMessage" style="display:none"></div>
-			<div class="card-header search-wrapper">
+			<div class="card-body search-wrapper">
 				<label class="control-label" for="search" style="margin-left: -5px;">Search Hosts: </label>
 				<input type="search" id="search" host-search>
 			</div>
