@@ -45,12 +45,4 @@ class Auth{
 	}
 }
 
-
-Auth.logOut = async function(data){
-	try{
-	}catch(error){
-		throw error;
-	}
-}
-
 module.exports = {Auth};

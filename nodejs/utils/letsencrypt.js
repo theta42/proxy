@@ -7,6 +7,11 @@ const sleep = require('./sleep');
 
 // https://dns.google/resolve?name=${name}&type=TXT
 
+AcmeClient.setLogger((message) => {
+    console.log('ACME:', message);
+});
+
+
 class LetsEncrypt{
 	static AcmeClient = AcmeClient;
 
@@ -43,32 +48,57 @@ class LetsEncrypt{
 
 		try{
 			domain = domain.replace(/^\*\./, '');
+
 			const [key, csr] = await AcmeClient.crypto.createCsr({
 				altNames: [domain, `*.${domain}`],
 			});
+
+			let dnsToAdd = 0;
+			let dnsFound = 0;
 
 			const cert = await this.client.auto({
 				csr,
 				email: 'wmantly@gmail.com',
 				termsOfServiceAgreed: true,
 				challengePriority: ['dns-01'],
+				skipChallengeVerification: true,
 				challengeCreateFn: async (authz, challenge, keyAuthorization) => {
-					// console.log(`start TXT record key=_acme-challenge.${authz.identifier.value} value=${keyAuthorization}`)
-
-					let resCheck = await axios.get(`https://dns.google/resolve?name=_acme-challenge.${authz.identifier.value}&type=TXT`);
-					if(resCheck.data.Answer.some(record => record.data === keyAuthorization)) return;
-
-					await options.challengeCreateFn(authz, challenge, keyAuthorization);
-
-					let checkCount = 0;
-					while(true){
-						await sleep(1500);
-						let res = await axios.get(`https://dns.google/resolve?name=_acme-challenge.${authz.identifier.value}&type=TXT`);
-						if(res.data.Answer.some(record => record.data === keyAuthorization)){
-							// console.log(`found record for key=_acme-challenge.${authz.identifier.value} value=${keyAuthorization}`)
-							break;
+					try{
+						console.log('challenge', challenge)
+						console.log(`start TXT record key=_acme-challenge.${authz.identifier.value} value=${keyAuthorization} challenge=${challenge} googleDNS=https://dns.google/resolve?name=_acme-challenge.${authz.identifier.value}&type=TXT`)
+						dnsToAdd++
+						let resCheck = await axios.get(`https://dns.google/resolve?name=_acme-challenge.${authz.identifier.value}&type=TXT`);
+						if(resCheck.data.Answer && resCheck.data.Answer.some(record => record.data === keyAuthorization)){
+							await sleep(1000);
+							dnsFound++
+							if(dnsFound === dnsToAdd){
+								options.onDnsCheckFound(authz, dnsFound)
+							}
+							return;
 						}
-						if(checkCount++ > 60) throw new Error('challengeCreateFn validation timed out');
+
+						await options.challengeCreateFn(authz, challenge, keyAuthorization);
+
+						let checkCount = 0;
+						while(true){
+							options.onDnsCheck(authz, checkCount);
+							let res = await axios.get(`https://dns.google/resolve?name=_acme-challenge.${authz.identifier.value}&type=TXT`);
+							// console.log(keyAuthorization, res.data);
+							if(res.data.Answer && res.data.Answer.some(record => record.data === keyAuthorization)){
+								dnsFound++
+								if(dnsFound === dnsToAdd){
+									options.onDnsCheckFound(authz, dnsFound)
+								}
+								// console.log(`found record for key=_acme-challenge.${authz.identifier.value} value=${keyAuthorization}`)
+								await sleep(10000);
+								break;
+							}
+							if(checkCount++ > 60) throw new Error('challengeCreateFn validation timed out');
+							await sleep(1500);
+						}
+					}catch(error){
+						console.log('dns check failed error:', error)
+						options.onDnsCheckFail(authz, error)
 					}
 				},
 				challengeRemoveFn: options.challengeRemoveFn,

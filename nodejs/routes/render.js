@@ -40,4 +40,7 @@ router.get('/login', async function(req, res, next) {
   res.render('login', {...values, redirect: req.query.redirect});
 });
 
+router.get('/test', async function(req, res, next) {
+  res.render('test', {...values, redirect: req.query.redirect});
+});
 module.exports = router;

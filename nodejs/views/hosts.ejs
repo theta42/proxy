@@ -5,7 +5,7 @@
 </script>
 
 <style type="text/css">
-	label.control-label{
+	label.form-label{
 		font-weight: bold;
 		margin-bottom: 1px;
 	}
@@ -14,7 +14,10 @@
 		font-weight: bold;
 	}
 
-	div.editWindow{
+	div.hostEditPanel{
+		margin-bottom: 1em;
+	}
+	div.form-group{
 		margin-bottom: 1em;
 	}
 	/* my Div class for my search bar */
@@ -36,11 +39,13 @@
 </style>
 
 <script type="text/javascript">
+	var $editHostForm;
 
 	function parseHostRow(host) {
 		host['updated_on_text'] = moment(host['updated_on'], "x").fromNow();
 		host['targetssl_text'] = host['targetssl'] ? 'https://' : 'http://';
 		host['forcessl_text'] = host['forcessl'] ? 'https://' : 'http://';
+		host['wildcard_text'] = host['is_wildcard'] ? host['wildcard_status'] : 'Auto';
 
 		return host;
 	}
@@ -66,40 +71,34 @@
 		$('#hostsTable').find('tr').each(function(idx, el){
 			$(el).removeClass('table-warning');
 		});
-		$('.editWindow').slideUp('fast');
+		$.scope.editHost.remove();
 	}
 
 	function editHost(btn, host){
 		cancleHostEdit();
 		$(btn).closest('tr').addClass('table-warning');
-		$('.editWindow .card-title').html("Edit "+ host);
+		host = $.scope.hosts.getByKey(host);
+		$.scope.editHost.update({...host, form: $editHostForm.html()});
 
-		$('div.editWindow .card-body span').html($('#addHost').html());
-		$('div.editWindow .card-body span button').remove();
-
-		$(".editWindow input[name='edit_host']").val(host);
-
-		$('.editWindow').slideDown('fast');
-
-		app.host.get(host, function(error, data){
-			$.each( data.results, function( key, value ) {
-				if(typeof value == "boolean"){
-					$(".editWindow #"+ key +"-"+ value).prop('checked', true)
-				}else{
-					$(".editWindow input[name='" + key + "']").val(value);
-				}
-			});
+		$.each(host, function( key, value ) {			if(typeof value == "boolean"){
+				$(".hostEditPanel #"+ key +"-"+ value).prop('checked', true)
+			}else{
+				$(".hostEditPanel input[name='" + key + "']").val(value);
+			}
 		});
 	};
 
 	function deleteHost(host){
-		app.host.remove({host: host}, function(err, data){
-			// app.util.actionMessage(`Host ${host} deleted!`, $.scope.hosts.$this, 'danger');
-			$.scope.hosts.remove(host);
+		app.host.remove({host: host}, function(error, data){
+			if(error) app.util.actionMessage(error.message, $.scope.hosts.$this, 'danger');
 		});
 	}
 
 	$(document).ready(function(){
+		$editHostForm = $('#addHost').clone();
+		$editHostForm.find('hr.buttonBreak').nextAll().remove();
+		// $editHostForm.find('.autoSll').addClass('bg-secondary');
+		$editHostForm.find('[name=is_wildcard').attr('disabled', true);
 		populateHosts(); //populate the table
 
 		$.scope.hosts.__setTake(function($el, item, list){
@@ -107,6 +106,19 @@
 			$el.fadeOut(1000, function(){
 				$el.remove()
 			});
+		});
+
+		$.scope.hosts.__setUpdate(function($el, $render, item, list){
+			$render.show()
+			$el.replaceWith($render);
+		});
+
+		$.scope.editHost.__setPut(function($el, item, list){
+			$el.slideDown();
+		});
+
+		$.scope.editHost.__setTake(function($el, item, list){
+			$el.slideUp();
 		});
 
 		app.subscribe(/^model:Host/, function(data, topic){
@@ -119,7 +131,7 @@
 			if($.scope.hosts.indexOf(host) >= 0){
 				$.scope.hosts.update(host, parseHostRow(data));
 			}else{
-				$.scope.hosts.splice(0,0, parseHostRow(data))
+				$.scope.hosts.unshift(parseHostRow(data));
 			}
 		});
 
@@ -129,10 +141,9 @@
 			if($.scope.hosts.indexOf(host) >= 0){
 				$.scope.hosts.update(host, parseHostRow(data));
 			}else{
-				$.scope.hosts.splice(0,0, parseHostRow(data))
+				$.scope.hosts.unshift(parseHostRow(data));
 			}
 		});
-
 
 		app.subscribe(/^model:Host:remove/, function(data, topic){
 			let [a,b, action, host] = topic.split(':');
@@ -156,38 +167,6 @@
 				}
 			}
 		});
-
-		$('form.addHost').on('submit', function(){
-			event.preventDefault();
-
-			$form = $(this);
-			var action = $($form.find('button[type="submit"]')[0]).data('type');
-			app.util.actionMessage('', $form);
-
-			if($form.attr('isValid') === 'true'){
-				var formdata = $form.serializeObject();
-				if(formdata.targetPort) formdata.targetPort = Number(formdata.targetPort);
-				if(formdata.targetssl) formdata.targetssl = formdata.targetssl == 'true' ? true : false;
-				if(formdata.forcessl) formdata.forcessl = formdata.forcessl == 'true' ? true : false;
-
-				app.host[action](formdata, function(error, data){
-					if(error){
-						app.util.actionMessage(error + data.message, $form, 'danger');
-						return;
-					}
-					
-					// if($.scope.hosts.indexOf(data.__requestedHost) >= 0){
-					// 	$.scope.hosts.update(data.__requestedHost, parseHostRow(data));
-					// }else{
-					// 	// $.scope.hosts.splice(0,0, parseHostRow(data))
-					// }
-
-					if(action == 'edit') $('.editWindow').slideUp('fast');
-
-					$form.trigger('reset');
-				})
-			}
-		});
 	});
 </script>
 <div class="row" style="display:none">
@@ -195,7 +174,7 @@
 	<!-- 
 		left column 
 	-->
-		<div class="card shadow-lg editWindow" style="display:none">
+		<div jq-repeat="editHost" class="card shadow-lg border-warning hostEditPanel" style="display:none">
 			<!--
 				Edit host card
 			-->
@@ -204,6 +183,7 @@
 					<i class="fa-solid fa-pencil"></i>
 				</span>
 				<span class="card-title">
+					Edit {{ host }}
 				</span>
 				<span class="float-end">
 					<i class="fa-solid fa-circle-minus"></i>
@@ -212,8 +192,8 @@
 			</div>
 
 			<div class="card-body">
-				<form class="addHost" onsubmit="$(this).validate()">
-					<span></span>
+				<form class="addHost" method="PUT" action="/host/{{ host }}" onsubmit="formAJAX(this)" evalAJAX="cancleHostEdit()">
+					{{{ form }}}
 					<input type="hidden" name="edit_host" />
 					<button type="submit" data-type="edit" class="btn btn-warning">
 						<i class="fa-solid fa-pencil"></i>
@@ -227,7 +207,7 @@
 			</div>
 		</div>
 
-		<div class="card shadow-lg">
+		<div class="card shadow-lg hostAddPanel">
 			<!--
 				Add new host card
 			-->
@@ -246,10 +226,13 @@
 			<div class="card-header actionMessage" style="display:none"></div>
 
 			<div class="card-body">
-				<form class="addHost" id="addHost" onsubmit="$(this).validate()">
-					
+				<form class="addHost" id="addHost" method="POST" action="host" onsubmit="formAJAX(this)">
+
 					<div class="form-group">
-						<label class="control-label">Incoming SSL</label>
+						<label class="form-label">
+							Incoming SSL
+						</label>
+						<br />
 						<div class="radio">
 							<label>
 								<input type="radio" name="forcessl" id="forcessl-true" value="true" checked>
@@ -264,23 +247,54 @@
 						</div>
 					</div>
 
-					<div class="form-group">
-						<label class="control-label">Incoming Host Name</label>
-						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
+					<div class="form-group autoSll">
+						<label class="form-label">
+							Auto SSL
+						</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="is_wildcard" id="is_wildcard-false" value="false" checked>
+								On demand certs
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="is_wildcard" id="is_wildcard-true" value="true">
+								Request Wildcard cert
+							</label>
+						</div>
 					</div>
 
 					<div class="form-group">
-						<label class="control-label">Target IP or Host Name</label>
+						<label for='host' class="form-label">
+							Incoming Host Name
+						</label>
+						<div>
+							<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
+							<b class="invalid-feedback"></b>
+						</div>
+					</div>
+
+					<div class="mb-3 form-group">
+						<label for="ip" class="form-label">
+							Target IP or Host Name
+						</label>
 						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10" validate=":3" />
+						<b class="invalid-feedback"></b>
 					</div>
 
 					<div class="form-group">
-						<label class="control-label">Target TCP Port</label>
+						<label for="targetPort" class="form-label">
+							Target TCP Port
+						</label>
 						<input type="number"  name="targetPort" class="form-control" value="80" min="0" max="65535" />
+						<b class="invalid-feedback"></b>
 					</div>
 
 					<div class="form-group">
-						<label class="control-label">Target SSL</label>
+						<label class="form-label">
+							Target SSL
+						</label>
 						<div class="radio">
 							<label>
 								<input type="radio" name="targetssl" id="targetssl-true" value="true">
@@ -293,9 +307,10 @@
 								Proxy to HTTP <b>Recommended</b>
 							</label>
 						</div>
+						<b class="invalid-feedback"></b>
 					</div>
-					<hr />
-					<button type="submit" data-type="add" class="btn btn-success">
+					<hr class="buttonBreak" />
+					<button type="submit" class="btn btn-success">
 						<i class="fa-solid fa-plus"></i>
 						Add
 					</button>
@@ -308,7 +323,7 @@
 		<!--
 			Right column
 		-->
-		<div class="card shadow-lg">
+		<div class="card shadow-lg hostListPanel">
 			<!--
 				List current hosts
 			-->
@@ -326,12 +341,17 @@
 
 			<div class="card-header actionMessage" style="display:none"></div>
 			<div class="card-body search-wrapper">
-				<label class="control-label" for="search" style="margin-left: -5px;">Search Hosts: </label>
+				<label class="form-label" for="search" style="margin-left: -5px;">
+					Search Hosts:
+				</label>
 				<input type="search" id="search" host-search>
 			</div>
 			<table class="card-body table table-striped" style="margin-bottom:0">
 	
 				<thead>
+					<th>
+						SSL
+					</th>
 					<th>
 						Host Name
 					</th>
@@ -348,6 +368,9 @@
 				<tbody id="hostsTable">
 					<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
 						<td>
+							{{{ wildcard_text }}}
+						</td>
+						<td>
 							<a target="_blank" href="{{ forcessl_text }}{{ host }}">
 								{{{ forcessl_text }}}{{ host }}
 							</a>
@@ -360,12 +383,13 @@
 						</td>
 						<td>
 							<div class="btn-group">
-<!-- 								<button type="button" class="btn btn-info">
+								<!-- <button type="button" class="btn btn-info">
 									<i class="fa-brands fa-expeditedssl"></i>
 									Cert
 								</button> -->
 								<button type="button" onclick="editHost(this, '{{ host }}');" class="btn btn-sm btn-warning">
-									<i class="fa-solid fa-pencil"></i> Edit
+									<i class="fa-solid fa-pencil"></i>
+									Edit
 								</button>
 								<button type="button" onclick="deleteHost('{{ host }}')" class="btn btn-sm btn-danger">
 									<i class="fa-solid fa-trash-can"></i>

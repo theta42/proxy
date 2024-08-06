@@ -67,7 +67,7 @@
 
 			<div class="card-header actionMessage" style="display:none"></div>
 			<div class="card-body">
-				<form action="user/" evalAJAX="
+				<form action="user/" onsubmit="formAJAX(this)" evalAJAX="
 					$.scope.users.splice(0, 0, data);
 				">
 					<input type="hidden" class="form-control" name="delete" value="false" />
@@ -84,7 +84,7 @@
 						<input type="password" class="form-control" name="passwordMatch" placeholder="Retype password" validate="eq:password"/>
 					</div>
 					<hr />
-					<button type="button" onclick="formAJAX(this)" class="btn btn-info">
+					<button type="button"  class="btn btn-info">
 						Add
 					</button>
 				</form>

@@ -10,7 +10,7 @@ MIT license
 		$.scope = {};
 	}
 	
-	var make = function( element ){
+	var make = function(element){
 		var result = [];
 
 		result.splice = function(inputValue, ...args){
@@ -20,9 +20,9 @@ MIT license
 
 			var index;
 			//if a string is submitted as the index, try to match it to index number
-			if( typeof arguments[0] === 'string' ){
+			if(typeof arguments[0] === 'string'){
 				index = this.indexOf( arguments[0] );//set where to start
-				if ( index === -1 ) {
+				if (index === -1) {
 					return [];
 				}
 			}else{
@@ -109,6 +109,7 @@ MIT license
 			//set and return new array
 			return Array.prototype.splice.apply(this, toProto);
 		};
+
 		result.push = function(){
 			//add one or more objects to the array
 
@@ -123,18 +124,24 @@ MIT license
 			//return new array length
 			return this.length;
 		};
+
 		result.pop = function(){
 			//remove and return array element
 
 			return this.splice( -1, 1 )[0];
 		};
-		result.reverse = function() {
-			var temp = this.splice( 0 );
-			Array.prototype.reverse.apply( temp );
 
-			for( var i = 0; i < temp.length; i++ ){
-				this.push( temp[i] );
+		result.reverse = function() {
+			let hold = [];
+			for(let item of this){
+				hold.push(item.__jq_$el.html())
 			}
+
+			for(let idx in hold.reverse()){
+				this[idx].__jq_$el.html(hold[idx]);
+			}
+
+			Array.prototype.reverse.apply( this );
 
 			return this;
 		};
@@ -149,6 +156,10 @@ MIT license
 			return this.splice( 0, 1 )[0];
 		};
 
+		result.unshift = function(data){
+			return this.splice(0,0, data)
+		}
+
 		result.loop = function(){
 			var temp = this[0];
 			this.splice( 0,1 );
@@ -156,13 +167,17 @@ MIT license
 
 			return temp;
 		};
+
 		result.loopUp = function(){
 			var temp = this[this.length-1];
 			this.splice( -1, 1 );
 			this.splice( 0, 0, temp );
 			return temp;
 		};
+
 		result.indexOf =  function( key, value ){
+			if(typeof key === 'number') return key;
+			
 			if( typeof value !== 'string' ){
 				value = arguments[0];
 				key = this.__index;
@@ -175,7 +190,8 @@ MIT license
 			}
 			return -1;
 		};
-		result.update = function( key, value, update ){
+
+		result.update = function(key, value, data){
 			//set variables using sting for index
 
 			// If update is called with no index/key, assume its the 0
@@ -186,24 +202,31 @@ MIT license
 				return this.splice(0, 1, key);
 			}
 
-			if( typeof value !== 'string' ){
-				update = arguments[1];
-				value = arguments[0];
-				key = this.__index;
+			if(typeof value !== 'string'){
+				data = arguments[1];
+				if(typeof key !== 'number'){
+					value = arguments[0];
+					key = this.__index;
+				}
 			}
+
 			var index = this.indexOf( key, value );
+
 			if(index === -1) {
 				return [];
 			}
-			var object = $.extend( true, {}, this[index], update );
- 
-			var $render = $(Mustache.render(this.__jqTemplate, object));
-			$render.attr('jq-repeat-index', index);
-			this[index].__jq_$el.replaceWith($render);
+			this[index] = $.extend( true, this[index], data );
 
+			var $render = $(Mustache.render(this.__jqTemplate, this[index]));
+			$render.attr('jq-repeat-index', index);
+
+			this.__update(this[index].__jq_$el, $render, this[index], this);
 			this[index].__jq_$el = $render;
-			this.__update(this[index].__jq_$el, this[index], this);
 		};
+		
+		result.getByKey = function(key, value){
+			return this[this.indexOf(key, value)];
+		}
 
 		result.__put = function($el, item, list){
 			$el.show();
@@ -213,8 +236,8 @@ MIT license
 			$el.remove();
 		};
 
-		result.__update = function($el, item, list){
-			console.log('here', $el)
+		result.__update = function($el, $render, item, list){
+			$el.replaceWith($render);
 			$el.show();
 		};
 

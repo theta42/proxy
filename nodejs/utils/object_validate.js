@@ -33,6 +33,8 @@ function processKeys(map, data, partial){
 			continue;
 		}
 
+		// console.log(key, data[key], map[key].default, data.hasOwnProperty(key) && data[key] !== undefined ? data[key] : returnOrCall(map[key].default))
+
 		out[key] = data.hasOwnProperty(key) && data[key] !== undefined ? data[key] : returnOrCall(map[key].default);
 
 		if(data.hasOwnProperty(key) && process_type[map[key].type]){
@@ -46,7 +48,6 @@ function processKeys(map, data, partial){
 	}
 
 	if(errors.length !== 0){
-		console.log('errors', errors)
 		throw new ObjectValidateError(errors);
 		return {__errors__: errors};
 	}
@@ -79,9 +80,10 @@ function parseToString(data){
 	return (types[typeof(data)] || String)(data);
 }
 
-function ObjectValidateError(message) {
+function ObjectValidateError(message){
 	this.name = 'ObjectValidateError';
 	this.message = (message || {});
+	this.keys = (message || {})
 	this.status = 422;
 }
 

@@ -53,20 +53,28 @@ app.use('/api', require('./routes/api'));
 
 // Catch 404 and forward to error handler. If none of the above routes are
 // used, this is what will be called.
-app.use(function(req, res, next) {
-  var err = new Error('Not Found');
-  err.message = 'Page not found'
-  err.status = 404;
-  next(err);
+app.use(async function(req, res, next) {
+  try{
+    var err = new Error('Not Found');
+    err.message = 'Page not found'
+    err.status = 404;
+    next(err);
+  }catch(error){
+    console.log('app 404 catch error', error)
+  }
 });
 
 // Error handler. This is where `next()` will go on error
-app.use(function(err, req, res, next) {
-  console.error(err.status || res.status, err.name, req.method, req.url);
-  console.error(err.message);
-  console.error(err.stack);
-  console.error('=========================================');
+app.use(async function(err, req, res, next) {
+  try{  
+    console.error(err.status || res.status, err.name, req.method, req.url);
+    console.error(err.message);
+    console.error(err.stack);
+    console.error('=========================================');
 
-  res.status(err.status || 500);
-  res.json({name: err.name, message: err.message});
+    res.status(err.status || 500);
+    res.json({name: err.name, message: err.message, keys: err.keys});
+  }catch(error){
+    console.log('error in the catch all error fn....', error);
+  }
 });

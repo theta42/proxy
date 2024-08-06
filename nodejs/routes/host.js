@@ -25,7 +25,7 @@ router.post('/', async function(req, res, next){
 			...item,
 		});
 	} catch (error){
-		return next(error);
+		next(error);
 	}
 });
 

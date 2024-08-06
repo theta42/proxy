@@ -252,10 +252,10 @@ app.user = (function(app){
 app.util = (function(app){
 
 	function getUrlParameter(name){
-	    name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
-	    var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
-	    var results = regex.exec(location.search);
-	    return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+		name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+		var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+		var results = regex.exec(location.search);
+		return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 	};
 
 	function actionMessage(message, $target, type, callback){
@@ -277,28 +277,38 @@ app.util = (function(app){
 			})
 		}else{
 			if(type) $target.addClass('bg-' + type);
-			message = '<span class="align-middle">' + message + '</span><button class="action-close btn btn-sm btn-outline-dark float-right"><i class="fa-solid fa-xmark"></i></button>'
+			message = '<span class="align-middle">' + message + '</span><button class="action-close btn btn-sm btn-outline-dark float-end"><i class="fa-solid fa-xmark"></i></button>'
 			$target.html(message).slideDown('fast');
 		}
 		setTimeout(callback,10)
 	}
 
 	$.fn.serializeObject = function(){
-	    var 
-	        arr = $(this).serializeArray(), 
-	        obj = {};
-	    
-	    for(var i = 0; i < arr.length; i++){
-	        if(obj[arr[i].name] === undefined) {
-	            obj[arr[i].name] = arr[i].value;
-	        } else {
-	            if(!(obj[arr[i].name] instanceof Array)) {
-	                obj[arr[i].name] = [obj[arr[i].name]];
-	            }
-	            obj[arr[i].name].push(arr[i].value);
-	        }
-	    }
-	    return obj;
+		var 
+			arr = $(this).serializeArray(), 
+			obj = {};
+
+		for(var i = 0; i < arr.length; i++){
+			if(obj[arr[i].name] === undefined) {
+				if(!arr[i].value) continue;
+				obj[arr[i].name] = arr[i].value;
+				let type = $(this).parent().find(`[name="${arr[i].name}"]`).attr('type');
+				if(['number', 'range'].includes(type)){
+					obj[arr[i].name] = Number(arr[i].value);
+				}
+
+				if(['radio'].includes(type) && ['true', 'false'].includes(arr[i].value)){
+					obj[arr[i].name] = arr[i].value	== 'true' ? true : false;
+				}
+			} else {
+				if(!(obj[arr[i].name] instanceof Array)) {
+					obj[arr[i].name] = [obj[arr[i].name]];
+				}
+				obj[arr[i].name].push(arr[i].value);
+			}
+
+		}
+		return obj;
 	};
 
 	return {
@@ -342,12 +352,12 @@ function formAJAX(btn, del){
 	event.preventDefault(); // avoid to execute the actual submit of the form.
 	var $form = $(btn).closest('[action]'); // gets the 'form' parent
 	var formData = $form.find('[name]').serializeObject(); // builds query formDataing
-	var method = $form.attr('method') || 'post';
+	var method = ($form.attr('method') || 'post').toLowerCase();
 
-	// if( !$form.validate()){
-	// 	app.util.actionMessage('Please fix the form errors.', $form, 'danger')
-	// 	return false;
-	// }
+	if($form.validate && !$form.validate()){
+		app.util.actionMessage('Please fix the form errors.', $form, 'danger')
+		return false;
+	}
 	
 	app.util.actionMessage( 
 		'<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div>',
@@ -357,9 +367,21 @@ function formAJAX(btn, del){
 
 	app.api[method]($form.attr('action'), formData, function(error, data){
 		app.util.actionMessage(data.message, $form, error ? 'danger' : 'success'); //re-populate table
+		$form.validateClear();
 		if(!error){
 			$form.trigger("reset");
 			eval($form.attr('evalAJAX')); //gets JS to run after completion
+		}else{
+			console.log('formAJAX res error', error, data)
+			if(data && data.name === 'ObjectValidateError'){
+				app.util.actionMessage('Please fix the form errors', $form, 'danger'); //re-populate table
+			}
+			if(data && data.keys){
+				console.log('form key errors', data.keys)
+				for(let keyError of data.keys){
+					$form.find(`[name=${keyError.key}]`).validateMessage(keyError.message);
+				}
+			}
 		}
 	});
 }

@@ -12,9 +12,13 @@ function ModelPs(model){
 	}
 
 	function publish(prop, res, req){
-		if(!['add', 'create', 'update', 'remove'].includes(prop)) return;
+		try{
+			if(!['add', 'create', 'update', 'remove'].includes(prop)) return;
 
-		ps.publish(`model:${Model.name}:${prop}:${getIndex(res, req)}`, res);
+			ps.publish(`model:${Model.name}:${prop}:${getIndex(res, req)}`, res);
+		}catch(error){
+			console.log('ModelPs.publish ERROR', error)
+		}
 	}
 
 	return new Proxy(model, {
@@ -28,16 +32,22 @@ function ModelPs(model){
 			const targetValue = Reflect.get(target, propKey, receiver);
 			if (typeof targetValue === 'function') {
 				return function(...args){
+					try{
 					// let res = targetValue.apply(this, args); // (A)
-					let res = Reflect.apply(targetValue, this, args);
-					if(targetValue.constructor.name === 'AsyncFunction'){
-						res.then(function(res){
-							publish(propKey, res, ...args);
-						});
-					}else{
-						publish(propKey, res, ...args)
+						var res = Reflect.apply(targetValue, this, args);
+						if(targetValue.constructor.name === 'AsyncFunction'){
+							res.then(function(res){
+								publish(propKey, res, ...args);
+							}).catch(function(error){
+								console.log('toDo, publish errors...')
+							});
+						}else{
+							publish(propKey, res, ...args)
+						}
+						return res;
+					}catch(error){
+						console.log("grrrr")
 					}
-					return res;
 				}
 			} else {
 				return targetValue;

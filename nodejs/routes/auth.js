@@ -3,6 +3,7 @@
 const router = require('express').Router();
 const { Auth } = require('../controller/auth');
 
+
 router.post('/login', async function(req, res, next){
 	try{
 		let auth = await Auth.login(req.body);

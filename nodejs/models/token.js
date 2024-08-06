@@ -37,7 +37,7 @@ class AuthToken extends Token{
 		return await User.get(this.created_by);
 	}
 
-	static async add(data){
+	static async create(data){
 		data.created_by = data.username;
 		return super.create(data)
 

@@ -28,6 +28,7 @@ class Host extends Table{
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
 		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
+		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500, default: 'Requesting'},
 		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
 	}
 
@@ -84,11 +85,11 @@ class Host extends Table{
 		}
 	}
 
-	static async add(data, ...args){
+	static async create(data, ...args){
 		try{
-			let out = await super.create(data, ...args)
-			await this.buildLookUpObj()
-			if(out.is_wildcard) await out.createWildcardCert()
+			let out = await super.create(data, ...args);
+			await this.buildLookUpObj();
+			if(out.is_wildcard) out.createWildcardCert();
 
 			return out;
 
@@ -100,31 +101,104 @@ class Host extends Table{
 	async createWildcardCert(){
 		if(!this.host.startsWith('*.')) throw new Error('not wild card');
 
-		let cert = await letsEncrypt.dnsWildcard(this.host, {
-			challengeCreateFn: async (authz, challenge, keyAuthorization) => {
-				let parts = tldExtract(authz.identifier.value);
-				let res = await porkBun.createRecordForce(parts.domain, {type:'TXT', name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`, content: `${keyAuthorization}`});
-			},
-			challengeRemoveFn: async (authz, challenge, keyAuthorization)=>{
-				let parts = tldExtract(authz.identifier.value);
-				await porkBun.deleteRecords(parts.domain, {type:'TXT', name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`, content: `${keyAuthorization}`});
-			},
-		});
+		try{
+			let host = this;
+			let cert = await letsEncrypt.dnsWildcard(this.host, {
+				challengeCreateFn: async (authz, challenge, keyAuthorization) => {
+					host.update({
+						wildcard_status: `Adding record for ${authz.identifier.value}`
+					});
+					try{
+						let parts = tldExtract(authz.identifier.value);
 
-		let toAdd = {
-			cert_pem: cert.cert.split('\n\n')[0],
-			fullchain_pem: cert.cert,
-			privkey_pem: cert.key.toString(),
-			csr_pem: cert.csr.toString(),
-			expiry: 4120307657,
-			real_expiry: +LetsEncrypt.AcmeClient.crypto.readCertificateInfo(cert.cert).notAfter/1000,
+						console.log('adding DNS record for', `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`)
+
+						let res = await porkBun.createRecordForce(
+							parts.domain,
+							{
+								type:'TXT',
+								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`,
+								content: `${keyAuthorization}`
+							}
+						);
+						console.log('porkbun res', res)
+					}catch(error){
+						console.log('model Host challengeCreateFn error:', error)
+						host.update({
+							wildcard_status: `Add DNS record failed`
+						});
+					}
+				},
+				onDnsCheck: async(authz, checkCount)=>{
+					host.update({
+						wildcard_status: `${checkCount} Checking DNS for ${authz.identifier.value}`
+					});
+				},
+				onDnsCheckFail: async(authz, error)=>{
+					host.update({
+						wildcard_status: `DNS check failed for ${authz.identifier.value}`
+					});
+				},
+				onDnsCheckFound: async(authz)=>{
+					host.update({
+						wildcard_status: `DNS check found for ${authz.identifier.value}`
+					});
+				},
+				onDnsCheckSuccess: async(authz)=>{
+					host.update({
+						wildcard_status: `DNS check success for ${authz.identifier.value}`
+					})
+				},
+				onDnsCheckRemove: async(authz)=>{
+					host.update({
+						wildcard_status: `DNS remove record for ${authz.identifier.value}`
+					})
+				},
+				challengeRemoveFn: async (authz, challenge, keyAuthorization)=>{
+					host.update({
+						wildcard_status: `DNS remove record for ${authz.identifier.value}`
+					})
+					try{
+						// let parts = tldExtract(authz.identifier.value);
+						// await porkBun.deleteRecords(
+						// 	parts.domain,
+						// 	{
+						// 		type:'TXT',
+						// 		name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''
+						// 	}`,
+						// 	content: `${keyAuthorization}`}
+						// );
+
+					}catch(error){
+						host.update({
+							wildcard_status: `DNS remove record failed for ${authz.identifier.value}`
+						})
+					}
+				},
+			});
+
+			let toAdd = {
+				cert_pem: cert.cert.split('\n\n')[0],
+				fullchain_pem: cert.cert,
+				privkey_pem: cert.key.toString(),
+				csr_pem: cert.csr.toString(),
+				expiry: 4120307657,
+				real_expiry: +LetsEncrypt.AcmeClient.crypto.readCertificateInfo(cert.cert).notAfter/1000,
+			}
+
+
+			await this.constructor.redisClient.SET(`${this.host}:latest`, JSON.stringify(toAdd));
+			this.update({
+				wildcard_status: `Done`
+			});
+
+			return this;
+		}catch(error){
+			console.log('le failed', error)
+			this.update({
+				wildcard_status: `LE failed`
+			});
 		}
-
-
-		await this.constructor.redisClient.SET(`${this.host}:latest`, JSON.stringify(toAdd));
-		return toAdd;
-
-		// Get new wildcard cert from
 	}
 
 	async update(...args){
