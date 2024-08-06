@@ -43,9 +43,21 @@
 
 	function parseHostRow(host) {
 		host['updated_on_text'] = moment(host['updated_on'], "x").fromNow();
+		host['wildcard_expires_text'] = moment(host['wildcard_expires'], "x").fromNow();
 		host['targetssl_text'] = host['targetssl'] ? 'https://' : 'http://';
 		host['forcessl_text'] = host['forcessl'] ? 'https://' : 'http://';
 		host['wildcard_text'] = host['is_wildcard'] ? host['wildcard_status'] : 'Auto';
+		host['wildcard_text_bg'] = 'warning';
+		if(!host['is_wildcard']){
+			host['wildcard_text_bg'] = 'success';
+		}
+		if(host['wildcard_status'] == 'Done'){
+			host['wildcard_text_bg'] = 'success';
+			host['wildcard_text'] = undefined;
+		}
+		if(host['wildcard_status'].includes('failed')){
+			host['wildcard_text_bg'] = 'danger';
+		}
 
 		return host;
 	}
@@ -94,6 +106,13 @@
 		});
 	}
 
+	function downloadCert(host, type){
+		app.host.getCert({host}, function(error, data){
+			if(error) app.util.actionMessage(error.message, $.scope.hosts.$this, 'danger');
+			app.util.downloadFile(`${host}-${type}.crt`, data[type])
+		});
+	}
+
 	$(document).ready(function(){
 		$editHostForm = $('#addHost').clone();
 		$editHostForm.find('hr.buttonBreak').nextAll().remove();
@@ -121,9 +140,9 @@
 			$el.slideUp();
 		});
 
-		app.subscribe(/^model:Host/, function(data, topic){
-			console.log(topic, data);
-		});
+		// app.subscribe(/^model:Host/, function(data, topic){
+		// 	console.log(topic, data);
+		// });
 
 		app.subscribe(/^model:Host:create/, function(data, topic){
 			let [a,b, action, host] = topic.split(':');
@@ -350,7 +369,7 @@
 	
 				<thead>
 					<th>
-						SSL
+						SSL Expire
 					</th>
 					<th>
 						Host Name
@@ -365,10 +384,14 @@
 						Actions
 					</th>
 				</thead>
+
 				<tbody id="hostsTable">
 					<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
-						<td>
+						<td class="table-{{wildcard_text_bg}}">
 							{{{ wildcard_text }}}
+							{{#wildcard_expires}}
+								<span class="momentFromNow" data-date="{{ wildcard_expires }}" >{{wildcard_expires_text}}</span>
+							{{/wildcard_expires}}
 						</td>
 						<td>
 							<a target="_blank" href="{{ forcessl_text }}{{ host }}">
@@ -378,15 +401,42 @@
 						<td>
 							{{{ targetssl_text }}}{{ ip }}:{{ targetPort }}
 						</td>
-						<td class="hidden-xs momentFromNow" data-date="{{ updated_on }}">
+						<td class="hidden-xs momentFromNow" data-date="{{ updated_on }}" >
 							{{ updated_on_text }}
 						</td>
 						<td>
 							<div class="btn-group">
-								<!-- <button type="button" class="btn btn-info">
-									<i class="fa-brands fa-expeditedssl"></i>
-									Cert
-								</button> -->
+
+								<div class="btn-group" role="group">
+									<button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+										<i class="fa-brands fa-expeditedssl"></i>
+										Certs
+									</button>
+									<ul class="dropdown-menu">
+										<li>
+											<button type="button" class="dropdown-item" onclick="downloadCert('{{host}}', 'cert_pem')">
+												<i class="fa-solid fa-certificate"></i>
+												Cert
+												<i class="fa-solid fa-file-arrow-down float-end"></i>
+											</button>
+										</li>
+										<li>
+											<button type="button" class="dropdown-item" onclick="downloadCert('{{host}}', 'fullchain_pem')">
+												<i class="fa-solid fa-link"></i>
+												Full Chain
+												<i class="fa-solid fa-file-arrow-down float-end"></i>
+											</button>
+										</li>
+										<li>
+											<button type="button" class="dropdown-item" onclick="downloadCert('{{host}}', 'privkey_pem')">
+												<i class="fa-solid fa-key"></i>
+												Private key
+												<i class="fa-solid fa-file-arrow-down float-end"></i>
+											</button>
+										</li>
+									</ul>
+								</div>
+
 								<button type="button" onclick="editHost(this, '{{ host }}');" class="btn btn-sm btn-warning">
 									<i class="fa-solid fa-pencil"></i>
 									Edit

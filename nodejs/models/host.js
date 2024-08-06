@@ -30,6 +30,7 @@ class Host extends Table{
 		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500, default: 'Requesting'},
 		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
+		'wildcard_expires': {isRequired: false, type: 'number'},
 	}
 
 	static lookUpObj = {};
@@ -62,7 +63,7 @@ class Host extends Table{
 				parent: parentOBJ.host
 			});
 		}catch(error){
-			console.error('add cahce error', {...parentOBJ, host, is_cache: true}, error)
+			console.error('add cache error', {...parentOBJ, host, is_cache: true}, error)
 			throw error;
 		}
 	}
@@ -103,15 +104,17 @@ class Host extends Table{
 
 		try{
 			let host = this;
+
+			await host.update({
+				wildcard_status: 'Requesting',
+			});
 			let cert = await letsEncrypt.dnsWildcard(this.host, {
 				challengeCreateFn: async (authz, challenge, keyAuthorization) => {
-					host.update({
-						wildcard_status: `Adding record for ${authz.identifier.value}`
+					await host.update({
+						wildcard_status: `Adding record`
 					});
 					try{
 						let parts = tldExtract(authz.identifier.value);
-
-						console.log('adding DNS record for', `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`)
 
 						let res = await porkBun.createRecordForce(
 							parts.domain,
@@ -121,56 +124,55 @@ class Host extends Table{
 								content: `${keyAuthorization}`
 							}
 						);
-						console.log('porkbun res', res)
 					}catch(error){
 						console.log('model Host challengeCreateFn error:', error)
-						host.update({
+						await host.update({
 							wildcard_status: `Add DNS record failed`
 						});
 					}
 				},
 				onDnsCheck: async(authz, checkCount)=>{
-					host.update({
-						wildcard_status: `${checkCount} Checking DNS for ${authz.identifier.value}`
+					await host.update({
+						wildcard_status: `${checkCount} Checking DNS`
 					});
 				},
 				onDnsCheckFail: async(authz, error)=>{
-					host.update({
+					await host.update({
 						wildcard_status: `DNS check failed for ${authz.identifier.value}`
 					});
 				},
 				onDnsCheckFound: async(authz)=>{
-					host.update({
-						wildcard_status: `DNS check found for ${authz.identifier.value}`
+					await host.update({
+						wildcard_status: `DNS check found`
 					});
 				},
 				onDnsCheckSuccess: async(authz)=>{
-					host.update({
-						wildcard_status: `DNS check success for ${authz.identifier.value}`
+					await host.update({
+						wildcard_status: `DNS check success`
 					})
 				},
 				onDnsCheckRemove: async(authz)=>{
-					host.update({
-						wildcard_status: `DNS remove record for ${authz.identifier.value}`
+					await host.update({
+						wildcard_status: `DNS remove record`
 					})
 				},
 				challengeRemoveFn: async (authz, challenge, keyAuthorization)=>{
-					host.update({
-						wildcard_status: `DNS remove record for ${authz.identifier.value}`
+					await host.update({
+						wildcard_status: `DNS remove record`
 					})
 					try{
-						// let parts = tldExtract(authz.identifier.value);
-						// await porkBun.deleteRecords(
-						// 	parts.domain,
-						// 	{
-						// 		type:'TXT',
-						// 		name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''
-						// 	}`,
-						// 	content: `${keyAuthorization}`}
-						// );
+						let parts = tldExtract(authz.identifier.value);
+						await porkBun.deleteRecords(
+							parts.domain,
+							{
+								type:'TXT',
+								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''
+							}`,
+							content: `${keyAuthorization}`}
+						);
 
 					}catch(error){
-						host.update({
+						await host.update({
 							wildcard_status: `DNS remove record failed for ${authz.identifier.value}`
 						})
 					}
@@ -188,8 +190,9 @@ class Host extends Table{
 
 
 			await this.constructor.redisClient.SET(`${this.host}:latest`, JSON.stringify(toAdd));
-			this.update({
-				wildcard_status: `Done`
+			await this.update({
+				wildcard_status: `Done`,
+				wildcard_expires: toAdd.real_expiry*1000,
 			});
 
 			return this;
@@ -204,8 +207,8 @@ class Host extends Table{
 	async update(...args){
 		try{
 			let out = await super.update(...args)
-			await this.bustCache(this.host)
-			await Host.buildLookUpObj()
+			await this.bustCache(this.host);
+			await Host.buildLookUpObj();
 
 			return out;
 		} catch(error){
@@ -215,9 +218,9 @@ class Host extends Table{
 
 	async remove(...args){
 		try{
-			let out = await super.remove(...args)
-			await Host.buildLookUpObj()
-			await this.bustCache(this.host)
+			let out = await super.remove(...args);
+			await Host.buildLookUpObj();
+			await this.bustCache(this.host);
 
 			return out;
 		} catch(error){

@@ -26,10 +26,17 @@ app.host = (function(app){
 	function remove(args, callack){
 		app.api.delete('host/'+ args.host, function(error, data){
 			callack(error, data);
-		})
+		});
+	}
+
+	function getCert(args, callack){
+		app.api.get('cert/'+args.host, function(error, data){
+			callack(error, data);
+		});
 	}
 
 	return {
+		getCert,
 		list: list,
 		get: get,
 		add: add,

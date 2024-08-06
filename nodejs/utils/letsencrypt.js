@@ -7,10 +7,6 @@ const sleep = require('./sleep');
 
 // https://dns.google/resolve?name=${name}&type=TXT
 
-AcmeClient.setLogger((message) => {
-    console.log('ACME:', message);
-});
-
 
 class LetsEncrypt{
 	static AcmeClient = AcmeClient;
@@ -64,15 +60,12 @@ class LetsEncrypt{
 				skipChallengeVerification: true,
 				challengeCreateFn: async (authz, challenge, keyAuthorization) => {
 					try{
-						console.log('challenge', challenge)
-						console.log(`start TXT record key=_acme-challenge.${authz.identifier.value} value=${keyAuthorization} challenge=${challenge} googleDNS=https://dns.google/resolve?name=_acme-challenge.${authz.identifier.value}&type=TXT`)
-						dnsToAdd++
+						dnsToAdd++;
 						let resCheck = await axios.get(`https://dns.google/resolve?name=_acme-challenge.${authz.identifier.value}&type=TXT`);
 						if(resCheck.data.Answer && resCheck.data.Answer.some(record => record.data === keyAuthorization)){
-							await sleep(1000);
-							dnsFound++
+							dnsFound++;
 							if(dnsFound === dnsToAdd){
-								options.onDnsCheckFound(authz, dnsFound)
+								options.onDnsCheckFound(authz, dnsFound);
 							}
 							return;
 						}
@@ -83,13 +76,11 @@ class LetsEncrypt{
 						while(true){
 							options.onDnsCheck(authz, checkCount);
 							let res = await axios.get(`https://dns.google/resolve?name=_acme-challenge.${authz.identifier.value}&type=TXT`);
-							// console.log(keyAuthorization, res.data);
 							if(res.data.Answer && res.data.Answer.some(record => record.data === keyAuthorization)){
-								dnsFound++
+								dnsFound++;
 								if(dnsFound === dnsToAdd){
-									options.onDnsCheckFound(authz, dnsFound)
+									options.onDnsCheckFound(authz, dnsFound);
 								}
-								// console.log(`found record for key=_acme-challenge.${authz.identifier.value} value=${keyAuthorization}`)
 								await sleep(10000);
 								break;
 							}
