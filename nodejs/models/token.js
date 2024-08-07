@@ -1,6 +1,7 @@
 'use strict';
 
 const Table = require('../utils/redis_model');
+const {User} = require('./user');
 const UUID = function b(a){return a?(a^Math.random()*16>>a/4).toString(16):([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,b)};
 
 
@@ -32,9 +33,13 @@ class AuthToken extends Token{
 		super(...args);
 	}
 
-	static async add(data){
+	async getUser(){
+		return await User.get(this.created_by);
+	}
+
+	static async create(data){
 		data.created_by = data.username;
-		return super.add(data)
+		return super.create(data)
 
 	}
 

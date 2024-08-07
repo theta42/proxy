@@ -3,7 +3,6 @@
 const router = require('express').Router();
 const {Host} = require('../models/host');
 
-
 const Model = Host;
 
 router.get('/', async function(req, res, next){
@@ -19,17 +18,30 @@ router.get('/', async function(req, res, next){
 router.post('/', async function(req, res, next){
 	try{
 		req.body.created_by = req.user.username;
-		let item = await Model.add(req.body);
+		let item = await Model.create(req.body);
 
 		return res.json({
-			message: `"${item[Model._key]}" added.`
+			message: `"${item[Model._key]}" added.`,
+			...item,
 		});
 	} catch (error){
+		next(error);
+	}
+});
+
+router.get('/lookup/:item', async function(req, res, next){
+	try{
+		return res.json({
+			string: req.params.item,
+			results: await Model.lookUp(req.params.item),
+		});
+
+	}catch(error){
 		return next(error);
 	}
 });
 
-router.get('/:item(*)', async function(req, res, next){
+router.get('/:item', async function(req, res, next){
 	try{
 
 		return res.json({
@@ -41,14 +53,16 @@ router.get('/:item(*)', async function(req, res, next){
 	}
 });
 
-router.put('/:item(*)', async function(req, res, next){
+router.put('/:item', async function(req, res, next){
 	try{
 		req.body.updated_by = req.user.username;
 		let item = await Model.get(req.params.item);
-		await item.update(req.body);
+		item = await item.update(req.body);
 
 		return res.json({
-			message: `"${req.params.item}" updated.`
+			message: `"${req.params.item}" updated.`,
+			__requestedHost: req.params.item,
+			...item,
 		});
 
 	}catch(error){
@@ -57,13 +71,14 @@ router.put('/:item(*)', async function(req, res, next){
 	}
 });
 
-router.delete('/:item(*)', async function(req, res, next){
+router.delete('/:item', async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		let count = await item.remove();
 
 		return res.json({
 			message: `${req.params.item} deleted`,
+			...item,
 		});
 
 	}catch(error){
@@ -71,15 +86,16 @@ router.delete('/:item(*)', async function(req, res, next){
 	}
 });
 
-router.get('/lookup/:item(*)', async function(req, res, next){
+router.put('/:item/renew', async function(req, res, next){
 	try{
-		return res.json({
-			string: req.params.item,
-			results: await Model.lookUp(req.params.item),
-		});
+		let item = await Model.get(req.params.item);
+		item.createWildcardCert();
 
+		return res.json({
+			message: `Requesting wildcard cert for ${req.params.item}`,
+		})
 	}catch(error){
-		return next(error);
+		next(error);
 	}
 });
 

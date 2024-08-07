@@ -1,6 +1,6 @@
 'use strict';
 
-const conf = require('../app').conf;
+const conf = require('../conf');
 
 const User = require(`./user_${conf.userModel}`)
 

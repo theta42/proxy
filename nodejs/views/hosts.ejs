@@ -1,139 +1,251 @@
 <%- include('top') %>
-<script id="rowTemplate" type="text/html">
-	<tr action="api" class="<<fresh>>">
-		<input type="hidden" name="host" value="<< host >>" />
-		<td><a target="_blank" href="<<forcessl>><<host>>"><<forcessl>><<host>></a></td>
-		<td><< targetssl >><< ip >>:<< targetPort >></td>
-		<td class="hidden-xs"><<updated_on>></td>
-		<td>
-			<button type="button" data-host="<< host >>" onclick="editHost(this);" class="btn btn-sm btn-default">Edit</button>
-			<button type="button" onclick="app.host.remove({host:'<<host>>'}, function(){tableAJAX('Host <<host>> delete.')})" class="btn btn-sm btn-default">Delete</button>
-		</td>
-	</tr>
-</script>
 <script type="text/javascript">
-	var currentEditHost;
+	// Require login to see this page.
+	app.auth.forceLogin()
+</script>
 
-	function editHost(btn){
-		var btn = $(btn);
-		currentEditHost = btn.data('host');
-		$('.editWindow').slideDown('fast');
-		$('.editWindow .panel-title .pull-left').html("Edit "+ btn.data('host'))
+<style type="text/css">
+	label.form-label{
+		font-weight: bold;
+		margin-bottom: 1px;
+	}
 
-		$('div.editWindow .panel-body span').html($('#addHost').html())
-		$('div.editWindow .panel-body span button').remove()
+	.card-title{
+		font-weight: bold;
+	}
 
-		$(".editWindow input[name='edit_host']").val(btn.data('host'));
+	div.hostEditPanel{
+		margin-bottom: 1em;
+	}
+	div.form-group{
+		margin-bottom: 1em;
+	}
+	/* my Div class for my search bar */
+	.search-wrapper {
+		display: flex;
+		gap: .5rem;
+		align-items: center;
+		margin-top: 10px;
+	}
+	/* The input bar  */
+	input {
+		font-size: 1rem;
+		border-top-left-radius: 5px !important;
+		border-bottom-left-radius: 5px !important;
+		border-top-right-radius: 5px !important;
+		border-bottom-right-radius: 5px !important;    
+	}
+</style>
 
-		app.host.get(currentEditHost, function(error, data){
-			console.log(data)
-			$.each( data.results, function( key, value ) {
-				if(typeof value == "boolean"){
-					$(".editWindow #"+ key +"-"+ value).prop('checked', true)
-				}else{
-					$(".editWindow input[name='" + key + "']").val(value);
-				}
-				$('.editWindow .panel-body').slideDown('fast');
+<script type="text/javascript">
+	var $editHostForm;
+
+	function hostParseRow(host) {
+		host['updated_on_text'] = moment(host['updated_on'], "x").fromNow();
+		host['wildcard_expires_text'] = moment(host['wildcard_expires'], "x").fromNow();
+		host['targetssl_text'] = host['targetssl'] ? 'https://' : 'http://';
+		host['forcessl_text'] = host['forcessl'] ? 'https://' : 'http://';
+		host['wildcard_text'] = host['is_wildcard'] ? host['wildcard_status'] : 'Auto';
+		host['wildcard_text_bg'] = 'warning';
+		if(!host['is_wildcard']){
+			host['wildcard_text_bg'] = 'success';
+		}
+		if(host['wildcard_status'] == 'Done'){
+			host['wildcard_text_bg'] = 'success';
+			host['wildcard_text'] = undefined;
+		}
+		if(host['wildcard_status'].includes('failed')){
+			host['wildcard_text_bg'] = 'danger';
+		}
+
+		return host;
+	}
+
+	function hostPopulate(){
+		app.host.list(function(error, res){
+			if(error) return app.util.actionMessage(error, $.scope.hosts.$this, 'danger');
+
+			for(let host of res){
+				$.scope.hosts.push(hostParseRow(host));
+			}
+
+			$.scope.hosts.__setPut(function($el, item, list){
+				$el.addClass('table-success');
+				$el.fadeIn(2000, function(){
+					$el.removeClass('table-success');
+				});
 			});
 		});
 	}
 
-	function tableAJAX(actionMessage){
+	function hostEditCancle(){
+		$('tr.jq-repeat-hosts').each(function(idx, el){
+			$(el).removeClass('table-warning');
+		});
+		$.scope.editHost.remove();
+	}
 
-		$('#tableAJAX').html('').hide();
-		app.util.actionMessage('')
+	function hostEditOpen(btn, host){
+		hostEditCancle();
+		host = $.scope.hosts.getByKey(host);
+		host.__jq_$el.addClass('table-warning');
+		$.scope.editHost.update({...host, form: $editHostForm.html()});
 
-		app.host.list(function(err, data){
-			if(err) return app.util.actionMessage(err, {type: 'danger'});	
-			if(data){
-				$.each(data, function( key, value ) {
-					value['updated_on'] = moment(value['updated_on'], "x").fromNow();
-					value['targetssl'] = value['targetssl'] ? "https://" : "http://";
-					value['forcessl'] = value['forcessl'] ? "https://" : "http://";
-					host_row = ich.rowTemplate(value);
-					$('#tableAJAX').append(host_row);
-				});
-				app.util.actionMessage(actionMessage || '', {type: 'info'});
-				$('#tableAJAX').fadeIn('slow');
+		$.each(host, function( key, value ) {			if(typeof value == "boolean"){
+				$(".hostEditPanel #"+ key +"-"+ value).prop('checked', true)
 			}else{
-				app.util.actionMessage('No hosts...', {type: 'info'});
+				$(".hostEditPanel input[name='" + key + "']").val(value);
 			}
+		});
+	};
+
+	function hostDownloadCert(host, type){
+		app.host.getCert({host}, function(error, data){
+			if(error) app.util.actionMessage(error.message, $.scope.hosts.$this, 'danger');
+			app.util.downloadFile(`${host}-${type}.crt`, data[type])
 		});
 	}
 
+	function hostSearchInput(){
+		//search bar html event logic stolen from here
+		// https://github.com/WebDevSimplified/js-search-bar/blob/main/script.js
+		let inputValue = $(event.target).val().toLowerCase();
+
+		// on each input detected we need to get all host list that was called by the hostPopulate function which is store in 
+		// $.scope.hosts and then we need to loop through each host and check if the host name is equal to the input value
+		// if it is we will display the host if not we will hide it
+		for(let hostObj of $.scope.hosts){
+			if (hostObj.host.toLowerCase().includes(inputValue)) {
+				hostObj.__jq_$el.show();
+			} else {
+				hostObj.__jq_$el.hide();
+			}
+		}
+	};
+
 	$(document).ready(function(){
-		tableAJAX(); //populate the table
-		setInterval(tableAJAX, 30000);
+		$editHostForm = $('#addHost').clone();
+		$editHostForm.find('hr.buttonBreak').nextAll().remove();
+		// $editHostForm.find('.autoSll').addClass('bg-secondary');
+		$editHostForm.find('[name=is_wildcard').attr('disabled', true);
+		hostPopulate(); //populate the table
 
-		$('form.addHost').on('submit', function(){
-			event.preventDefault();
+		$.scope.hosts.__setTake(function($el, item, list){
+			$el.addClass('table-danger');
+			$el.fadeOut(1000, function(){
+				$el.remove()
+			});
+		});
 
-			$form = $(this);
+		$.scope.hosts.__setUpdate(function($el, $render, item, list){
+			$render.show()
+			$el.replaceWith($render);
+		});
 
-			var action = $($form.find('button[type="submit"]')[0]).data('type')
+		$.scope.editHost.__setPut(function($el, item, list){
+			$el.slideDown();
+		});
 
-			app.util.actionMessage('')
+		$.scope.editHost.__setTake(function($el, item, list){
+			$el.slideUp();
+		});
 
-			if($form.attr('isValid') === 'true'){
-				var formdata = $form.serializeObject();
-				if(formdata.targetPort) formdata.targetPort = Number(formdata.targetPort);
-				if(formdata.targetssl) formdata.targetssl = formdata.targetssl == 'true' ? true : false;
-				if(formdata.forcessl) formdata.forcessl = formdata.forcessl == 'true' ? true : false;
+		// app.subscribe(/^model:Host/, function(data, topic){
+		// 	console.log(topic, data);
+		// });
 
-				app.host[action](formdata, function(error, data){
-					if(error){
-						console.log('error data',data)
-						app.util.actionMessage(error + data.message, {type: 'danger'});
-						return;
-					}
-					
-					if(action == 'edit') $('.editWindow').slideUp('fast');
+		app.subscribe(/^model:Host:create/, function(data, topic){
+			let [a,b, action, host] = topic.split(':');
 
-					app.util.actionMessage(data.message || 'Error!', {type: 'info'});
-					tableAJAX("Added "+ formdata.host);
-					$form.trigger('reset');
-				})
+			if($.scope.hosts.indexOf(host) >= 0){
+				$.scope.hosts.update(host, hostParseRow(data));
+			}else{
+				$.scope.hosts.unshift(hostParseRow(data));
 			}
 		});
+
+		app.subscribe(/^model:Host:update/, function(data, topic){
+			let [a,b, action, host] = topic.split(':');
+
+			if($.scope.hosts.indexOf(host) >= 0){
+				$.scope.hosts.update(host, hostParseRow(data));
+			}else{
+				$.scope.hosts.unshift(hostParseRow(data));
+			}
+		});
+
+		app.subscribe(/^model:Host:remove/, function(data, topic){
+			let [a,b, action, host] = topic.split(':');
+
+			$.scope.hosts.remove(host);
+		});
+
 	});
 </script>
 <div class="row" style="display:none">
-	<div class="col-md-4">
-		<div class="panel panel-danger editWindow" style="display:none">
-			<div class="panel-heading">
-				<div class="panel-title">
-					<div class="pull-left">Edit $host!</div>
-					&nbsp;
-					<div class="pull-right">
-						<label class="glyphicon glyphicon-circle-arrow-down"></label>
-						<label class="glyphicon glyphicon-remove-circle"></label>
-					</div>
-				</div>
+	<div class="col col-md-12 col-lg-4 col-xl-3 col-xxl-2">
+	<!-- 
+		left column 
+	-->
+		<div jq-repeat="editHost" class="card shadow-lg border-warning hostEditPanel" style="display:none">
+			<!--
+				Edit host card
+			-->
+			<div class="card-header text-center bg-warning">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-pencil"></i>
+				</span>
+				<span class="card-title">
+					Edit {{ host }}
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+					<i class="fa-solid fa-circle-xmark" onclick="hostEditCancle()"></i>
+				</span>
 			</div>
-			<div class="panel-body">
-				<form class="addHost" onsubmit="$(this).validate()">
-					<span></span>
+
+			<div class="card-body">
+				<form class="addHost" method="PUT" action="/host/{{ host }}" onsubmit="formAJAX(this)" evalAJAX="hostEditCancle()">
+					{{{ form }}}
 					<input type="hidden" name="edit_host" />
-					<button type="submit" data-type="edit" class="btn btn-danger host-submit">Update</button>
-					<button class="btn btn-link" type="reset">Cancel</button>
+					<button type="submit" data-type="edit" class="btn btn-warning">
+						<i class="fa-solid fa-pencil"></i>
+						Update
+					</button>
+					<button class="btn btn-secondary" type="reset" onclick="hostEditCancle()">
+						<i class="fa-solid fa-ban"></i>
+						Cancel
+					</button>
 				</form>
 			</div>
 		</div>
 
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<div class="panel-title">
-					Add New Proxy
-					<div class="pull-right">
-						<label class="glyphicon glyphicon-circle-arrow-down panel-toggle"></label>
-					</div>
-				</div>
+		<div class="card shadow-lg hostAddPanel">
+			<!--
+				Add new host card
+			-->
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-plus"></i>
+				</span>
+				<span class="card-title">
+					New Entry
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
 			</div>
-			<div class="panel-body">
-				<form class="addHost" id="addHost" onsubmit="$(this).validate()">
-					
+
+			<div class="card-header actionMessage" style="display:none"></div>
+
+			<div class="card-body">
+				<form class="addHost" id="addHost" method="POST" action="host" onsubmit="formAJAX(this)">
+
 					<div class="form-group">
-						<label class="control-label">Incoming SSL</label>
+						<label class="form-label">
+							Incoming SSL
+						</label>
+						<br />
 						<div class="radio">
 							<label>
 								<input type="radio" name="forcessl" id="forcessl-true" value="true" checked>
@@ -148,23 +260,54 @@
 						</div>
 					</div>
 
-					<div class="form-group">
-						<label class="control-label">Hostname</label>
-						<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
+					<div class="form-group autoSll">
+						<label class="form-label">
+							Auto SSL
+						</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="is_wildcard" id="is_wildcard-false" value="false" checked>
+								On demand certs
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="is_wildcard" id="is_wildcard-true" value="true">
+								Request Wildcard cert
+							</label>
+						</div>
 					</div>
 
 					<div class="form-group">
-						<label class="control-label">Target IP or Host Name</label>
+						<label for='host' class="form-label">
+							Incoming Host Name
+						</label>
+						<div>
+							<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
+							<b class="invalid-feedback"></b>
+						</div>
+					</div>
+
+					<div class="mb-3 form-group">
+						<label for="ip" class="form-label">
+							Target IP or Host Name
+						</label>
 						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10" validate=":3" />
+						<b class="invalid-feedback"></b>
 					</div>
 
 					<div class="form-group">
-						<label class="control-label">Target TCP Port</label>
+						<label for="targetPort" class="form-label">
+							Target TCP Port
+						</label>
 						<input type="number"  name="targetPort" class="form-control" value="80" min="0" max="65535" />
+						<b class="invalid-feedback"></b>
 					</div>
 
 					<div class="form-group">
-						<label class="control-label">Target SSL</label>
+						<label class="form-label">
+							Target SSL
+						</label>
 						<div class="radio">
 							<label>
 								<input type="radio" name="targetssl" id="targetssl-true" value="true">
@@ -177,43 +320,131 @@
 								Proxy to HTTP <b>Recommended</b>
 							</label>
 						</div>
+						<b class="invalid-feedback"></b>
 					</div>
-	
-					<button type="submit" data-type="add" class="btn btn-default host-submit">Add</button>
+					<hr class="buttonBreak" />
+					<button type="submit" class="btn btn-success">
+						<i class="fa-solid fa-plus"></i>
+						Add
+					</button>
 				</form>
 			</div>
 		</div>
 	</div>
 
-	<div class="col-md-8">
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<div class="panel-title">
+	<div class="col col-md-12 col-lg-8 col-xl-9 col-xxl-10">
+		<!--
+			Right column
+		-->
+		<div class="card shadow-lg hostListPanel">
+			<!--
+				List current hosts
+			-->
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-network-wired"></i>
+				</span>
+				<span class="card-title">
 					Proxy List
-					<div class="pull-right">
-						<label class="glyphicon glyphicon-circle-arrow-down panel-toggle"></label>
-						<label class="glyphicon glyphicon-refresh"></label>
-					</div>
-				</div>
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
 			</div>
-			<div class="panel-body" style="padding-bottom:0">
-				<div class="alert alert-warning actionMessage" style="display:none">
-					<!-- Message after AJAX action is preformed -->
-				</div>
-				<div class="table-responsive">
-					<table class="table">
-						<thead>
-							<th>Hostname</th>
-							<th>target</th>
-							<th class="hidden-xs">Updated</th>
-							<th>Actions</th>
-						</thead>
-						<tbody id="tableAJAX">
-							<!-- ajax loaded table -->
-						</tbody>
-					</table>
-				</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+			<div class="card-body search-wrapper">
+				<label class="form-label" for="search" style="margin-left: -5px;">
+					Search Hosts:
+				</label>
+				<input type="search" oninput="hostSearchInput()">
 			</div>
+			<table class="card-body table table-striped" style="margin-bottom:0">
+	
+				<thead>
+					<th>
+						SSL Expire
+					</th>
+					<th>
+						Host Name
+					</th>
+					<th>
+						target
+					</th>
+					<th class="hidden-xs">
+						Updated
+					</th>
+					<th>
+						Actions
+					</th>
+				</thead>
+
+				<tbody class="card-body" id="hostsTable">
+					<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
+						<td class="table-{{wildcard_text_bg}}">
+							{{{ wildcard_text }}}
+							{{#wildcard_expires}}
+								<span class="momentFromNow" data-date="{{ wildcard_expires }}" >{{wildcard_expires_text}}</span>
+							{{/wildcard_expires}}
+						</td>
+						<td>
+							<a target="_blank" href="{{ forcessl_text }}{{ host }}">
+								{{{ forcessl_text }}}{{ host }}
+							</a>
+						</td>
+						<td>
+							{{{ targetssl_text }}}{{ ip }}:{{ targetPort }}
+						</td>
+						<td class="hidden-xs momentFromNow" data-date="{{ updated_on }}" >
+							{{ updated_on_text }}
+						</td>
+						<td>
+							<div class="btn-group">
+
+								<div class="btn-group" role="group">
+									<button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+										<i class="fa-brands fa-expeditedssl"></i>
+										Certs
+									</button>
+									<ul class="dropdown-menu">
+										<li>
+											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'cert_pem')">
+												<i class="fa-solid fa-certificate"></i>
+												Cert
+												<i class="fa-solid fa-file-arrow-down float-end"></i>
+											</button>
+										</li>
+										<li>
+											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'fullchain_pem')">
+												<i class="fa-solid fa-link"></i>
+												Full Chain
+												<i class="fa-solid fa-file-arrow-down float-end"></i>
+											</button>
+										</li>
+										<li>
+											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'privkey_pem')">
+												<i class="fa-solid fa-key"></i>
+												Private key
+												<i class="fa-solid fa-file-arrow-down float-end"></i>
+											</button>
+										</li>
+									</ul>
+								</div>
+
+								<button type="button" onclick="hostEditOpen(this, '{{ host }}');" class="btn btn-sm btn-warning">
+									<i class="fa-solid fa-pencil"></i>
+									Edit
+								</button>
+								<button type="button" method="DELETE" action="host/{{host}}" onclick="formAJAX()" class="btn btn-sm btn-danger">
+									<i class="fa-solid fa-trash-can"></i>
+									Delete
+								</button>
+							</div>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+
 		</div>
 	</div>
 </div>

@@ -1,6 +1,17 @@
 'use strict';
 
 const Table = require('../utils/redis_model');
+const ModelPs = require('../utils/model_pubsub');
+
+const tldExtract = require('tld-extract').parse_host;
+const PorkBun = require('../utils/porkbun');
+const LetsEncrypt = require('../utils/letsencrypt');
+const conf = require('../conf');
+
+let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
+let letsEncrypt = new LetsEncrypt({
+	directoryUrl: LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
+});
 
 
 class Host extends Table{
@@ -15,24 +26,44 @@ class Host extends Table{
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
-		'created_by': {isRequired: true, type: 'string', min: 3, max: 500},
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
+		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
+		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500, default: 'Requesting'},
+		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
+		'wildcard_expires': {isRequired: false, type: 'number'},
 	}
 
 	static lookUpObj = {};
 	static __lookUpIsReady = false;
 
-
-
-	async addCache(host, parentOBJ){
+	static async addCache(host, parentOBJ){
 		try{
-			await this.add({...parentOBJ, host, is_cache: true}, true)
-			await Cached.add({
+
+			console.log('addCache host:', host, 'parentOBJ host', parentOBJ.host)
+			parentOBJ = await this.get(parentOBJ.host);
+
+			if(parentOBJ.is_cache){
+				console.log('addCache parentOBJ is chace, skipping')
+				return;
+			}
+
+			console.log('addCache, corrent parent?', parentOBJ.wildcard_parent || parentOBJ.host)
+			console.log('addCache, got parent', parentOBJ)
+
+			await this.create({
+				...parentOBJ,
+				host: host,
+				is_cache: true,
+				is_wildcard: false,
+				wildcard_parent: parentOBJ.host
+			}, true);
+
+			await Cached.create({
 				host: host,
 				parent: parentOBJ.host
 			});
 		}catch(error){
-			console.error('add cahce error', {...parentOBJ, host, is_cache: true}, error)
+			console.error('add cache error', {...parentOBJ, host, is_cache: true}, error)
 			throw error;
 		}
 	}
@@ -55,22 +86,129 @@ class Host extends Table{
 		}
 	}
 
-	static async add(...args){
+	static async create(data, ...args){
 		try{
-			let out = await super.add(...args)
-			await this.buildLookUpObj()
+			let out = await super.create(data, ...args);
+			await this.buildLookUpObj();
+			if(out.is_wildcard) out.createWildcardCert();
 
 			return out;
+
 		} catch(error){
 			throw error;
+		}
+	}
+
+	async createWildcardCert(){
+		if(!this.host.startsWith('*.')) throw new Error('not wild card');
+
+		try{
+			let host = this;
+
+			await host.update({
+				wildcard_status: 'Requesting',
+			});
+			let cert = await letsEncrypt.dnsWildcard(this.host, {
+				challengeCreateFn: async (authz, challenge, keyAuthorization) => {
+					await host.update({
+						wildcard_status: `Adding record`
+					});
+					try{
+						let parts = tldExtract(authz.identifier.value);
+
+						let res = await porkBun.createRecordForce(
+							parts.domain,
+							{
+								type:'TXT',
+								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`,
+								content: `${keyAuthorization}`
+							}
+						);
+					}catch(error){
+						console.log('model Host challengeCreateFn error:', error)
+						await host.update({
+							wildcard_status: `Add DNS record failed`
+						});
+					}
+				},
+				onDnsCheck: async(authz, checkCount)=>{
+					await host.update({
+						wildcard_status: `${checkCount} Checking DNS`
+					});
+				},
+				onDnsCheckFail: async(authz, error)=>{
+					await host.update({
+						wildcard_status: `DNS check failed for ${authz.identifier.value}`
+					});
+				},
+				onDnsCheckFound: async(authz)=>{
+					await host.update({
+						wildcard_status: `DNS check found`
+					});
+				},
+				onDnsCheckSuccess: async(authz)=>{
+					await host.update({
+						wildcard_status: `DNS check success`
+					})
+				},
+				onDnsCheckRemove: async(authz)=>{
+					await host.update({
+						wildcard_status: `DNS remove record`
+					})
+				},
+				challengeRemoveFn: async (authz, challenge, keyAuthorization)=>{
+					await host.update({
+						wildcard_status: `DNS remove record`
+					})
+					try{
+						let parts = tldExtract(authz.identifier.value);
+						await porkBun.deleteRecords(
+							parts.domain,
+							{
+								type:'TXT',
+								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''
+							}`,
+							content: `${keyAuthorization}`}
+						);
+
+					}catch(error){
+						await host.update({
+							wildcard_status: `DNS remove record failed for ${authz.identifier.value}`
+						})
+					}
+				},
+			});
+
+			let toAdd = {
+				cert_pem: cert.cert.split('\n\n')[0],
+				fullchain_pem: cert.cert,
+				privkey_pem: cert.key.toString(),
+				csr_pem: cert.csr.toString(),
+				expiry: 4120307657,
+				real_expiry: +LetsEncrypt.AcmeClient.crypto.readCertificateInfo(cert.cert).notAfter/1000,
+			}
+
+
+			await this.constructor.redisClient.SET(`${this.host}:latest`, JSON.stringify(toAdd));
+			await this.update({
+				wildcard_status: `Done`,
+				wildcard_expires: toAdd.real_expiry*1000,
+			});
+
+			return this;
+		}catch(error){
+			console.log('le failed', error)
+			this.update({
+				wildcard_status: `LE failed`
+			});
 		}
 	}
 
 	async update(...args){
 		try{
 			let out = await super.update(...args)
-			await this.bustCache(this.host)
-			await Host.buildLookUpObj()
+			await this.bustCache(this.host);
+			await Host.buildLookUpObj();
 
 			return out;
 		} catch(error){
@@ -80,9 +218,9 @@ class Host extends Table{
 
 	async remove(...args){
 		try{
-			let out = await super.remove(...args)
-			await Host.buildLookUpObj()
-			await this.bustCache(this.host)
+			let out = await super.remove(...args);
+			await Host.buildLookUpObj();
+			await this.bustCache(this.host);
 
 			return out;
 		} catch(error){
@@ -184,7 +322,12 @@ class Host extends Table{
 		return true;
 	}
 
+	static test(pass){
+		return `yes ${pass}`
+	}
+
 }
+
 
 class Cached extends Table{
 	static _key = 'host';
@@ -200,13 +343,27 @@ class Cached extends Table{
 	await Host.buildLookUpObj();
 })()
 
-module.exports = {Host};
+module.exports = {Host: ModelPs(Host)};
 
 (async function(){
 try{
-
-
 	// await Host.lookUpReady();
+	// let res = await Host.create({
+	// 	host: '*.test.holycore.quest',
+	// 	ip: '192.168.1.47',
+	// 	'created_by': 'william',
+	// 	'targetPort': 8006,
+	// 	'forcessl': false,
+	// 	'targetssl': true,
+	// 	'is_wildcard': true,
+	// })
+	// console.log('IIFE res:\n', res)
+
+	// console.log(Host.test(55))
+	// console.log(await Host.listDetail())
+	// console.log('IIFE lookup:', Host.lookUp('bld3324sdf.test.holycore.quest'))
+
+
 
 	// console.log(Host.lookUpObj)
 

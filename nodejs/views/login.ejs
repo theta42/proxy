@@ -3,54 +3,76 @@
 
 	app.auth.isLoggedIn(function(error, isLoggedIn){
 		if(isLoggedIn){
-			window.location.href = app.util.getUrlParameter('redirect') || '/';
+			app.auth.logInRedirect();
 		}
 	})
 
-	$(document).ready(function(){
-		$( "form[action='login']" ).submit(function( event ) {
-			event.preventDefault();
-			$form = $(this);
-			app.util.actionMessage('')
-
-			if($form.attr('isValid') !== 'true'){
-				console.log('')
-				return app.util.actionMessage('Please fix the errors bellow!')
-			}
-
-			app.auth.logIn($form.serializeObject(), function(error, data){
-				if(data){
-					app.util.actionMessage('Login successful!');
-					window.location.href = app.util.getUrlParameter('redirect') || '/';
-
-				}else{
-					app.util.actionMessage('Login Failed, please try again');						
-				}
-			});
-		});
-	});
 </script>
 
-<div class="row">
+<div class="row" style="display: none;">
 	<div class="col-md-4">
-		<div class="panel panel-default">
-			<div class="panel-heading">
-				<div class="panel-title">Log in</div>
+		<div class="shadow-lg card">
+
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-lock"></i>
+				</span>
+				<span class="card-title">
+					User Login
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
 			</div>
-			<div class="panel-body">
-				<div class="alert alert-warning actionMessage" style="display:none">
-				</div>
-				<form action="login" onsubmit="$(this).validate()">
+
+
+
+
+
+
+			<div class="card-header shadow actionMessage" style="display:none"></div>
+			<div class="card-body">
+				<form action="auth/login" onsubmit="formAJAX(this)" evalAJAX="
+					app.auth.setToken(data.token);
+					app.auth.logInRedirect();
+				">
 					<input type="hidden" name="redirect" value="<%= redirect %>">
-					<div class="form-group">
+
+					<div class="mb-3">
+						<label></label>
+						<div class="input-group">
+							<span class="input-group-text" id="addon-wrapping"><i class="fa-solid fa-user-tie"></i></span>
+							<input type="text" name="username" class="form-control" placeholder="jsmith" aria-label="Username" aria-describedby="addon-wrapping">
+						</div>
+					</div>
+					<div class="mb-3">
+						<div class="input-group">
+							<span class="input-group-text" id="addon-wrapping"><i class="fa-solid fa-key"></i></span>
+							<input type="password" name="password" class="form-control" placeholder="huunteR!23" aria-label="Username" aria-describedby="addon-wrapping">
+						</div>
+					</div>
+
+<!-- 					<div class="group">
 						<label class="control-label">User name</label>
-						<input type="text" name="username" class="form-control" placeholder="User" validate="user:3" />
+						<div class="input-group mb-3 shadow">
+						  <div class="input-group-prepend">
+						    <span class="input-group-text" ><i class="fa-solid fa-user-tie"></i></span>
+						  </div>
+							<input type="text" name="username" class="input-control" placeholder="jsmith" />
+						</div>
 					</div>
-					<div class="form-group">
+
+					<div class="group">
 						<label class="control-label">Password</label>
-						<input type="password" name="password" class="form-control" placeholder="Password" validate="password:5" />
-					</div>
-					<button type="submit" class="btn btn-default" >Log in</button>
+						<div class="input-group mb-3 shadow">
+						  <div class="input-group-prepend">
+						    <span class="input-group-text" ><i class="fa-solid fa-key"></i></span>
+						  </div>
+							<input type="password" name="password" class="input-control" placeholder="hunter123!"/>
+						</div>
+					</div> -->
+					<hr />
+					<button type="submit" class="btn btn-outline-dark"><i class="fa-solid fa-right-to-bracket"></i> Log in</button>
 				</form>
 			</div>
 		</div>

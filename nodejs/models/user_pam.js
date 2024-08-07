@@ -68,7 +68,7 @@ User.exists = async function(data){
 	}
 };
 
-User.add = async function(data) {
+User.create = async function(data) {
 	try{
 		data = objValidate.processKeys(this.keyMap, data);
 		let systemUser = await linuxUser.addUser(data.username);
