@@ -35,13 +35,12 @@
 		border-top-right-radius: 5px !important;
 		border-bottom-right-radius: 5px !important;    
 	}
-
 </style>
 
 <script type="text/javascript">
 	var $editHostForm;
 
-	function parseHostRow(host) {
+	function hostParseRow(host) {
 		host['updated_on_text'] = moment(host['updated_on'], "x").fromNow();
 		host['wildcard_expires_text'] = moment(host['wildcard_expires'], "x").fromNow();
 		host['targetssl_text'] = host['targetssl'] ? 'https://' : 'http://';
@@ -62,12 +61,12 @@
 		return host;
 	}
 
-	function populateHosts(){
+	function hostPopulate(){
 		app.host.list(function(error, res){
 			if(error) return app.util.actionMessage(error, $.scope.hosts.$this, 'danger');
 
 			for(let host of res){
-				$.scope.hosts.push(parseHostRow(host));
+				$.scope.hosts.push(hostParseRow(host));
 			}
 
 			$.scope.hosts.__setPut(function($el, item, list){
@@ -79,17 +78,17 @@
 		});
 	}
 
-	function cancleHostEdit(){
-		$('#hostsTable').find('tr').each(function(idx, el){
+	function hostEditCancle(){
+		$('tr.jq-repeat-hosts').each(function(idx, el){
 			$(el).removeClass('table-warning');
 		});
 		$.scope.editHost.remove();
 	}
 
-	function editHost(btn, host){
-		cancleHostEdit();
-		$(btn).closest('tr').addClass('table-warning');
+	function hostEditOpen(btn, host){
+		hostEditCancle();
 		host = $.scope.hosts.getByKey(host);
+		host.__jq_$el.addClass('table-warning');
 		$.scope.editHost.update({...host, form: $editHostForm.html()});
 
 		$.each(host, function( key, value ) {			if(typeof value == "boolean"){
@@ -100,25 +99,36 @@
 		});
 	};
 
-	function deleteHost(host){
-		app.host.remove({host: host}, function(error, data){
-			if(error) app.util.actionMessage(error.message, $.scope.hosts.$this, 'danger');
-		});
-	}
-
-	function downloadCert(host, type){
+	function hostDownloadCert(host, type){
 		app.host.getCert({host}, function(error, data){
 			if(error) app.util.actionMessage(error.message, $.scope.hosts.$this, 'danger');
 			app.util.downloadFile(`${host}-${type}.crt`, data[type])
 		});
 	}
 
+	function hostSearchInput(){
+		//search bar html event logic stolen from here
+		// https://github.com/WebDevSimplified/js-search-bar/blob/main/script.js
+		let inputValue = $(event.target).val().toLowerCase();
+
+		// on each input detected we need to get all host list that was called by the hostPopulate function which is store in 
+		// $.scope.hosts and then we need to loop through each host and check if the host name is equal to the input value
+		// if it is we will display the host if not we will hide it
+		for(let hostObj of $.scope.hosts){
+			if (hostObj.host.toLowerCase().includes(inputValue)) {
+				hostObj.__jq_$el.show();
+			} else {
+				hostObj.__jq_$el.hide();
+			}
+		}
+	};
+
 	$(document).ready(function(){
 		$editHostForm = $('#addHost').clone();
 		$editHostForm.find('hr.buttonBreak').nextAll().remove();
 		// $editHostForm.find('.autoSll').addClass('bg-secondary');
 		$editHostForm.find('[name=is_wildcard').attr('disabled', true);
-		populateHosts(); //populate the table
+		hostPopulate(); //populate the table
 
 		$.scope.hosts.__setTake(function($el, item, list){
 			$el.addClass('table-danger');
@@ -148,9 +158,9 @@
 			let [a,b, action, host] = topic.split(':');
 
 			if($.scope.hosts.indexOf(host) >= 0){
-				$.scope.hosts.update(host, parseHostRow(data));
+				$.scope.hosts.update(host, hostParseRow(data));
 			}else{
-				$.scope.hosts.unshift(parseHostRow(data));
+				$.scope.hosts.unshift(hostParseRow(data));
 			}
 		});
 
@@ -158,9 +168,9 @@
 			let [a,b, action, host] = topic.split(':');
 
 			if($.scope.hosts.indexOf(host) >= 0){
-				$.scope.hosts.update(host, parseHostRow(data));
+				$.scope.hosts.update(host, hostParseRow(data));
 			}else{
-				$.scope.hosts.unshift(parseHostRow(data));
+				$.scope.hosts.unshift(hostParseRow(data));
 			}
 		});
 
@@ -170,22 +180,6 @@
 			$.scope.hosts.remove(host);
 		});
 
-		//search bar html event logic stolen from here
-		// https://github.com/WebDevSimplified/js-search-bar/blob/main/script.js
-		$('[host-search]').on("input", function() {
-			let inputValue = $(this).val().toLowerCase();
-
-			// on each input detected we need to get all host list that was called by the populateHosts function which is store in 
-			// $.scope.hosts and then we need to loop through each host and check if the host name is equal to the input value
-			// if it is we will display the host if not we will hide it
-			for(let hostObj of $.scope.hosts){
-				if (hostObj.host.toLowerCase().includes(inputValue)) {
-					hostObj.__jq_$el.show();
-				} else {
-					hostObj.__jq_$el.hide();
-				}
-			}
-		});
 	});
 </script>
 <div class="row" style="display:none">
@@ -206,19 +200,19 @@
 				</span>
 				<span class="float-end">
 					<i class="fa-solid fa-circle-minus"></i>
-					<i class="fa-solid fa-circle-xmark" onclick="cancleHostEdit()"></i>
+					<i class="fa-solid fa-circle-xmark" onclick="hostEditCancle()"></i>
 				</span>
 			</div>
 
 			<div class="card-body">
-				<form class="addHost" method="PUT" action="/host/{{ host }}" onsubmit="formAJAX(this)" evalAJAX="cancleHostEdit()">
+				<form class="addHost" method="PUT" action="/host/{{ host }}" onsubmit="formAJAX(this)" evalAJAX="hostEditCancle()">
 					{{{ form }}}
 					<input type="hidden" name="edit_host" />
 					<button type="submit" data-type="edit" class="btn btn-warning">
 						<i class="fa-solid fa-pencil"></i>
 						Update
 					</button>
-					<button class="btn btn-secondary" type="reset" onclick="cancleHostEdit()">
+					<button class="btn btn-secondary" type="reset" onclick="hostEditCancle()">
 						<i class="fa-solid fa-ban"></i>
 						Cancel
 					</button>
@@ -363,7 +357,7 @@
 				<label class="form-label" for="search" style="margin-left: -5px;">
 					Search Hosts:
 				</label>
-				<input type="search" id="search" host-search>
+				<input type="search" oninput="hostSearchInput()">
 			</div>
 			<table class="card-body table table-striped" style="margin-bottom:0">
 	
@@ -385,7 +379,7 @@
 					</th>
 				</thead>
 
-				<tbody id="hostsTable">
+				<tbody class="card-body" id="hostsTable">
 					<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
 						<td class="table-{{wildcard_text_bg}}">
 							{{{ wildcard_text }}}
@@ -414,21 +408,21 @@
 									</button>
 									<ul class="dropdown-menu">
 										<li>
-											<button type="button" class="dropdown-item" onclick="downloadCert('{{host}}', 'cert_pem')">
+											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'cert_pem')">
 												<i class="fa-solid fa-certificate"></i>
 												Cert
 												<i class="fa-solid fa-file-arrow-down float-end"></i>
 											</button>
 										</li>
 										<li>
-											<button type="button" class="dropdown-item" onclick="downloadCert('{{host}}', 'fullchain_pem')">
+											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'fullchain_pem')">
 												<i class="fa-solid fa-link"></i>
 												Full Chain
 												<i class="fa-solid fa-file-arrow-down float-end"></i>
 											</button>
 										</li>
 										<li>
-											<button type="button" class="dropdown-item" onclick="downloadCert('{{host}}', 'privkey_pem')">
+											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'privkey_pem')">
 												<i class="fa-solid fa-key"></i>
 												Private key
 												<i class="fa-solid fa-file-arrow-down float-end"></i>
@@ -437,11 +431,11 @@
 									</ul>
 								</div>
 
-								<button type="button" onclick="editHost(this, '{{ host }}');" class="btn btn-sm btn-warning">
+								<button type="button" onclick="hostEditOpen(this, '{{ host }}');" class="btn btn-sm btn-warning">
 									<i class="fa-solid fa-pencil"></i>
 									Edit
 								</button>
-								<button type="button" onclick="deleteHost('{{ host }}')" class="btn btn-sm btn-danger">
+								<button type="button" method="DELETE" action="host/{{host}}" onclick="formAJAX()" class="btn btn-sm btn-danger">
 									<i class="fa-solid fa-trash-can"></i>
 									Delete
 								</button>
