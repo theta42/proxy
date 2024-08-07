@@ -20,11 +20,8 @@ class User extends Table{
 
 	static async create(data) {
 		try{
-			console.log('hash?')
 			data['password'] = await bcrypt.hash(data['password'], saltRounds);
-			console.log('hashed password', data.password);
 			data['backing'] = data['backing'] || 'redis';
-
 
 		return await super.create(data)
 
@@ -45,12 +42,7 @@ class User extends Table{
 
 	static async login(data){
 		try{
-
-			console.log('login data', data)
-
 			let user = await User.get(data);
-
-			console.log('login user', user)
 			let auth = await bcrypt.compare(data.password, user.password);
 
 			if(auth){
