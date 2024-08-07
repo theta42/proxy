@@ -1,4 +1,9 @@
 <%- include('top') %>
+<script type="text/javascript">
+	// Require login to see this page.
+	app.auth.forceLogin();
+</script>
+
 <style type="text/css">
 	@include color-mode(dark) {
 	  // CSS variable overrides here...
