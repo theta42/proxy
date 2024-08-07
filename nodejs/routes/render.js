@@ -36,7 +36,7 @@ router.get('/users', async function(req, res, next) {
   res.render('users', {...values});
 });
 
-router.get('/login', async function(req, res, next) {
+router.get('/login*', async function(req, res, next) {
   res.render('login', {...values, redirect: req.query.redirect});
 });
 

@@ -313,7 +313,7 @@ app.util = (function(app){
 
 	function downloadFile(filename, text){
 		// https://stackoverflow.com/a/18197341
-		
+
 		var element = document.createElement('a');
 		element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
 		element.setAttribute('download', filename);
@@ -354,7 +354,7 @@ $( document ).ready(function(){
 	});
 
 	setInterval(()=>{
-		$('.momentFromNow').each((idx,el)=>{
+		$('.momentFromNow').each((idx, el)=>{
 			var $el = $(el);
 			try{
 				$el.html(moment($(el).data('date')).fromNow());
@@ -364,9 +364,9 @@ $( document ).ready(function(){
 });
 
 //ajax form submit
-function formAJAX(btn, del){
-	event.preventDefault(); // avoid to execute the actual submit of the form.
-	var $form = $(btn).closest('[action]'); // gets the 'form' parent
+function formAJAX(btn){
+	event.preventDefault(btn); // avoid to execute the actual submit of the form.
+	var $form = $(btn || event.target).closest('[action]'); // gets the 'form' parent
 	var formData = $form.find('[name]').serializeObject(); // builds query formDataing
 	var method = ($form.attr('method') || 'post').toLowerCase();
 
