@@ -321,11 +321,6 @@ class Host extends Table{
 		while(!this.__lookUpIsReady) await new Promise(r => setTimeout(r, 5));
 		return true;
 	}
-
-	static test(pass){
-		return `yes ${pass}`
-	}
-
 }
 
 
@@ -335,19 +330,17 @@ class Cached extends Table{
 		'host': {isRequired: true, type: 'string', min: 3, max: 500},
 		'parent': {isRequired: true, type: 'string', min: 3, max: 500},
 	}
-
 }
 
 (async function(){
-
 	await Host.buildLookUpObj();
-})()
+})();
 
 module.exports = {Host: ModelPs(Host)};
 
 (async function(){
 try{
-	// await Host.lookUpReady();
+	await Host.lookUpReady();
 	// let res = await Host.create({
 	// 	host: '*.test.holycore.quest',
 	// 	ip: '192.168.1.47',
@@ -360,7 +353,8 @@ try{
 	// console.log('IIFE res:\n', res)
 
 	// console.log(Host.test(55))
-	// console.log(await Host.listDetail())
+	console.log(await Host.list())
+	console.log(await Cached.listDetail())
 	// console.log('IIFE lookup:', Host.lookUp('bld3324sdf.test.holycore.quest'))
 
 

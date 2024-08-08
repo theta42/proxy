@@ -54,7 +54,7 @@
 			host['wildcard_text_bg'] = 'success';
 			host['wildcard_text'] = undefined;
 		}
-		if(host['wildcard_status'].includes('failed')){
+		if(host['wildcard_status'] && host['wildcard_status'].includes('failed')){
 			host['wildcard_text_bg'] = 'danger';
 		}
 

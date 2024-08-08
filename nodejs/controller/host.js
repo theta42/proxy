@@ -9,7 +9,10 @@ const socket = new SocketServerJson({
 	socketFile: conf.socketFile,
 	onData: function(data, clientSocket) {
 		try{
-			let parentHost = Host.lookUp(data['domain'])  || {host: 'none'};
+			console.log('socket lookup', data)
+			let parentHost = Host.lookUp(data['domain']);
+			console.log('socket found host', parentHost);
+			if(!parentHost) return clientSocket.write(JSON.stringify({}));
 			if(!parentHost.wildcard_parent){
 				parentHost.wildcard_parent = parentHost.host;
 				Host.addCache(data['domain'], parentHost);
