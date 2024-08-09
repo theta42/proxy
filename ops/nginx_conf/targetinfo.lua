@@ -13,7 +13,6 @@ print("In targetInfo module")
 
 -- Main function of the module
 function M.get(ngx, domain, targetInfo)
-    ngx.log(ngx.ERR, "!!!!!!!!! in targetInfo get")
     if targetInfo then
         return targetInfo
     end
@@ -22,7 +21,6 @@ function M.get(ngx, domain, targetInfo)
     local redis = require "resty.redis"
     
     if not domain then
-        ngx.log(ngx.ERR, "no host header found")
         ngx.exit(499)
         return false
     end

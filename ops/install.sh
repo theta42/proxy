@@ -20,13 +20,9 @@ sudo apt-get update
 
 sudo apt-get -y install openresty
 
+
 sudo luarocks install lua-resty-auto-ssl
-sudo luarocks install lua-resty-socket
-sudo luarocks install lua-socket
-sudo luarocks install socket
 sudo luarocks install luasocket
-sudo luarocks install luasocket-unix
-sudo luarocks install lua-cjson
 
 mkdir /etc/ssl/
 
@@ -49,6 +45,8 @@ git clone https://github.com/theta42/proxy.git
 
 cd proxy/nodejs
 npm install
+
+ln -s ops/nginx_conf/targetinfo.lua /usr/local/openresty/lualib/
 
 systemctl start proxy.service
 systemctl enable proxy.service
