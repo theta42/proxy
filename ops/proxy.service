@@ -8,6 +8,7 @@ Type=simple
 Restart=always
 RestartSec=1
 User=root
+Environment="NODE_ENV=production"
 ExecStart=/usr/bin/env node /var/www/proxy/nodejs/bin/www
 
 [Install]
