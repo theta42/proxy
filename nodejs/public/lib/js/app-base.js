@@ -135,6 +135,25 @@ app.api = (function(app){
 		});
 	}
 
+	function options(url, callback){
+		$.ajax({
+			type: 'OPTIONS',
+			url: baseURL+url,
+			headers:{
+				'auth-token': app.auth.getToken()
+			},
+			contentType: "application/json; charset=utf-8",
+			dataType: "json",
+			complete: function(res, text){
+				callback(
+					text !== 'success' ? res.statusText : null,
+					JSON.parse(res.responseText),
+					res.status
+				)
+			}
+		});
+	}
+
 	function get(url, callback){
 		$.ajax({
 			type: 'GET',
@@ -154,7 +173,7 @@ app.api = (function(app){
 		});
 	}
 
-	return {post: post, get: get, put: put, delete: remove}
+	return {post: post, get: get, put: put, delete: remove, options: options,}
 })(app)
 
 app.auth = (function(app){

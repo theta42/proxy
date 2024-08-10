@@ -1,0 +1,218 @@
+<%- include('top') %>
+<script type="text/javascript">
+	// Require login to see this page.
+	app.auth.forceLogin();
+</script>
+
+<style type="text/css">
+	label.form-label{
+		font-weight: bold;
+		margin-bottom: 1px;
+	}
+
+	.card-title{
+		font-weight: bold;
+	}
+
+	div.form-group{
+		margin-bottom: 1em;
+	}
+
+	select {
+		font-family: "system-ui", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, "sans-serif", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", 'FontAwesome',;
+	}
+
+</style>
+
+<script type="text/javascript">
+
+	function providerParseRow(row){
+		row['created_on_text'] = moment(row['updated_on'], "x").fromNow();
+
+		return row
+	}
+
+	function providerGet(cb){
+		app.api.options('dns', function(error, res){
+			for(let provider of res.results){
+				$.scope.providerSelect.push(provider)
+
+				for(let field in provider.fields){
+					$.scope.providerField.push({
+						...provider.fields[field],
+						keyName: field,
+						provider: provider.name
+					})
+				}
+			}
+		});
+	}
+
+	function providerShowForm(){
+		let $el = $(event.target);
+		$('.jq-repeat-providerField').each(function(){
+			let $el = $(this)
+			$el.hide()
+			$el.find('input').prop('disabled', true)
+		});
+
+		$(`.provider-form-${$el.val()}`).each(function(){
+			let $el = $(this)
+			$el.show()
+			$el.find('input').prop("disabled",false)
+		})
+	}
+
+	function DnsProviderPopulate(){
+		app.api.get('/dns?detail=true', function(error, res){
+			if(error) return app.util.actionMessage(error, $.scope.users.$this, 'danger');
+			for(let row of res.results){
+				app.api.get(`dns/domain/byProvider/${row.id}`, function(error, domains){
+					console.log({...row, domains:domains.results})
+					$.scope.DnsProvider.push(providerParseRow({...row, domains:domains.results}))
+				});
+			}
+		});
+	}
+
+	$(document).ready(function(){
+		$.scope.providerField.__setPut(function(){})
+		DnsProviderPopulate(); //populate the table
+		providerGet();
+
+		app.subscribe(/^model:/, function(data, topic){
+			let [group, Model, action, pk] = topic.split(':');
+			console.log(group, Model, action, pk);
+		});
+
+		app.subscribe(/^model:.+:create/, function(data, topic){
+			try{
+				let [group, Model, action, pk] = topic.split(':');
+				$.scope[Model].unshift(providerParseRow(data))
+			}catch{}
+		});
+
+		app.subscribe(/^model:.+:remove/, function(data, topic){
+			try{
+				let [group, Model, action, pk] = topic.split(':');
+				$.scope[Model].remove(pk);
+			}catch{}
+		});
+
+		app.subscribe(/^model:.+:update/, function(data, topic){
+			try{
+				let [group, Model, action, pk] = topic.split(':');
+				$.scope[Model].update(pk, providerParseRow(data))
+			}catch{}
+		});
+
+	});
+
+</script>
+<div class="row" style="display:none">
+	<div class="col-md-4">
+		<div class="card shadow-lg">
+
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-user-plus"></i>
+				</span>
+				<span class="card-title">
+					Add DNS Provider
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
+			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+			<div class="card-body">
+				<form action="dns/" onsubmit="formAJAX(this)" evalAJAX="
+					
+				">
+					<div class="form-group">
+						<label for="name" class="form-label">
+							Name
+						</label>
+						<input type="text"  name="name" class="form-control" placeholder="ex: production" validate=":3"/>
+						<b class="invalid-feedback"></b>
+					</div>
+
+					<div class="form-group">
+						<label for="dnsProvider" class="form-label">
+							DNS provider
+						</label>
+						<select name="dnsProvider" class="form-select" aria-label="Default select example" validate=":1" oninput="providerShowForm()">
+							<option value="" selected>Select a provider</option>
+							<option jq-repeat="providerSelect" value="{{name}}">{{{displayIconUni}}} {{name}}</option>
+
+						</select>
+						<b class="invalid-feedback"></b>
+					</div>
+
+					<div class="form-group provider-form-{{ provider }}" jq-repeat="providerField" style="display:none;">
+						<label for="{{ keyName }}" class="form-label">
+							{{displayName}}
+						</label>
+						<input type="text"  name="{{ keyName }}" class="form-control" validate=":3" disabled/>
+						<b class="invalid-feedback"></b>
+					</div>
+
+					<hr />
+					<button type="submit" class="btn btn-success">
+						<i class="fa-solid fa-plus"></i>
+						Add
+					</button>
+				</form>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-8">
+		<div class="card shadow-lg">
+
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-record-vinyl"></i>
+				</span>
+				<span class="card-title">
+					DNS list
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
+			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+			<ul class="card-body list-group list-group-flush" style="margin-bottom:0">
+				<li jq-repeat="DnsProvider" jq-repeat-index="id" style="display:none" class="align-middle list-group-item" onload="provider">
+					<div>
+						<b>{{ name }}</b> using <b>{{ dnsProvider }}</b>
+						<span class="float-end">
+							<b class="momentFromNow" data-date="{{ updated_on }}">{{ created_on_text }}</b> by <b>{{ created_by }}</b>
+							<button type="button" class="btn btn-warning" method="POST" action="/dns/domain/refresh/{{id}}" onclick="formAJAX()">
+								<i class="fa-solid fa-rotate"></i>
+							</button>
+							<button type="button" class="btn btn-info" onclick="$('ol.domain-{{id}}').slideToggle()">
+								Domains
+							</button>
+							<button type="button" class="btn btn-danger" method="DELETE" action="dns/{{id}}" onclick="formAJAX()">
+								<i class="fa-solid fa-trash-can"></i>
+							</button>
+						</span>
+					</div>
+					<ol class="domain-{{id}} list-group list-group-numbered list-group-flush" style="display:none;">
+						{{#domains}}
+							<li class="list-group-item">{{domain}}</li>
+						{{/domains}}
+						{{^domains}}
+							<li class="list-group-item">This has no domains...</li>
+						{{/domains}}
+
+
+					</ol>
+				</li>
+			</ul>
+		</div>
+	</div>
+</div>
+<%- include('bottom') %>

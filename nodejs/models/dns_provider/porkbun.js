@@ -2,12 +2,18 @@
 
 const axios = require('axios');
 
+
 class PorkBun{
+	static _keyMap = {
+		'apiKey': {isRequired: true, type: 'string', isPrivate: true, displayName: 'API key'},
+		'secretApiKey': {isRequired: true, type: 'string', isPrivate: true, displayName: 'API Secret key'},
+	}
+
 	baseUrl = 'https://api.porkbun.com/api/json/v3';
 
-	constructor(apiKey, secretApiKey){
-		this.apiKey = apiKey;
-		this.secretApiKey = secretApiKey;
+	constructor(args){
+		this.apiKey = args.apiKey;
+		this.secretApiKey = args.secretApiKey;
 	}
 
 	async post(url, data){
@@ -40,6 +46,7 @@ class PorkBun{
 	async getRecords(domain, options){
 		let res = await this.post(`/dns/retrieve/${domain}`);
 		if(!options) return res.data.records;
+		if(options.data) options.content = options.data;
 
 		if(options.type) this.__typeCheck(options.type);
 		if(options.name) options.name = this.__parseName(domain, options.name);
@@ -50,8 +57,8 @@ class PorkBun{
 			for(let option in options){
 				if(record[option] === options[option] && ++matchCount === Object.keys(options).length){
 					records.push(record)
+					break;
 				}
-				// console.log('option', option, options[option], record[option], matchCount)
 			}
 		}
 
@@ -59,7 +66,7 @@ class PorkBun{
 	}
 
 	async deleteRecordById(domain, id){
-		let res = this.post(`/dns/delete/${domain}/${id}`);
+		let res = await this.post(`/dns/delete/${domain}/${id}`);
 		return res.data;
 	}
 
@@ -77,7 +84,7 @@ class PorkBun{
 		// if(options.name) options.name = this.__parseName(domain, options.name);
 		// console.log('PorkBun.createRecord to send:', domain, options)
 
-		let res = this.post(`/dns/create/${domain}`, options);
+		let res = await this.post(`/dns/create/${domain}`, options);
 		return res.data;
 	}
 
@@ -93,6 +100,11 @@ class PorkBun{
 		}
 		return await this.createRecord(domain, options)
 	}
+
+	async listDomains(){
+		let res = await this.post(`/domain/listAll`, {"includeLabels": "yes"});
+		return res.data.domains;
+	}
 }
 
 module.exports = PorkBun;
@@ -100,7 +112,10 @@ module.exports = PorkBun;
 
 if(require.main === module){(async function(){try{
 	const conf = require('../conf');
+
 	// let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
+
+	// console.log(await porkBun.listDomains())
 
 	// console.log(await porkBun.deleteRecordById('holycore.quest', '415509355'))
 	// console.log('IIFE', await porkBun.createRecordForce('holycore.quest', {type:'A', name: 'testapi', content: '127.0.0.5'}))

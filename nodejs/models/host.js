@@ -4,7 +4,7 @@ const Table = require('../utils/redis_model');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
-const PorkBun = require('../utils/porkbun');
+const PorkBun = require('./dns_provider/porkbun');
 const LetsEncrypt = require('../utils/letsencrypt');
 const conf = require('../conf');
 
@@ -353,8 +353,8 @@ try{
 	// console.log('IIFE res:\n', res)
 
 	// console.log(Host.test(55))
-	console.log(await Host.list())
-	console.log(await Cached.listDetail())
+	// console.log(await Host.list())
+	// console.log(await Cached.listDetail())
 	// console.log('IIFE lookup:', Host.lookUp('bld3324sdf.test.holycore.quest'))
 
 

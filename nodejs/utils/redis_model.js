@@ -22,6 +22,7 @@ class Table{
 
 	static async get(index){
 		try{
+
 			if(typeof index === 'object'){
 				index = index[this._key];
 			}
@@ -209,6 +210,17 @@ class Table{
 			throw error;
 		}
 	};
+
+	toJSON(){
+		let result = {};
+		for (const [key, keyProps] of Object.entries(this.constructor._keyMap)) {
+			if(!keyProps.isPrivate) result[key] = this[key];
+		}
+
+		return result
+
+		// return JSON.stringify(result);
+	}
 
 }
 
