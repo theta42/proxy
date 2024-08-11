@@ -51,7 +51,6 @@ router.get('/domain', async function(req, res, next){
 
 router.get('/domain/byProvider/:item', async function(req, res, next){
 	try{
-		console.log('byProvider', req.params.item, await Domain.getByProviderId(req.params.item))
 		return res.json({
 			results:  await Domain.getByProviderId(req.params.item)
 		});
@@ -63,26 +62,11 @@ router.get('/domain/byProvider/:item', async function(req, res, next){
 router.post('/domain/refresh/:item', async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
-		item.updateDomains();
-		return res.json({});
+		return res.json({results: await item.updateDomains()});
 	}catch(error){
 		next(error);
 	}
 })
-
-
-
-router.get('/lookup/:item', async function(req, res, next){
-	try{
-		return res.json({
-			string: req.params.item,
-			results: await Model.lookUp(req.params.item),
-		});
-
-	}catch(error){
-		return next(error);
-	}
-});
 
 router.get('/:item', async function(req, res, next){
 	try{
@@ -126,19 +110,6 @@ router.delete('/:item', async function(req, res, next){
 
 	}catch(error){
 		return next(error);
-	}
-});
-
-router.put('/:item/renew', async function(req, res, next){
-	try{
-		let item = await Model.get(req.params.item);
-		item.createWildcardCert();
-
-		return res.json({
-			message: `Requesting wildcard cert for ${req.params.item}`,
-		})
-	}catch(error){
-		next(error);
 	}
 });
 

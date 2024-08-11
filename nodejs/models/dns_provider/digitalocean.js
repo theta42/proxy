@@ -1,7 +1,7 @@
 'use strict';
 
 const axios = require('axios');
-
+const {dnsErrors} = require('./common');
 
 class DigitalOcean{
 	static _keyMap = {
@@ -28,30 +28,34 @@ class DigitalOcean{
 		return name;
 	}
 
-	get axios(){
+	async axios(method, ...args){
 		try{
-			return axios.create({
+			let a = axios.create({
 				baseURL: 'https://api.digitalocean.com/v2/',
 				headers: {Authorization: `Bearer ${this.token}`}
 			});
+
+			return await a[method](...args);
 		}catch(error){
-			console.log(error.data);
+			if(!error.response) throw error;
+			if(error.response.data || error.response.data.id === 'Unauthorized'){
+				throw dnsErrors.unauthorized(this);
+			}
+			throw dnsErrors.other(this, error.response.status, error.response.data.message);
 		}
 	}
 
 	async listDomains(){
-		try{
-			let res = await this.axios.get('/domains');
-			for(let domain of res.data.domains){
-				domain.domain = domain.name
-			}
-			return res.data.domains;
-		}catch{}
+		let res = await this.axios('get', '/domains');
+		for(let domain of res.data.domains){
+			domain.domain = domain.name
+		}
+		return res.data.domains;
 	}
 
 	async getRecords(domain, options={}){
 		this.__typeCheck(options.type);
-		let res = await this.axios.get(`/domains/${domain}/records`, {params: options})
+		let res = await this.axios('get', `/domains/${domain}/records`, {params: options})
 		let records = [];
 
 		for(let record of res.data.domain_records){
@@ -70,12 +74,12 @@ class DigitalOcean{
 		if(!options.data) throw new Error(`${this.constructor.name} API: 'data' key is required for this action`)
 		if(options.name) options.name = this.__parseName(domain, options.name);
 
-		let res = await this.axios.post(`/domains/${domain}/records`, options);
+		let res = await this.axios('post', `/domains/${domain}/records`, options);
 		return res.data;
 	}
 
 	async deleteRecordById(domain, id){
-		let res = await this.axios.delete(`/domains/${domain}/records/${id}`);
+		let res = await this.axios('delete', `/domains/${domain}/records/${id}`);
 	}
 
 	async deleteRecords(domain, options){
@@ -100,14 +104,6 @@ if(require.main === module){(async function(){try{
 	// console.log('delete', await digi.deleteRecords('rm-rf.stream', {type: 'TXT'}))
 	// console.log('get', await digi.getRecords('rm-rf.stream', {type:'TXT', data:'890'}))
 
-
-	// let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
-
-	// console.log(await porkBun.listDomains())
-
-	// console.log(await porkBun.deleteRecordById('holycore.quest', '415509355'))
-	// console.log('IIFE', await porkBun.createRecordForce('holycore.quest', {type:'A', name: 'testapi', content: '127.0.0.5'}))
-	// console.log('IIFE', await porkBun.getRecords('holycore.quest', {type:'A', name: 'testapi'}))
 }catch(error){
 	console.log('IIFE Error:', error)
 }})()}

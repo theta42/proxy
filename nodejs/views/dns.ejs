@@ -35,14 +35,14 @@
 	function providerGet(cb){
 		app.api.options('dns', function(error, res){
 			for(let provider of res.results){
-				$.scope.providerSelect.push(provider)
+				$.scope.providerSelect.push(provider);
 
 				for(let field in provider.fields){
 					$.scope.providerField.push({
 						...provider.fields[field],
 						keyName: field,
 						provider: provider.name
-					})
+					});
 				}
 			}
 		});
@@ -127,9 +127,7 @@
 
 			<div class="card-header actionMessage" style="display:none"></div>
 			<div class="card-body">
-				<form action="dns/" onsubmit="formAJAX(this)" evalAJAX="
-					
-				">
+				<form action="dns/" onsubmit="formAJAX(this)">
 					<div class="form-group">
 						<label for="name" class="form-label">
 							Name
@@ -192,24 +190,19 @@
 							<button type="button" class="btn btn-warning" method="POST" action="/dns/domain/refresh/{{id}}" onclick="formAJAX()">
 								<i class="fa-solid fa-rotate"></i>
 							</button>
-							<button type="button" class="btn btn-info" onclick="$('ol.domain-{{id}}').slideToggle()">
-								Domains
-							</button>
 							<button type="button" class="btn btn-danger" method="DELETE" action="dns/{{id}}" onclick="formAJAX()">
 								<i class="fa-solid fa-trash-can"></i>
 							</button>
 						</span>
 					</div>
-					<ol class="domain-{{id}} list-group list-group-numbered list-group-flush" style="display:none;">
+					<div>
 						{{#domains}}
-							<li class="list-group-item">{{domain}}</li>
+							<b>{{domain}}</b>,
 						{{/domains}}
 						{{^domains}}
-							<li class="list-group-item">This has no domains...</li>
+							<span>No domains...</span>
 						{{/domains}}
-
-
-					</ol>
+					</div>
 				</li>
 			</ul>
 		</div>

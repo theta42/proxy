@@ -55,7 +55,10 @@ class DnsProvider extends Table{
 	}
 
 	static __intraModel(provider){
-		if(!Object.keys(providers).includes(provider)) throw new Error('Invalid DNS provider')
+		if(!Object.keys(providers).includes(provider)){
+			throw new Error('Invalid DNS provider');
+		}
+
 		let Provider = providers[provider];
 		let _keyMap = {...this._keyMap, ...Provider._keyMap};
 
@@ -65,6 +68,27 @@ class DnsProvider extends Table{
 				static Provider = Provider;
 			}
 		})[this.name];
+	}
+
+	static async create(data, ...args){
+		let __intraModel = this.__intraModel(data.dnsProvider)
+		let provider = new __intraModel.Provider(data);
+		let res = await provider.listDomains();
+
+		let instance = await super.create.call(__intraModel, data);
+		if(data.noUpdate !== false) await instance.updateDomains();
+		
+		return instance;
+	}
+
+	static async get(data, ...args){
+		let instance = await super.get(data);
+		let __intraModel = this.__intraModel(instance.dnsProvider)
+
+		instance = await super.get.call(__intraModel, data);
+		instance.provider = new __intraModel.Provider(instance);
+		
+		return instance;
 	}
 
 	static listProviders(){
@@ -81,67 +105,45 @@ class DnsProvider extends Table{
 		return out;
 	}
 
-	static async create(data, ...args){
-		let __intraModel = this.__intraModel(data.dnsProvider)
-
-		let instance = await super.create.call(__intraModel, data);
-		if(!data.noUpdate) instance.updateDomains();
-		return instance;
-	}
-
-	static async get(data, ...args){
-		let instance = await super.get(data);
-		let __intraModel = this.__intraModel(instance.dnsProvider)
-
-		instance = await super.get.call(__intraModel, data);
-		instance.provider = new __intraModel.Provider(instance);
-		// instance.domains = Domain.getByProviderId(this.id);
-
-		return instance;
-	}
-
 	async updateDomains(){
-		try{
-			let domains = await this.provider.listDomains();
-			console.log('got domains', domains)
-			for(let domain of domains){
-				if(!(await Domain.exists(domain.domain))){
-					await Domain.create({
-						created_by: this.created_by,
-						domain: domain.domain,
-						dnsProvider_id: this.id
-					});
-				}
+		let domains = await this.provider.listDomains();
+		for(let domain of domains){
+			if(!(await Domain.exists(domain.domain))){
+				await Domain.create({
+					created_by: this.created_by,
+					domain: domain.domain,
+					dnsProvider_id: this.id
+				});
 			}
-		}catch(error){
-			console.error('updateDomains error', error)
 		}
 	}
 
 	async getDomains(){
-		return Domains.getByProviderId(this.id)
+		return Domain.getByProviderId(this.id);
 	}
 
 	async remove(){
-		let id = this.id
-		let instance = await super.remove()
-		// get all domains for this provider and delete them
+		let id = this.id;
+		let instance = await super.remove();
+		for(let domain of await this.getDomains()){
+			await domain.remove();
+		}
 
-		return instance
+		return instance;
 	}
 
 	toJSON(){
 		return {
 			...super.toJSON(),
 			domains: this.domains,
-		}
+		};
 	}
 }
 
 Domain = ModelPs(Domain);
 DnsProvider = ModelPs(DnsProvider);
 
-module.exports = {Domain, DnsProvider}
+module.exports = {Domain, DnsProvider};
 
 if(require.main === module){(async function(){try{
 	const conf = require('../conf');
@@ -150,5 +152,5 @@ if(require.main === module){(async function(){try{
 	// console.log(aw)
 
 }catch(error){
-	console.log('IIFE Error:', error)
+	console.log('IIFE Error:', error);
 }})()}

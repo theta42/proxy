@@ -1,6 +1,7 @@
 'use strict';
 
 const axios = require('axios');
+const {dnsErrors} = require('./common');
 
 
 class PorkBun{
@@ -28,7 +29,11 @@ class PorkBun{
 
 			return res;
 		}catch(error){
-			throw new Error(`PorkPun API ${error.response.status}: ${error.response.data.message}`)
+			if(!error.response) throw error;
+			if(error.response.data.message.includes('Invalid API key')){
+				throw dnsErrors.unauthorized(this);
+			}
+			throw dnsErrors.other(this, error.response.status, error.response.data.message)
 		}
 	}
 
