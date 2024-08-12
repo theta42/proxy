@@ -300,6 +300,12 @@ MIT license
 			});
 		}
 
+		var $this = $(element); 
+		result.nestedTemplates = [];
+		result.__jqRepeatId = $this.attr( 'jq-repeat' );
+		$this.removeAttr('jq-repeat');
+		result.__index = $this.attr('jq-repeat-index');
+
 		if($this.attr('jq-repeat-parent')){
 			result.__jqParent = $this.attr('jq-repeat-parent');
 			result.__jqParentIndex = $this.attr('jq-repeat-parent-index');
@@ -312,11 +318,6 @@ MIT license
 			$(el).replaceWith(`{{{ nestedTemplates.${templateIdx} }}}`);
 		});
 
-		var $this = $(element); 
-		result.nestedTemplates = [];
-		result.__jqRepeatId = $this.attr( 'jq-repeat' );
-		$this.removeAttr('jq-repeat');
-		result.__index = $this.attr('jq-repeat-index');
 		result.__jqTemplate = $this[0].outerHTML;
 		$this.replaceWith( '<script type="x-tmpl-mustache" id="jq-repeat-holder-' + result.__jqRepeatId + '"><\/script>' );
 		result.$this = $('#jq-repeat-holder-' + result.__jqRepeatId);
