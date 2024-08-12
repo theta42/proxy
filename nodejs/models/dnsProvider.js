@@ -11,6 +11,7 @@ const tldExtract = require('tld-extract').parse_host;
 const providers = {
 	PorkBun: require('./dns_provider/porkbun'),
 	DigitalOcean: require('./dns_provider/digitalocean'),
+	Cloudflare: require('./dns_provider/cloudflare'),
 };
 
 class Domain extends Table{
@@ -52,6 +53,7 @@ class DnsProvider extends Table{
 		'id': {default: ()=>crypto.randomBytes(8).toString("hex")},
 		'name': {isRequired: true, type: 'string'},
 		'dnsProvider': {isRequired: true, type: 'string'},
+		'zoneId': {isRequired: false, type: 'string'},
 	}
 
 	static __intraModel(provider){
@@ -112,7 +114,8 @@ class DnsProvider extends Table{
 				await Domain.create({
 					created_by: this.created_by,
 					domain: domain.domain,
-					dnsProvider_id: this.id
+					dnsProvider_id: this.id,
+					zoneId: domain.id,
 				});
 			}
 		}
