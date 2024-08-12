@@ -135,7 +135,9 @@ class DnsProvider extends Table{
 	toJSON(){
 		return {
 			...super.toJSON(),
-			domains: this.domains,
+			displayName: this.provider.constructor.displayName,
+			displayIconHtml: this.provider.constructor.displayIconHtml,
+			displayIconUni: this.provider.constructor.displayIconUni,
 		};
 	}
 }

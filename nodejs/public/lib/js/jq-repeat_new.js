@@ -10,7 +10,7 @@ MIT license
 		$.scope = {};
 	}
 	
-	var make = function(element){
+	var make = function(element, template){
 		var result = [];
 
 		result.splice = function(inputValue, ...args){
@@ -82,7 +82,7 @@ MIT license
 					//figure out new elements index
 					var key = I + index;
 					// apply values to template
-					var render = Mustache.render(this.__jqTemplate, toAdd[I]);
+					var render = Mustache.render(this.__jqTemplate, this.__buildData(i, toAdd[I]));
 					
 					//set call name and index keys to DOM element
 					var $render = $( render ).addClass( 'jq-repeat-'+ this.__jqRepeatId ).attr( 'jq-repeat-index', key );
@@ -217,7 +217,7 @@ MIT license
 			}
 			this[index] = $.extend( true, this[index], data );
 
-			var $render = $(Mustache.render(this.__jqTemplate, this[index]));
+			var $render = $(Mustache.render(this.__jqTemplate, this.__buildData(index, this[index])));
 			$render.attr('jq-repeat-index', index);
 
 			this.__update(this[index].__jq_$el, $render, this[index], this);
@@ -227,6 +227,8 @@ MIT license
 		result.getByKey = function(key, value){
 			return this[this.indexOf(key, value)];
 		}
+
+		// User definable helper methods
 
 		result.__put = function($el, item, list){
 			$el.show();
@@ -240,6 +242,58 @@ MIT license
 			$el.replaceWith($render);
 			$el.show();
 		};
+
+		result.__parseData = function(data){
+			return data;
+		}
+
+		// internal helper methods
+
+		result.__buildData = function(index, data){
+
+			return {
+				...this.__parseData(data),
+				nestedTemplates: this.__parseNestedTemplates(index, data),
+				_parent: this.__jqParent ? $.scope[this.__jqParent][this.__jqParentIndex] : undefined,
+			};
+		};
+
+		result.__parseNestedTemplates = function(index, data){
+			let templates = []
+			let tempData = {
+				...data,
+				_parent: data,
+			};
+
+			for(let idx in this.nestedTemplates){
+				let $el = $(`${this.nestedTemplates[idx]}`);
+
+				$el.attr('jq-repeat', Mustache.render($el.attr('jq-repeat'), tempData));
+				$el.attr('jq-repeat-index', Mustache.render($el.attr('jq-repeat-index'), tempData));
+				$el.attr('jq-repeat-parent', this.__jqRepeatId);
+				$el.attr('jq-repeat-parent-index', index);
+				templates[idx] = $el[0].outerHTML;
+			}
+
+			return templates;
+		}
+
+		for(let prop of ['put', 'take', 'update', 'parseData']){
+			Object.defineProperty(result, prop, {
+				enumerable: false,
+				get(){
+					return this[`__${prop}`]
+				},
+				set(value) {
+					this[`__${prop}`] = value;
+				},
+			});
+		}
+
+
+
+
+
 
 		result.__setPut = function(fn) {
 			Object.defineProperty(this, '__put', {
@@ -268,10 +322,25 @@ MIT license
 			});
 		};
 
-		var $this = $( element ); 
+		var $this = $(element); 
+		result.nestedTemplates = [];
 		result.__jqRepeatId = $this.attr( 'jq-repeat' );
 		$this.removeAttr('jq-repeat');
 		result.__index = $this.attr('jq-repeat-index');
+
+		if($this.attr('jq-repeat-parent')){
+			result.__jqParent = $this.attr('jq-repeat-parent');
+			result.__jqParentIndex = $this.attr('jq-repeat-parent-index');
+		}
+
+
+		$this.find('[jq-repeat]').each((idx, el)=>{
+			let templateIdx = result.nestedTemplates.length;
+			let template = `${el.outerHTML}`;
+			result.nestedTemplates.push(template);
+			$(el).replaceWith(`{{{ nestedTemplates.${templateIdx} }}}`);
+		});
+
 		result.__jqTemplate = $this[0].outerHTML;
 		$this.replaceWith( '<script type="x-tmpl-mustache" id="jq-repeat-holder-' + result.__jqRepeatId + '"><\/script>' );
 		result.$this = $('#jq-repeat-holder-' + result.__jqRepeatId);
@@ -291,18 +360,33 @@ MIT license
 	};
 
 	$( document ).ready( function(){
+		let toMake = [];
+
 		$( '[jq-repeat]' ).each(function(key, value){
-			make(value);
+			if($(value).parent().closest('[jq-repeat]').length) return;
+			toMake.push(value);
 		});
 
-		$(document).on('DOMNodeInserted', function(e) {
-			if ( $(e.target).is('[jq-repeat]') ){
-				make( e.target );
+		for(let el of toMake){
+			make(el);
+		}
+
+		$(document).on('DOMNodeInserted', function(event) {
+			var $el = $(event.target);
+			var toMake = [];
+
+			if($el.is('[jq-repeat]')){
+				make(event.target);
 			}else{
-				var t = $(e.target).find('[jq-repeat]');
-				t.each(function(key, value){
-					make(value);
+				var toMake = [];
+				$el.find('[jq-repeat]').each(function(key, el){
+					if($(el).parent().closest('[jq-repeat]').length) return;
+					toMake.push(el);
 				});
+
+				for(let el of toMake){
+					make(el);
+				}
 			}
 		});
 	} );

@@ -359,7 +359,7 @@
 				</label>
 				<input type="search" oninput="hostSearchInput()">
 			</div>
-			<table class="card-body table table-striped" style="margin-bottom:0">
+			<table class="m-0 card-body table table-striped table-sm overflow-x-scroll">
 	
 				<thead>
 					<th>
@@ -379,7 +379,7 @@
 					</th>
 				</thead>
 
-				<tbody class="card-body" id="hostsTable">
+				<tbody>
 					<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
 						<td class="table-{{wildcard_text_bg}}">
 							{{{ wildcard_text }}}

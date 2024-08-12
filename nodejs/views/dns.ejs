@@ -19,18 +19,12 @@
 	}
 
 	select {
-		font-family: "system-ui", -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, "sans-serif", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", 'FontAwesome',;
+		font-family: "system-ui", "FontAwesome";
 	}
 
 </style>
 
 <script type="text/javascript">
-
-	function providerParseRow(row){
-		row['created_on_text'] = moment(row['updated_on'], "x").fromNow();
-
-		return row
-	}
 
 	function providerGet(cb){
 		app.api.options('dns', function(error, res){
@@ -60,35 +54,38 @@
 			let $el = $(this)
 			$el.show()
 			$el.find('input').prop("disabled",false)
-		})
+		});
 	}
 
 	function DnsProviderPopulate(){
 		app.api.get('/dns?detail=true', function(error, res){
-			if(error) return app.util.actionMessage(error, $.scope.users.$this, 'danger');
-			for(let row of res.results){
-				app.api.get(`dns/domain/byProvider/${row.id}`, function(error, domains){
-					console.log({...row, domains:domains.results})
-					$.scope.DnsProvider.push(providerParseRow({...row, domains:domains.results}))
-				});
-			}
+			if(error) return app.util.actionMessage(error, $.scope.DnsProvider.$this, 'danger');
+			$.scope.DnsProvider.push(...res.results)
 		});
 	}
 
 	$(document).ready(function(){
-		$.scope.providerField.__setPut(function(){})
+		// Set the jq Templates
+		$.scope.providerField.put = function(){};
+		$.scope.DnsProvider.parseData = function(row){
+			row['created_on_text'] = moment(row['updated_on'], "x").fromNow();
+
+			return row
+		}
+
+		// Populate 
 		DnsProviderPopulate(); //populate the table
 		providerGet();
 
 		app.subscribe(/^model:/, function(data, topic){
 			let [group, Model, action, pk] = topic.split(':');
-			console.log(group, Model, action, pk);
+			console.log('WS:', group, Model, action, pk, data);
 		});
 
 		app.subscribe(/^model:.+:create/, function(data, topic){
 			try{
 				let [group, Model, action, pk] = topic.split(':');
-				$.scope[Model].unshift(providerParseRow(data))
+				$.scope[Model].unshift(data)
 			}catch{}
 		});
 
@@ -102,7 +99,7 @@
 		app.subscribe(/^model:.+:update/, function(data, topic){
 			try{
 				let [group, Model, action, pk] = topic.split(':');
-				$.scope[Model].update(pk, providerParseRow(data))
+				$.scope[Model].update(pk, data)
 			}catch{}
 		});
 
@@ -181,11 +178,14 @@
 			</div>
 
 			<div class="card-header actionMessage" style="display:none"></div>
-			<ul class="card-body list-group list-group-flush" style="margin-bottom:0">
-				<li jq-repeat="DnsProvider" jq-repeat-index="id" style="display:none" class="align-middle list-group-item" onload="provider">
-					<div>
-						<b>{{ name }}</b> using <b>{{ dnsProvider }}</b>
-						<span class="float-end">
+			<ul class="card-body list-group list-group-flush" style="padding:0;">
+				<li jq-repeat="DnsProvider" jq-repeat-index="id" style="display:none" class="list-group-item" onload="provider">
+					<div class="row">
+						<div class="col-6">
+							<h3>{{{ displayIconHtml }}} {{ dnsProvider }}</h3>
+							<h4>{{ name }}</h4>
+						</div>
+						<div class="col-6 text-end">
 							<b class="momentFromNow" data-date="{{ updated_on }}">{{ created_on_text }}</b> by <b>{{ created_by }}</b>
 							<button type="button" class="btn btn-warning" method="POST" action="/dns/domain/refresh/{{id}}" onclick="formAJAX()">
 								<i class="fa-solid fa-rotate"></i>
@@ -193,15 +193,20 @@
 							<button type="button" class="btn btn-danger" method="DELETE" action="dns/{{id}}" onclick="formAJAX()">
 								<i class="fa-solid fa-trash-can"></i>
 							</button>
-						</span>
+						</div>
 					</div>
-					<div>
-						{{#domains}}
-							<b>{{domain}}</b>,
-						{{/domains}}
-						{{^domains}}
-							<span>No domains...</span>
-						{{/domains}}
+					<div class="mb-3">
+						<b jq-repeat='Domain_{{id}}' jq-repeat-index="domain" class="m-1 badge text-bg-info rounded-pill" style="display:none;">
+							{{domain}}
+						</b>
+						<script type="text/javascript">
+							$.scope.Domain_{{id}}.put = function($el){
+								$el.fadeIn(10000)
+							};
+							app.api.get(`dns/domain/byProvider/{{id}}`, function(error, domains){
+								$.scope.Domain_{{id}}.push(...domains.results);
+							});
+						</script>
 					</div>
 				</li>
 			</ul>
