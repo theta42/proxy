@@ -11,7 +11,7 @@ class PorkBun{
 	}
 
 	static displayName = 'DigitalOcean';
-	static displayIconHtml = `<?xml version="1.0" encoding="utf-8"?>
+	static displayIconHtml = `
 <svg width="32px" height="32px" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
    <style>
       .st1{fill:#fff}

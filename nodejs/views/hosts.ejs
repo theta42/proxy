@@ -69,12 +69,12 @@
 				$.scope.hosts.push(hostParseRow(host));
 			}
 
-			$.scope.hosts.__setPut(function($el, item, list){
+			$.scope.hosts.put = function($el, item, list){
 				$el.addClass('table-success');
 				$el.fadeIn(2000, function(){
 					$el.removeClass('table-success');
 				});
-			});
+			};
 		});
 	}
 
@@ -130,25 +130,25 @@
 		$editHostForm.find('[name=is_wildcard').attr('disabled', true);
 		hostPopulate(); //populate the table
 
-		$.scope.hosts.__setTake(function($el, item, list){
+		$.scope.hosts.take = function($el, item, list){
 			$el.addClass('table-danger');
 			$el.fadeOut(1000, function(){
 				$el.remove()
 			});
-		});
+		};
 
-		$.scope.hosts.__setUpdate(function($el, $render, item, list){
+		$.scope.hosts.update = function($el, $render, item, list){
 			$render.show()
 			$el.replaceWith($render);
-		});
+		};
 
-		$.scope.editHost.__setPut(function($el, item, list){
+		$.scope.editHost.put = function($el, item, list){
 			$el.slideDown();
-		});
+		};
 
-		$.scope.editHost.__setTake(function($el, item, list){
+		$.scope.editHost.take = function($el, item, list){
 			$el.slideUp();
-		});
+		};
 
 		// app.subscribe(/^model:Host/, function(data, topic){
 		// 	console.log(topic, data);

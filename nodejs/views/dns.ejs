@@ -57,24 +57,24 @@
 		});
 	}
 
-	function DnsProviderPopulate(){
-		app.api.get('/dns?detail=true', function(error, res){
-			if(error) return app.util.actionMessage(error, $.scope.DnsProvider.$this, 'danger');
-			$.scope.DnsProvider.push(...res.results)
-		});
-	}
+	$.scope.DnsProvider.parseData = function(row){
+		row['created_on_text'] = moment(row['updated_on'], "x").fromNow();
 
-	$(document).ready(function(){
+		return row
+	};
+
+	(async function(){
+
+	})()
+
+
+
+	$(document).ready(async function(){
 		// Set the jq Templates
 		$.scope.providerField.put = function(){};
-		$.scope.DnsProvider.parseData = function(row){
-			row['created_on_text'] = moment(row['updated_on'], "x").fromNow();
-
-			return row
-		}
+		$.scope.DnsProvider.push(...(await app.api.get('/dns?detail=true')).results);
 
 		// Populate 
-		DnsProviderPopulate(); //populate the table
 		providerGet();
 
 		app.subscribe(/^model:/, function(data, topic){
@@ -196,13 +196,10 @@
 						</div>
 					</div>
 					<div class="mb-3">
-						<b jq-repeat='Domain_{{id}}' jq-repeat-index="domain" class="m-1 badge text-bg-info rounded-pill" style="display:none;">
+						<b jq-repeat='Domain_{{id}}' jq-repeat-index="domain" class="m-1 badge text-bg-info rounded-pill">
 							{{domain}}
 						</b>
 						<script type="text/javascript">
-							$.scope.Domain_{{id}}.put = function($el){
-								$el.fadeIn(10000)
-							};
 							app.api.get(`dns/domain/byProvider/{{id}}`, function(error, domains){
 								$.scope.Domain_{{id}}.push(...domains.results);
 							});

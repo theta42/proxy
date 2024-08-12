@@ -6,10 +6,21 @@ MIT license
 
 (function($, Mustache){
 'use strict';
-	if (!$.scope) {
-		$.scope = {};
-	}
-	
+	var scope = {};
+
+	$.scope = new Proxy(scope, {
+		get(obj, prop){
+			if(!obj[prop]){
+				scope[prop] = [];
+			}
+			return Reflect.get(...arguments);
+		},
+		set(obj, prop, value) {
+
+		    return Reflect.set(...arguments);
+		},
+	});
+
 	var make = function(element, template){
 		var result = [];
 
@@ -250,7 +261,6 @@ MIT license
 		// internal helper methods
 
 		result.__buildData = function(index, data){
-
 			return {
 				...this.__parseData(data),
 				nestedTemplates: this.__parseNestedTemplates(index, data),
@@ -290,49 +300,10 @@ MIT license
 			});
 		}
 
-
-
-
-
-
-		result.__setPut = function(fn) {
-			Object.defineProperty(this, '__put', {
-				value: fn,
-				writable: true,
-				enumerable: false,
-				configurable: true
-			});
-		};
-
-		result.__setTake = function(fn) {
-			Object.defineProperty(this, '__take', {
-				value: fn,
-				writable: true,
-				enumerable: false,
-				configurable: true
-			});
-		};
-
-		result.__setUpdate = function(fn) {
-			Object.defineProperty(this, '__update', {
-				value: fn,
-				writable: true,
-				enumerable: false,
-				configurable: true
-			});
-		};
-
-		var $this = $(element); 
-		result.nestedTemplates = [];
-		result.__jqRepeatId = $this.attr( 'jq-repeat' );
-		$this.removeAttr('jq-repeat');
-		result.__index = $this.attr('jq-repeat-index');
-
 		if($this.attr('jq-repeat-parent')){
 			result.__jqParent = $this.attr('jq-repeat-parent');
 			result.__jqParentIndex = $this.attr('jq-repeat-parent-index');
 		}
-
 
 		$this.find('[jq-repeat]').each((idx, el)=>{
 			let templateIdx = result.nestedTemplates.length;
@@ -341,6 +312,11 @@ MIT license
 			$(el).replaceWith(`{{{ nestedTemplates.${templateIdx} }}}`);
 		});
 
+		var $this = $(element); 
+		result.nestedTemplates = [];
+		result.__jqRepeatId = $this.attr( 'jq-repeat' );
+		$this.removeAttr('jq-repeat');
+		result.__index = $this.attr('jq-repeat-index');
 		result.__jqTemplate = $this[0].outerHTML;
 		$this.replaceWith( '<script type="x-tmpl-mustache" id="jq-repeat-holder-' + result.__jqRepeatId + '"><\/script>' );
 		result.$this = $('#jq-repeat-holder-' + result.__jqRepeatId);
@@ -356,10 +332,51 @@ MIT license
 			});
 		}
 
+		var temp = $.scope[result.__jqRepeatId] || [];
 		$.scope[result.__jqRepeatId] = result;
+
+		for(let prop of Object.keys(temp)){
+			if(prop,Number.isInteger(Number(prop))){
+				$.scope[result.__jqRepeatId].push(temp[prop]);
+			}else{
+				$.scope[result.__jqRepeatId][prop] = temp[prop];
+			}
+		}
+		
 	};
 
 	$( document ).ready( function(){
+
+		// Create an instance of MutationObserver and pass the callback function
+		const observer = new MutationObserver(function(mutationsList) {
+			mutationsList.forEach(mutation => {
+				if (mutation.type === 'childList') {
+					const addedNodes = mutation.addedNodes;
+					addedNodes.forEach(node => {
+						if (node.nodeType === Node.ELEMENT_NODE) {
+							const $el = $(node);
+							if ($el.is('[jq-repeat]')) {
+								make(node);
+							} else {
+								const toMake = [];
+								$el.find('[jq-repeat]').each((key, el) => {
+									if ($(el).parent().closest('[jq-repeat]').length) return;
+									toMake.push(el);
+								});
+
+								toMake.forEach(el => {
+									make(el);
+								});
+							}
+						}
+					});
+				}
+			});
+		});
+
+		// Start observing the document
+		observer.observe(document.body, { childList: true, subtree: true });
+
 		let toMake = [];
 
 		$( '[jq-repeat]' ).each(function(key, value){
@@ -370,25 +387,6 @@ MIT license
 		for(let el of toMake){
 			make(el);
 		}
-
-		$(document).on('DOMNodeInserted', function(event) {
-			var $el = $(event.target);
-			var toMake = [];
-
-			if($el.is('[jq-repeat]')){
-				make(event.target);
-			}else{
-				var toMake = [];
-				$el.find('[jq-repeat]').each(function(key, el){
-					if($(el).parent().closest('[jq-repeat]').length) return;
-					toMake.push(el);
-				});
-
-				for(let el of toMake){
-					make(el);
-				}
-			}
-		});
 	} );
 
 })(jQuery, Mustache);

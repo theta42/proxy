@@ -76,7 +76,8 @@ app.api = (function(app){
 	var baseURL = '/api/'
 
 	function post(url, data, callback){
-		$.ajax({
+		if(!$.isFunction(callback)) callback = callback2;
+		return $.ajax({
 			type: 'POST',
 			url: baseURL+url,
 			headers:{
@@ -86,17 +87,18 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
 			}
 		});
 	}
 
 	function put(url, data, callback){
-		$.ajax({
+		if(!$.isFunction(callback)) callback = callback2;
+		return $.ajax({
 			type: 'PUT',
 			url: baseURL+url,
 			headers:{
@@ -106,18 +108,18 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
 			}
 		});
 	}
 
 	function remove(url, callback, callback2){
 		if(!$.isFunction(callback)) callback = callback2;
-		$.ajax({
+		return $.ajax({
 			type: 'delete',
 			url: baseURL+url,
 			headers:{
@@ -126,17 +128,17 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
 			}
 		});
 	}
 
 	function options(url, callback){
-		$.ajax({
+		return $.ajax({
 			type: 'OPTIONS',
 			url: baseURL+url,
 			headers:{
@@ -145,17 +147,17 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
 			}
 		});
 	}
 
 	function get(url, callback){
-		$.ajax({
+		return $.ajax({
 			type: 'GET',
 			url: baseURL+url,
 			headers:{
@@ -164,11 +166,11 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
 			}
 		});
 	}
