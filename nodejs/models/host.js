@@ -8,10 +8,10 @@ const PorkBun = require('./dns_provider/porkbun');
 const LetsEncrypt = require('../utils/letsencrypt');
 const conf = require('../conf');
 
-let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
-let letsEncrypt = new LetsEncrypt({
-	directoryUrl: LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
-});
+// let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
+// let letsEncrypt = new LetsEncrypt({
+// 	directoryUrl: LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
+// });
 
 
 class Host extends Table{
