@@ -1,28 +1,29 @@
 'use strict';
 
 const axios = require('axios');
-const {dnsErrors} = require('./common');
+const {dnsErrors, DnsApi} = require('./common');
 
 //like the options obj will always use domain data and type
 // change content to data 
 // change name to domain
 
 
-class CloudFlare{
+class CloudFlare extends DnsApi{
 	static _keyMap = {
 		token: {isRequired: true, type: 'string', isPrivate: true, displayName: 'API Token'},
 	}
 
 	static displayName = 'CloudFlare'
 	static displayIconHtml = `
-    <svg width="32px" height="32px" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="512" cy="512" r="512" style="fill:#0080ff"/>
-    <path d="m273.8 669.2-.1-63.7h63.7v63.7h76v-98.8h98.8v98.5c105.1-.1 186.2-104.1 146.1-214.6-14.9-40.9-47.6-73.6-88.5-88.4-110.7-40.2-214.7 41.2-214.7 146.3H256c0-167.5 161.8-298 337.4-243.2 76.8 24 137.7 84.9 161.6 161.6C809.9 606.2 679.4 768 511.9 768v-98.8h-98.6v75.9h-75.9v-75.9h-63.6z" style="fill:#fff"/>
-    </svg>`
+		<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+			<circle cx="512" cy="512" r="512" style="fill:#f38020"/>
+			<path d="M608.2 592.4c3.1-10.8 1.9-20.7-3.3-28.1-4.8-6.7-12.9-10.6-22.6-11.1l-184.7-2.4c-1.1 0-2.2-.6-2.8-1.5-.6-.9-.7-2.1-.4-3.3.6-1.8 2.4-3.2 4.3-3.3l186.4-2.4c22.1-1 46.1-18.9 54.5-40.8l10.6-27.8c.5-1.2.6-2.4.3-3.6-12-54.3-60.5-94.8-118.4-94.8-53.4 0-98.7 34.5-114.9 82.4-10.5-7.8-23.9-12-38.3-10.6-25.7 2.5-46.2 23.1-48.8 48.8-.6 6.6-.1 13.1 1.4 19.1-41.9 1.2-75.3 35.4-75.3 77.6 0 3.7.3 7.5.8 11.2.3 1.8 1.8 3.1 3.6 3.1h340.9c1.9 0 3.8-1.4 4.3-3.3l2.4-9.2zM667 473.7c-1.6 0-3.4 0-5.1.2-1.2 0-2.2.9-2.7 2.1l-7.2 25c-3.1 10.8-2 20.7 3.3 28.1 4.8 6.7 12.9 10.6 22.7 11.1l39.3 2.4c1.2 0 2.3.6 2.8 1.5.6.9.7 2.3.5 3.3-.6 1.8-2.4 3.2-4.4 3.3l-41 2.4c-22.2 1-46 18.9-54.5 40.8l-3 7.6c-.6 1.5.5 3 2.1 3h140.8c1.6 0 3.1-1 3.6-2.7 2.4-8.7 3.7-17.9 3.7-27.3 0-55.5-45.3-100.8-101-100.8" style="fill:#fff"/>
+		</svg>`
 	// Cloud icon for cloudflare
 	static displayIconUni =  '&#xf0c2;'
 
 	constructor(token){
+		super()
 		this.token = token.token || token;
 	}
 

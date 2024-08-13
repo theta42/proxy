@@ -1,18 +1,19 @@
 'use strict';
 
 const axios = require('axios');
-const {dnsErrors} = require('./common');
+const {dnsErrors, DnsApi} = require('./common');
 
 
-class PorkBun{
+class PorkBun extends DnsApi{
 	static _keyMap = {
 		'apiKey': {isRequired: true, type: 'string', isPrivate: true, displayName: 'API key'},
 		'secretApiKey': {isRequired: true, type: 'string', isPrivate: true, displayName: 'API Secret key'},
 	}
 
-	static displayName = 'DigitalOcean';
+	static displayName = 'PorkBun';
+	static displayIconUni =  '&#xf7e5';
 	static displayIconHtml = `
-<svg width="32px" height="32px" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+<svg viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
    <style>
       .st1{fill:#fff}
    </style>
@@ -24,12 +25,9 @@ class PorkBun{
       </g>
    </g>
 </svg>`
-	// '<i class="fa-solid fa-bacon"></i>';
-	static displayIconUni =  '&#xf7e5';
-
-	baseUrl = 'https://api.porkbun.com/api/json/v3';
 
 	constructor(args){
+		super()
 		this.apiKey = args.apiKey;
 		this.secretApiKey = args.secretApiKey;
 	}
@@ -42,7 +40,7 @@ class PorkBun{
 				secretapikey: this.secretApiKey,
 				apikey: this.apiKey,
 			};
-			res = await axios.post(`${this.baseUrl}${url}`, data);
+			res = await axios.post(`'https://api.porkbun.com/api/json/v3'${url}`, data);
 
 			return res;
 		}catch(error){

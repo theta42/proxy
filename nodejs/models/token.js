@@ -1,7 +1,6 @@
 'use strict';
 
-const Table = require('../utils/redis_model');
-const {User} = require('./user');
+const Table = require('.');
 const UUID = function b(a){return a?(a^Math.random()*16>>a/4).toString(16):([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,b)};
 
 
@@ -11,8 +10,8 @@ class Token extends Table{
 		'created_by': {isRequired: true, type: 'string', min: 3, max: 500},
 		'created_on': {default: function(){return (new Date).getTime()}},
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
-		'token': {default: UUID, type: 'string', min: 36, max: 36},
-		'is_valid': {default: true, type: 'boolean'}
+		'token': {default: UUID, type: 'string', min: 36, max: 36, isPrivate: true},
+		'is_valid': {default: true, type: 'boolean'},	
 	}
 
 	constructor(...args){
@@ -28,13 +27,12 @@ class Token extends Table{
 	}
 }
 
-class AuthToken extends Token{
-	constructor(...args){
-		super(...args);
-	}
+Token.register();
 
-	async getUser(){
-		return await User.get(this.created_by);
+class AuthToken extends Token{
+	static _keyMap = {
+		...super._keyMap,
+		user: {model: 'User', rel: 'one', localKey: 'created_by'},
 	}
 
 	static async create(data){
@@ -42,8 +40,8 @@ class AuthToken extends Token{
 		return super.create(data)
 
 	}
-
 }
+AuthToken.register();
 
 class InviteToken extends Token{
 	static _keyMap = {
@@ -66,5 +64,6 @@ class InviteToken extends Token{
 		}
 	}
 }
+InviteToken.register();
 
 module.exports = {Token, InviteToken, AuthToken};

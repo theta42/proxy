@@ -59,15 +59,9 @@
 
 	$.scope.DnsProvider.parseData = function(row){
 		row['created_on_text'] = moment(row['updated_on'], "x").fromNow();
-
+		row['domainsString'] = JSON.stringify(row.domains);
 		return row
 	};
-
-	(async function(){
-
-	})()
-
-
 
 	$(document).ready(async function(){
 		// Set the jq Templates
@@ -102,7 +96,6 @@
 				$.scope[Model].update(pk, data)
 			}catch{}
 		});
-
 	});
 
 </script>
@@ -182,7 +175,7 @@
 				<li jq-repeat="DnsProvider" jq-repeat-index="id" style="display:none" class="list-group-item" onload="provider">
 					<div class="row">
 						<div class="col-6">
-							<h3>{{{ displayIconHtml }}} {{ dnsProvider }}</h3>
+							<h3><img height="32px" src="{{ displayIconHtml }}"/> {{ dnsProvider }}</h3>
 							<h4>{{ name }}</h4>
 						</div>
 						<div class="col-6 text-end">
@@ -200,9 +193,9 @@
 							{{domain}}
 						</b>
 						<script type="text/javascript">
-							app.api.get(`dns/domain/byProvider/{{id}}`, function(error, domains){
-								$.scope.Domain_{{id}}.push(...domains.results);
-							});
+							try{
+								$.scope.Domain_{{id}}.push(...{{{domainsString}}});
+							}catch{}
 						</script>
 					</div>
 				</li>

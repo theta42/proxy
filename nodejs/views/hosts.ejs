@@ -62,10 +62,10 @@
 	}
 
 	function hostPopulate(){
-		app.host.list(function(error, res){
+		app.api.get('host?detail=1&provider=1', function(error, res){
 			if(error) return app.util.actionMessage(error, $.scope.hosts.$this, 'danger');
 
-			for(let host of res){
+			for(let host of res.results){
 				$.scope.hosts.push(hostParseRow(host));
 			}
 
@@ -150,9 +150,9 @@
 			$el.slideUp();
 		};
 
-		// app.subscribe(/^model:Host/, function(data, topic){
-		// 	console.log(topic, data);
-		// });
+		app.subscribe(/^model:Host/, function(data, topic){
+			console.log(topic, data);
+		});
 
 		app.subscribe(/^model:Host:create/, function(data, topic){
 			let [a,b, action, host] = topic.split(':');
@@ -391,6 +391,10 @@
 							<a target="_blank" href="{{ forcessl_text }}{{ host }}">
 								{{{ forcessl_text }}}{{ host }}
 							</a>
+							{{#domain.provider}}
+								<br />
+								<img width="24px" src="{{displayIconHtml}}" /> {{displayName}}
+							{{/domain.provider}}
 						</td>
 						<td>
 							{{{ targetssl_text }}}{{ ip }}:{{ targetPort }}

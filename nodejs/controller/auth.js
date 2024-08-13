@@ -1,7 +1,7 @@
 'use strict';
 
-const {User} = require('../models/user'); 
-const {AuthToken} = require('../models/token');
+const Table = require('../models');
+const {User, AuthToken} = Table.models; 
 
 
 class Auth{
@@ -35,6 +35,7 @@ class Auth{
 
 			throw this.errors.login();
 		}catch(error){
+			console.log('check error', error);
 			throw this.errors.login();
 		}
 	}

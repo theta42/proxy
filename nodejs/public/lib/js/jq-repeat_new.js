@@ -264,7 +264,7 @@ MIT license
 			return {
 				...this.__parseData(data),
 				nestedTemplates: this.__parseNestedTemplates(index, data),
-				_parent: this.__jqParent ? $.scope[this.__jqParent][this.__jqParentIndex] : undefined,
+				_parent: this._parentData,
 			};
 		};
 
@@ -307,6 +307,7 @@ MIT license
 		result.__index = $this.attr('jq-repeat-index');
 
 		if($this.attr('jq-repeat-parent')){
+			result._parentData = $.scope[$this.attr('jq-repeat-parent')][$this.attr('jq-repeat-parent-index')]
 			result.__jqParent = $this.attr('jq-repeat-parent');
 			result.__jqParentIndex = $this.attr('jq-repeat-parent-index');
 		}

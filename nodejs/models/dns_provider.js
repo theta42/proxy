@@ -9,9 +9,9 @@ const ModelPs = require('../utils/model_pubsub');
 const tldExtract = require('tld-extract').parse_host;
 
 const providers = {
-	PorkBun: require('./dns_provider/porkbun'),
-	DigitalOcean: require('./dns_provider/digitalocean'),
 	Cloudflare: require('./dns_provider/cloudflare'),
+	DigitalOcean: require('./dns_provider/digitalocean'),
+	PorkBun: require('./dns_provider/porkbun'),
 };
 
 class Domain extends Table{
@@ -23,17 +23,22 @@ class Domain extends Table{
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
 		'domain': {isRequired: true, type: 'string'},
 		'dnsProvider_id': {isRequired: true, type: 'string'},
+		'provider': {model: 'DnsProvider', rel:'one', localKey: 'dnsProvider_id'},
+		'zoneId': {isRequired: false, type: 'string'},
 	}
 
-	static async get(data, ...args){
-		let instance = await super.get(data, ...args);
-		// instance.provider = (await DnsProvider.get(instance.dnsProvider_id)).provider;
+	static async get(domain, ...args){
+		try{
+			domain = tldExtract(domain).domain;
+		}catch{}
+		
+		let instance = await super.get(domain, ...args);
 
 		return instance;
 	}
 
-	static async getByProviderId(id){
-		let domains = await this.listDetail();
+	static async getByProviderId(id, ...args){
+		let domains = await this.listDetail(...args);
 		let results = [];
 		for(let domain of domains){
 			if(domain.dnsProvider_id == id) results.push(domain);
@@ -41,7 +46,20 @@ class Domain extends Table{
 
 		return results;
 	}
+
+	// toJSON(){
+	// 	return {
+	// 		...super.toJSON(),
+	// 		provider: {
+	// 			displayName: this.provider.constructor.displayName,
+	// 			displayIconUni: this.provider.constructor.displayIconUni,
+	// 			displayIconHtml: this.provider.constructor.displayIconHtml,
+	// 		}
+	// 	}
+	// }
 }
+
+Domain.register(ModelPs(Domain))
 
 class DnsProvider extends Table{
 	static _key = 'id';
@@ -53,7 +71,7 @@ class DnsProvider extends Table{
 		'id': {default: ()=>crypto.randomBytes(8).toString("hex")},
 		'name': {isRequired: true, type: 'string'},
 		'dnsProvider': {isRequired: true, type: 'string'},
-		'zoneId': {isRequired: false, type: 'string'},
+		'domains': {model:'Domain', rel: 'many', remoteKey: 'dnsProvider_id'}
 	}
 
 	static __intraModel(provider){
@@ -74,23 +92,16 @@ class DnsProvider extends Table{
 
 	static async create(data, ...args){
 		let __intraModel = this.__intraModel(data.dnsProvider)
-		let provider = new __intraModel.Provider(data);
-		let res = await provider.listDomains();
+		let provider = new __intraModel.Provider(data, ...args);
 
-		let instance = await super.create.call(__intraModel, data);
-		if(data.noUpdate !== false) await instance.updateDomains();
-		
-		return instance;
+		return await super.create.call(__intraModel, data, ...args);
 	}
 
 	static async get(data, ...args){
-		let instance = await super.get(data);
+		let instance = await super.get(data, ...args);
 		let __intraModel = this.__intraModel(instance.dnsProvider)
 
-		instance = await super.get.call(__intraModel, data);
-		instance.provider = new __intraModel.Provider(instance);
-		
-		return instance;
+		return await super.get.call(__intraModel, data, ...args);
 	}
 
 	static listProviders(){
@@ -138,23 +149,32 @@ class DnsProvider extends Table{
 	toJSON(){
 		return {
 			...super.toJSON(),
-			displayName: this.provider.constructor.displayName,
-			displayIconHtml: this.provider.constructor.displayIconHtml,
-			displayIconUni: this.provider.constructor.displayIconUni,
+			...this.constructor.Provider.toJSON()
 		};
 	}
 }
 
-Domain = ModelPs(Domain);
-DnsProvider = ModelPs(DnsProvider);
+DnsProvider.register(ModelPs(DnsProvider))
 
-module.exports = {Domain, DnsProvider};
 
 if(require.main === module){(async function(){try{
 	const conf = require('../conf');
 
+	console.log(Table.models)
+
+	// console.log(await Domain.listDetail())
+
+	// console.log(JSON.stringify(await Domain.get('ipa.wtf'), null, 2))
+
+	// console.log(JSON.stringify(await Domain.listDetail() ,null, 2))
+	console.log(JSON.stringify(await Table.models.DnsProvider.listDetail() ,null, 2))
+
+
+	// console.log(await Domain.getByProviderId('e8443e03ac503c7b'));
 
 	// console.log(aw)
+
+	process.exit(0)
 
 }catch(error){
 	console.log('IIFE Error:', error);

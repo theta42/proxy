@@ -22,10 +22,8 @@ function ModelPs(model){
 	}
 
 	return new Proxy(model, {
-		construct(target, args) {
-			let instance = ModelPs(new model(...args));
-
-			return instance;
+		construct(target, args, newTarget) {
+			return ModelPs(Reflect.construct(target, args, newTarget))
 		},
 		get(target, propKey, receiver) {
 			if(propKey == 'constructor') return target.constructor;
@@ -46,7 +44,7 @@ function ModelPs(model){
 						}
 						return res;
 					}catch(error){
-						console.log("grrrr")
+						console.log("grrrr", error)
 					}
 				}
 			} else {

@@ -1,14 +1,14 @@
 'use strict';
 
 const router = require('express').Router();
-const {Host} = require('../models/host');
+const {Host, Domain} = require('../models').models;
 
 const Model = Host;
 
 router.get('/', async function(req, res, next){
 	try{
 		return res.json({
-			hosts:  await Model[req.query.detail ? "listDetail" : "list"]()
+			results: await Model[req.query.detail ? "listDetail" : "list"](),
 		});
 	}catch(error){
 		return next(error);

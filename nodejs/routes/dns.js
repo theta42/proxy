@@ -1,7 +1,7 @@
 'use strict';
 
 const router = require('express').Router();
-const {DnsProvider, Domain} = require('../models/dnsProvider');
+const {DnsProvider, Domain} = require('../models').models;
 
 const Model = DnsProvider;
 
@@ -49,6 +49,7 @@ router.get('/domain', async function(req, res, next){
 	}
 });
 
+
 router.get('/domain/byProvider/:item', async function(req, res, next){
 	try{
 		return res.json({
@@ -67,6 +68,16 @@ router.post('/domain/refresh/:item', async function(req, res, next){
 		next(error);
 	}
 })
+
+router.get('/domain/:item', async function(req, res, next){
+	try{
+		return res.json({
+			results:  [await Domain.get(req.params.item)]
+		});
+	}catch(error){
+		return next(error);
+	}
+});
 
 router.get('/:item', async function(req, res, next){
 	try{

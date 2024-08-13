@@ -58,12 +58,9 @@ class User extends Table{
 			throw error;
 		}
 	};
-
-
 }
 
-module.exports = {User};
-
+User.register();
 
 (async function(){
 	var defaultUser = 'proxyadmin2'

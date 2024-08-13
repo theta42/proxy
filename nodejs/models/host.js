@@ -1,17 +1,11 @@
 'use strict';
 
-const Table = require('../utils/redis_model');
+const Table = require('.');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
-const PorkBun = require('./dns_provider/porkbun');
 const LetsEncrypt = require('../utils/letsencrypt');
 const conf = require('../conf');
-
-// let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
-// let letsEncrypt = new LetsEncrypt({
-// 	directoryUrl: LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
-// });
 
 
 class Host extends Table{
@@ -31,6 +25,7 @@ class Host extends Table{
 		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500, default: 'Requesting'},
 		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
 		'wildcard_expires': {isRequired: false, type: 'number'},
+		'domain': {model: 'Domain', rel: 'one'},
 	}
 
 	static lookUpObj = {};
@@ -322,6 +317,7 @@ class Host extends Table{
 		return true;
 	}
 }
+Host.register(ModelPs(Host))
 
 
 class Cached extends Table{
