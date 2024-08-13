@@ -42,13 +42,14 @@ class CloudFlare extends DnsApi{
 	async axios(method, ...args){
 		try{
 			let a = axios.create({
-                
 				baseURL: 'https://api.cloudflare.com/client/v4/zones',
 				headers: {Authorization: `Bearer ${this.token}`}
 			});
-
+			// console.log(a)
+			// console.log(...args)
 			return await a[method](...args);
 		}catch(error){
+			console.log(error)
 			if(!error.response) throw error;
 			if(error.response.data || error.response.data.id === 'Unauthorized'){
 				throw dnsErrors.unauthorized(this);
@@ -87,21 +88,27 @@ class CloudFlare extends DnsApi{
 
 	async createRecord(domain, options){
 		this.__typeCheck(options.type);
-		// if(!options.data) throw new Error(`${this.constructor.name} API: 'data' key is required for this action`)
-		// if(options.name) options.name = this.__parseName(domain, options.name);
+		//POST zones/:zone_identifier/dns_records
+		// name , type , ip / content , ttl 
 
-		// let res = await this.axios('post', `/domains/${domain}/records`, options);
-		// return res.data;
+		if(!options.content) throw new Error(`${this.constructor.name} API: 'data' key is required for this action`)
+
+
+		let res = await this.axios('post', `${domain.zoneId}/dns_records`, options);
+		return res;
+
 	}
 
 	async deleteRecordById(domain, id){
-		let res = await this.axios('delete', `/domains/${domain}/records/${id}`);
+		let res = await this.axios('delete', `${domain.zoneId}/dns_records/${id}`);	
 	}
 
 	async deleteRecords(domain, options){
 		let records = await this.getRecords(domain, options)
 		for(let record of records){
 			let res = await this.deleteRecordById(domain, record.id);
+			// // console.log(record)
+			// console.log(record.id)
 		}
 
 		return true;
@@ -112,11 +119,11 @@ module.exports = CloudFlare;
 
 
 if(require.main === module){(async function(){try{
-    let cf = new CloudFlare("RaA7Ej-eLBfc_hhCeMVhvPEZTmrHh2WXfPpUCUIL"); 
-    let domain = {
-        domain: "teeseng.uk",
-        zoneId: "11f8ec3c2ff0530fe6f1b97dfe4b8f74"
-    }
+    // let cf = new CloudFlare(""); 
+    // let domain = {
+    //     domain: "example.uk",
+    //     zoneId: "5eb25c12cd7d22f11252330a29a0dd77"
+    // }
 
 	// console.log(await cf.listDomains())
 
@@ -124,8 +131,11 @@ if(require.main === module){(async function(){try{
     //name = domain
 	// console.log('get', await cf.getRecords(domain, {content: '172.206.221.130'}))
 
-	console.log('make', await cf.createRecord('rm-rf.stream', {name:'_test', data: '890', type: "TXT"}))
-	// console.log('delete', await digi.deleteRecords('rm-rf.stream', {type: 'TXT'}))
+	// console.log('post', await cf.createRecord(domain, {name:'test', content: '10.0.0.1', type: "TXT"}))
+
+	// console.log('delete', await cf.deleteRecordById(domain , "5c0e958c3406a34d011459933d538b78"))
+
+	// console.log('delete', await cf.deleteRecords(domain, {type: 'A'}))
 
 }catch(error){
 	console.log('IIFE Error:', error)
