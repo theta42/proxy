@@ -1,8 +1,8 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 		<title>Proxy - Theta 42 <%- title %></title>
 		<!-- CSS are placed here -->
 		<link rel="stylesheet" href="/static-modules/bootstrap/dist/css/bootstrap.min.css">
@@ -32,46 +32,49 @@
 	<body>
 
 		<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-		  <a class="navbar-brand" href="#">Dynamic Proxy <%- title %></a>
-		  <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-		    <span class="navbar-toggler-icon"></span>
-		  </button>
-		  <div class="collapse navbar-collapse justify-content-end" id="navbarSupportedContent">
-		    <ul class="navbar-nav top-nav">
-		      <li class="nav-item">
-						<a class="nav-link active" href="/hosts"><i class="fa-solid fa-network-wired"></i> Hosts</a>
-		      </li>
-          <li class="nav-item">
-    				<a class="nav-link" href="/dns"><i class="fa-solid fa-record-vinyl"></i> DNS</a>
-          </li>
-		      <li class="nav-item">
-						<a class="nav-link" href="/users"><i class="fa-solid fa-users"></i> Users Panel</a>
-		      </li>
-		      <li class="nav-item">
-						<a class="nav-link" href="/topics"> Topics</a>
-		      </li>
-		      <li class="nav-item">
-						<a class="nav-link" href="https://github.com/theta42/proxy" target="_blank">
-		      		<i class="fa-brands fa-github"></i>
+			<a class="navbar-brand" href="#">Dynamic Proxy <%- titleIcon %></a>
+			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+				<span class="navbar-toggler-icon"></span>
+			</button>
+			<div class="collapse navbar-collapse justify-content-end" id="navbarSupportedContent">
+				<ul class="navbar-nav top-nav">
+					<li class="nav-item">
+						<a class="nav-link active" href="/hosts">
+							<i class="fa-solid fa-network-wired"></i>
+							Hosts
 						</a>
-		      </li>
-		    </ul>
-		    <div class="form-inline mt-2 mt-md-0">
-		    <a id="cl-login-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.forceLogin()" style="display: none;">
-		    	<i class="fas fa-sign-out"></i>
-		    	Login
-		    </a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="/dns"><i class="fa-solid fa-record-vinyl"></i>
+							DNS
+						</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="/users"><i class="fa-solid fa-users"></i>
+							Users
+						</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="https://github.com/theta42/proxy" target="_blank">
+							<i class="fa-brands fa-github"></i>
+						</a>
+					</li>
+				</ul>
+				<div class="form-inline mt-2 mt-md-0">
+					<a id="cl-login-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.forceLogin()" style="display: none;">
+						<i class="fas fa-sign-out"></i>
+						Login
+					</a>
 
-				<button id="cl-logout-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.logOut(e => window.location.href='/')" style="display: none;">
-					<i class="fas fa-sign-out"></i>
-					Log Out
-				</button>
-		    </div>
-		  </div>
+					<button id="cl-logout-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.logOut(e => window.location.href='/')" style="display: none;">
+						<i class="fas fa-sign-out"></i>
+						Log Out
+					</button>
+				</div>
+			</div>
 		</nav>
 		<script type="text/javascript">
 			$(document).ready(function(){
-				// window.location.pathname.toLocaleLowerCase()
 
 				// Set the correct link to active in the top nav bar
 				$('.top-nav a').each(function(index){
