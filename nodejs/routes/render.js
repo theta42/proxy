@@ -6,7 +6,8 @@ const router = require('express').Router();
 const conf = require('../conf');
 
 const values ={
-  title: conf.environment !== 'production' ? `<i class="fa-brands fa-dev"></i>` : ''
+  title: conf.environment !== 'production' ? `dev` : '',
+  titleIcon: conf.environment !== 'production' ? `<i class="fa-brands fa-dev"></i>` : '',
 }
 
 // List of front end node modules to be served
