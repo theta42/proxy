@@ -31,7 +31,7 @@ class Domain extends Table{
 		try{
 			domain = tldExtract(domain).domain;
 		}catch{}
-		
+
 		let instance = await super.get(domain, ...args);
 
 		return instance;
@@ -47,16 +47,17 @@ class Domain extends Table{
 		return results;
 	}
 
-	// toJSON(){
-	// 	return {
-	// 		...super.toJSON(),
-	// 		provider: {
-	// 			displayName: this.provider.constructor.displayName,
-	// 			displayIconUni: this.provider.constructor.displayIconUni,
-	// 			displayIconHtml: this.provider.constructor.displayIconHtml,
-	// 		}
-	// 	}
-	// }
+	async getRecords(...args){
+		return await this.provider.api.getRecords(this, ...args);
+	}
+
+	async createRecord(...args){
+		return await this.provider.api.createRecord(this, ...args);
+	}
+
+	async deleteRecords(...args){
+		return await this.provider.api.deleteRecords(this, ...args);
+	}
 }
 
 Domain.register(ModelPs(Domain))
@@ -82,24 +83,47 @@ class DnsProvider extends Table{
 		let Provider = providers[provider];
 		let _keyMap = {...this._keyMap, ...Provider._keyMap};
 
-		return ({
+		let cls = ({
 			[this.name] : class extends this {
 				static _keyMap = _keyMap;
 				static Provider = Provider;
 			}
 		})[this.name];
+
+		Object.assign(cls.prototype, Provider)
+
+		return cls
 	}
 
 	static async create(data, ...args){
-		let __intraModel = this.__intraModel(data.dnsProvider)
-		let provider = new __intraModel.Provider(data, ...args);
+		let Provider;
+		try{
+			let __intraModel = this.__intraModel(data.dnsProvider);
+			Provider = __intraModel.Provider;
 
-		return await super.create.call(__intraModel, data, ...args);
+			// This is here test if the given API key is valid
+			let provider = new __intraModel.Provider(data, ...args);
+			let domains = await provider.listDomains();
+
+			let instance = await super.create.call(__intraModel, data, ...args);
+			await instance.updateDomains(domains);
+
+			return instance;
+		}catch(error){
+			if(error.name === 'UnauthorizedDnsApi'){
+				let keys = [];
+				console.log('Provider', Provider)
+				for(let key in Provider._keyMap){
+					keys.push({'key': key, message: 'Invalid Key'})
+				}
+				throw this.errors.ObjectValidateError(keys, "API rejected key");
+			}
+		}
 	}
 
 	static async get(data, ...args){
 		let instance = await super.get(data, ...args);
-		let __intraModel = this.__intraModel(instance.dnsProvider)
+		let __intraModel = this.__intraModel(instance.dnsProvider);
 
 		return await super.get.call(__intraModel, data, ...args);
 	}
@@ -118,30 +142,33 @@ class DnsProvider extends Table{
 		return out;
 	}
 
-	async updateDomains(){
-		let domains = await this.provider.listDomains();
+	get api(){
+		return new this.constructor.Provider(this);
+	}
+
+	async listDomains(){
+		return this.api.listDomains()
+	}
+
+	async updateDomains(domains){
+		domains = domains || await this.listDomains();
 		for(let domain of domains){
 			if(!(await Domain.exists(domain.domain))){
 				await Domain.create({
 					created_by: this.created_by,
 					domain: domain.domain,
 					dnsProvider_id: this.id,
-					zoneId: domain.id,
+					zoneId: domain.zoneId,
 				});
 			}
 		}
 	}
 
-	async getDomains(){
-		return Domain.getByProviderId(this.id);
-	}
-
 	async remove(){
-		let id = this.id;
-		let instance = await super.remove();
-		for(let domain of await this.getDomains()){
+		for(let domain of await this.domains){
 			await domain.remove();
 		}
+		let instance = await super.remove();
 
 		return instance;
 	}
@@ -160,22 +187,25 @@ DnsProvider.register(ModelPs(DnsProvider))
 if(require.main === module){(async function(){try{
 	const conf = require('../conf');
 
-	console.log(Table.models)
+	// console.log(await DnsProvider.findall());
 
-	// console.log(await Domain.listDetail())
+	let provider = await DnsProvider.get('e8443e03ac503c7b');
 
-	// console.log(JSON.stringify(await Domain.get('ipa.wtf'), null, 2))
+	console.log(await provider.listDomains())
 
-	// console.log(JSON.stringify(await Domain.listDetail() ,null, 2))
-	console.log(JSON.stringify(await Table.models.DnsProvider.listDetail() ,null, 2))
+	let domain = await Domain.get('holycore.quest') // pork
+	// let domain = await Domain.get('rm-rf.stream') // DO
+	// let domain = await Domain.get('test.wtf') // CF
 
+	// console.log(await domain.createRecord({type: 'TXT', name: 'apitewefweefwsewft222', data:'hiiiiiii'}))
 
-	// console.log(await Domain.getByProviderId('e8443e03ac503c7b'));
+	let txtRecords = await domain.getRecords({type: 'TXT'});
+	console.log(txtRecords.map(i=>`${i.name}: ${i.data}`))
+	// console.log(await domain.deleteRecords({type: 'TXT'}))
 
-	// console.log(aw)
-
-	process.exit(0)
 
 }catch(error){
 	console.log('IIFE Error:', error);
+}finally{
+	process.exit(0);
 }})()}

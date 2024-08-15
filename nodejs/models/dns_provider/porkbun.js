@@ -1,7 +1,7 @@
 'use strict';
 
 const axios = require('axios');
-const {dnsErrors, DnsApi} = require('./common');
+const {DnsApi} = require('./common');
 
 
 class PorkBun extends DnsApi{
@@ -40,15 +40,16 @@ class PorkBun extends DnsApi{
 				secretapikey: this.secretApiKey,
 				apikey: this.apiKey,
 			};
-			res = await axios.post(`'https://api.porkbun.com/api/json/v3'${url}`, data);
+			res = await axios.post(`https://api.porkbun.com/api/json/v3${url}`, data);
 
 			return res;
 		}catch(error){
 			if(!error.response) throw error;
 			if(error.response.data.message.includes('Invalid API key')){
-				throw dnsErrors.unauthorized(this);
+				throw this.errors.unauthorized();
 			}
-			throw dnsErrors.other(this, error.response.status, error.response.data.message)
+			// console.error('API error:', error)
+			throw this.errors.other(error.response.status, error.response.data.message)
 		}
 	}
 
@@ -63,63 +64,65 @@ class PorkBun extends DnsApi{
 		return name;
 	}
 
+
+	/*
+	The API and the generic class interface have different opinions of what keys
+	hold what data, the __parseOptions and __pastseRes normal the keys to what
+	the class expects
+
+	What the the API calls it : What the class wants it as.
+	*/
+
+	__apiKeyMap = {
+		'content': 'data'
+	}
+
 	async getRecords(domain, options){
 		let res = await this.post(`/dns/retrieve/${domain}`);
-		if(!options) return res.data.records;
-		if(options.data) options.content = options.data;
+		let records = this.__parseRes(res.data.records)
+		if(!options) return records;
+		options = this.__parseOptions(options);
 
-		if(options.type) this.__typeCheck(options.type);
-		if(options.name) options.name = this.__parseName(domain, options.name);
-		let records = [];
-
-		for(let record of res.data.records){
+		return records.filter((record)=>{
 			let matchCount = 0
-			for(let option in options){
-				if(record[option] === options[option] && ++matchCount === Object.keys(options).length){
-					records.push(record)
-					break;
+			for(let key in options){
+				if(record[key] === options[key] && ++matchCount === Object.keys(options).length){
+					return true;
 				}
 			}
+		});
+	}
+
+	async createRecord(domain, options, force){
+		if(force){
+			await this.deleteRecords(domain, options)
 		}
 
-		return records;
+		try{
+			options = this.__parseOptions(options, ['type', 'name', 'data']);
+			let res = await this.post(`/dns/create/${domain}`, options);
+
+			return res.data.result;
+		}catch(error){
+			if(error.message && error.message.includes('We were unable to create the DNS record')){
+				return (await this.getRecords(domain, options))[0];
+			}
+		}
 	}
 
 	async deleteRecordById(domain, id){
-		let res = await this.post(`/dns/delete/${domain}/${id}`);
+		let res = await this.post(`/dns/delete/${domain.domain}/${id}`);
 		return res.data;
 	}
 
+
 	async deleteRecords(domain, options){
 		let records = await this.getRecords(domain, options);
-		// console.log('PorkBun.deleteRecords', records)
 		for(let record of records){
 			await this.deleteRecordById(domain, record.id)
 		}
 	}
 
-	async createRecord(domain, options){
-		this.__typeCheck(options.type);
-		if(!options.content) throw new Error('PorkBun API: `content` key is required for this action')
-		// if(options.name) options.name = this.__parseName(domain, options.name);
-		// console.log('PorkBun.createRecord to send:', domain, options)
-
-		let res = await this.post(`/dns/create/${domain}`, options);
-		return res.data;
-	}
-
-	async createRecordForce(domain, options){
-		let {content, ...removed} = options;
-		// console.log('new options', removed)
-		let records = await this.getRecords(domain, removed);
-		// console.log('createRecordForce', records)
-		if(records.length){
-			// console.log('calling delete on', records[0].id)
-			// process.exit(0)
-			await this.deleteRecordById(domain, records[0].id)
-		}
-		return await this.createRecord(domain, options)
-	}
 
 	async listDomains(){
 		let res = await this.post(`/domain/listAll`, {"includeLabels": "yes"});
@@ -128,18 +131,3 @@ class PorkBun extends DnsApi{
 }
 
 module.exports = PorkBun;
-
-
-if(require.main === module){(async function(){try{
-	const conf = require('../conf');
-
-	// let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
-
-	// console.log(await porkBun.listDomains())
-
-	// console.log(await porkBun.deleteRecordById('holycore.quest', '415509355'))
-	// console.log('IIFE', await porkBun.createRecordForce('holycore.quest', {type:'A', name: 'testapi', content: '127.0.0.5'}))
-	// console.log('IIFE', await porkBun.getRecords('holycore.quest', {type:'A', name: 'testapi'}))
-}catch(error){
-	console.log('IIFE Error:', error)
-}})()}

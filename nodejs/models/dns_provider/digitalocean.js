@@ -1,7 +1,7 @@
 'use strict';
 
 const axios = require('axios');
-const {dnsErrors, DnsApi} = require('./common');
+const {DnsApi} = require('./common');
 
 class DigitalOcean extends DnsApi{
 	static _keyMap = {
@@ -22,18 +22,6 @@ class DigitalOcean extends DnsApi{
 		this.token = token.token || token;
 	}
 
-	__typeCheck(type){
-		if(!type) return;
-		if(!['A', 'MX', 'CNAME', 'ALIAS', 'TXT', 'NS', 'AAAA', 'SRV', 'TLSA', 'CAA', 'HTTPS', 'SVCB'].includes(type)) throw new Error(`${this.constructor.name} API: Invalid 'type' passed`)
-	}
-
-	__parseName(domain, name){
-		if(name && !name.endsWith('.'+domain)){
-			return `${name}.${domain}`
-		}
-		return name;
-	}
-
 	async axios(method, ...args){
 		try{
 			let a = axios.create({
@@ -44,48 +32,44 @@ class DigitalOcean extends DnsApi{
 			return await a[method](...args);
 		}catch(error){
 			if(!error.response) throw error;
-			if(error.response.data || error.response.data.id === 'Unauthorized'){
-				throw dnsErrors.unauthorized(this);
+			if(error.response.data && error.response.data.id === 'Unauthorized'){
+				throw this.errors.unauthorized();
 			}
-			throw dnsErrors.other(this, error.response.status, error.response.data.message);
+			throw this.errors.other(error.response.status, error.response.data.message);
 		}
 	}
 
 	async listDomains(){
 		let res = await this.axios('get', '/domains');
-		for(let domain of res.data.domains){
-			domain.domain = domain.name
-		}
-		return res.data.domains;
+
+		return this.__parseRes(res.data.domains);
 	}
 
-	async getRecords(domain, options={}){
-		this.__typeCheck(options.type);
-		let res = await this.axios('get', `/domains/${domain}/records`, {params: options})
-		let records = [];
+	async getRecords(domain, options){
+		options = this.__parseOptions(options);
+		let res = await this.axios('get', `/domains/${domain.domain}/records`, {params: options})
+		let records = this.__parseRes(res.data.domain_records);
+		if(!options) return records;
 
-		for(let record of res.data.domain_records){
+		return records.filter((record)=>{
 			let matchCount = 0
 			for(let key in options){
 				if(record[key] === options[key] && ++matchCount === Object.keys(options).length){
-					records.push(record)
+					return true;
 				}
 			}
-		}
-		return records;
+		});
 	}
 
 	async createRecord(domain, options){
-		this.__typeCheck(options.type);
-		if(!options.data) throw new Error(`${this.constructor.name} API: 'data' key is required for this action`)
-		if(options.name) options.name = this.__parseName(domain, options.name);
+		options = this.__parseOptions(options, ['type', 'name', 'data']);
+		let res = await this.axios('post', `/domains/${domain.domain}/records`, options);
 
-		let res = await this.axios('post', `/domains/${domain}/records`, options);
-		return res.data;
+		return this.__parseRes([res.data.domain_record])[0];
 	}
 
 	async deleteRecordById(domain, id){
-		let res = await this.axios('delete', `/domains/${domain}/records/${id}`);
+		let res = await this.axios('delete', `/domains/${domain.domain}/records/${id}`);
 	}
 
 	async deleteRecords(domain, options){
@@ -99,17 +83,3 @@ class DigitalOcean extends DnsApi{
 }
 
 module.exports = DigitalOcean;
-
-
-if(require.main === module){(async function(){try{
-	// const conf = require('../conf');
-
-	// console.log(await digi.listDomains())
-
-	// console.log('make', await digi.createRecord('rm-rf.stream', {name:'_test', data: '890', type: "TXT"}))
-	// console.log('delete', await digi.deleteRecords('rm-rf.stream', {type: 'TXT'}))
-	// console.log('get', await digi.getRecords('rm-rf.stream', {type:'TXT', data:'890'}))
-
-}catch(error){
-	console.log('IIFE Error:', error)
-}})()}

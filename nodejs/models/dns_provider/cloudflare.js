@@ -1,7 +1,7 @@
 'use strict';
 
 const axios = require('axios');
-const {dnsErrors, DnsApi} = require('./common');
+const {DnsApi} = require('./common');
 
 //like the options obj will always use domain data and type
 // change content to data 
@@ -32,70 +32,78 @@ class CloudFlare extends DnsApi{
 		if(!['A', 'MX', 'CNAME', 'ALIAS', 'TXT', 'NS', 'AAAA', 'SRV', 'TLSA', 'CAA', 'HTTPS', 'SVCB'].includes(type)) throw new Error(`${this.constructor.name} API: Invalid 'type' passed`)
 	}
 
-	__parseName(domain, name){
-		if(name && !name.endsWith('.'+domain)){
-			return `${name}.${domain}`
-		}
-		return name;
-	};
-
 	async axios(method, ...args){
 		try{
 			let a = axios.create({
 				baseURL: 'https://api.cloudflare.com/client/v4/zones',
 				headers: {Authorization: `Bearer ${this.token}`}
 			});
-			// console.log(a)
-			// console.log(...args)
+
 			return await a[method](...args);
 		}catch(error){
-			console.log(error)
 			if(!error.response) throw error;
-			if(error.response.data || error.response.data.id === 'Unauthorized'){
-				throw dnsErrors.unauthorized(this);
+			if(error.response.data && error.response.data.errors[0].code == 10000){
+				throw this.errors.unauthorized();
 			}
-			throw dnsErrors.other(this, error.response.status, error.response.data.message);
+			throw this.errors.other(error.response.status, error.response.data.errors[0].message, error.response.data.errors[0].code, error);
 		}
 	}
-
 
 	async listDomains(){
         let res = await this.axios('get');
-        // return res.data.result;
+
         for(let domain of res.data.result){
 			domain.domain = domain.name
-            domain.id = domain.id
+            domain.zoneId = domain.id
 		}
+
 		return res.data.result;
 	}
 
+	/*
+	The API and the generic class interface have different opinions of what keys
+	hold what data, the __parseOptions and __pastseRes normal the keys to what
+	the class expects
+
+	What the the API calls it : What the class wants it as.
+	*/
+	__apiKeyMap = {
+		'content': 'data',
+	}
+
     //get records
-	async getRecords(domain, options={}){
-		this.__typeCheck(options.type);
-        //like the options obj will always use domain data and type
-        // change content to data 
-        // change name to domain
+	async getRecords(domain, options){
+        let res = await this.axios('get',
+        	`${domain.zoneId}/dns_records`,
+        );
+		let records = this.__parseRes(res.data.result);
 
-        let res = await this.axios('get', `${domain.zoneId}/dns_records`, {params: options})
+		if(!options) return records;
 
-        for (let record of res.data.result){
-            record.domain = record.name
-            record.data = record.content
-        }
-        return res.data.result;
-
+		return records.filter((record)=>{
+			let matchCount = 0
+			for(let key in options){
+				if(record[key] === options[key] && ++matchCount === Object.keys(options).length){
+					return true;
+				}
+			}
+		});
 	}
 
 	async createRecord(domain, options){
-		this.__typeCheck(options.type);
-		//POST zones/:zone_identifier/dns_records
-		// name , type , ip / content , ttl 
+		try{
+			let res = await this.axios('post',
+				`${domain.zoneId}/dns_records`,
+				this.__parseOptions(options, ['type', 'name', 'data'])
+			);
 
-		if(!options.content) throw new Error(`${this.constructor.name} API: 'data' key is required for this action`)
-
-
-		let res = await this.axios('post', `${domain.zoneId}/dns_records`, options);
-		return res;
+			return this.__parseRes([res.data.result])[0];
+		}catch(error){
+			if(error.APIcode == 81058){
+				return (await this.getRecords(domain, options))[0];
+			}
+			throw error;
+		}
 
 	}
 
@@ -106,9 +114,7 @@ class CloudFlare extends DnsApi{
 	async deleteRecords(domain, options){
 		let records = await this.getRecords(domain, options)
 		for(let record of records){
-			let res = await this.deleteRecordById(domain, record.id);
-			// // console.log(record)
-			// console.log(record.id)
+
 		}
 
 		return true;
