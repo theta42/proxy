@@ -37,14 +37,15 @@ function ModelPs(model){
 							res.then(function(res){
 								publish(propKey, res, ...args);
 							}).catch(function(error){
-								console.log('toDo, publish errors...')
+
+								console.log('toDo, publish errors...');
 							});
 						}else{
-							publish(propKey, res, ...args)
+							publish(propKey, res, ...args);
 						}
 						return res;
 					}catch(error){
-						console.log("grrrr", error)
+						console.log("toDo, publish errors...");
 					}
 				}
 			} else {
