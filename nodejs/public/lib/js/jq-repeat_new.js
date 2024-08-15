@@ -231,7 +231,7 @@ MIT license
 			var $render = $(Mustache.render(this.__jqTemplate, this.__buildData(index, this[index])));
 			$render.attr('jq-repeat-index', index);
 
-			this.__update(this[index].__jq_$el, $render, this[index], this);
+			this.__putUpdate(this[index].__jq_$el, $render, this[index], this);
 			this[index].__jq_$el = $render;
 		};
 		
@@ -249,7 +249,7 @@ MIT license
 			$el.remove();
 		};
 
-		result.__update = function($el, $render, item, list){
+		result.__putUpdate = function($el, $render, item, list){
 			$el.replaceWith($render);
 			$el.show();
 		};
@@ -288,7 +288,7 @@ MIT license
 			return templates;
 		}
 
-		for(let prop of ['put', 'take', 'update', 'parseData']){
+		for(let prop of ['put', 'take', 'putUpdate', 'parseData']){
 			Object.defineProperty(result, prop, {
 				enumerable: false,
 				get(){
