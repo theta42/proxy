@@ -1,19 +1,14 @@
-body {
-	height: 100vh;
-}
-
 nav.navbar{
 	padding-left: 1em;
 	padding-right: 1em;
 }
 
-div.card-body{
-	padding-left: 1.5em;
-	padding-right: 1.5em;
+#spa-shell {
+	margin-top: 4.5rem;
+	padding-bottom: 1em;
 }
 
-#spa-shell {
-	padding-top: 4.5rem;
-	position: absolute;
-	height: 100%;
+.card-title{
+	font-weight: bold;
 }
+
