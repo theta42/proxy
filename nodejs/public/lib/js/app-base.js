@@ -363,7 +363,12 @@ $( document ).ready(function(){
 	});
 
 	$('.fa-circle-minus').click(function(){
-		$(this).closest('.card').find('.card-body').slideToggle('fast');
+		let $body = $(this).closest('.card').find('.card-body');
+		if($body.hasClass('d-none')){
+			$body.removeClass("d-none").removeClass('d-md-block');
+			if($body.is(":visible")) $body.hide();
+		}
+		$body.slideToggle('fast');
 	});
 
 	$('.fa-circle-xmark').click(function(){
@@ -383,6 +388,17 @@ $( document ).ready(function(){
 		})
 	}, 30000,);
 });
+
+(function($){
+	$.fn.scrollTo = function(){
+		const yOffset = Number($('#spa-shell').css('margin-top').replace('px', ''));
+		const y = this[0].getBoundingClientRect().top + window.scrollY - yOffset;
+
+		console.log('y', y)
+		window.scrollTo({top: y, behavior: 'smooth'});
+	};
+
+})(jQuery);
 
 //ajax form submit
 function formAJAX(btn){
