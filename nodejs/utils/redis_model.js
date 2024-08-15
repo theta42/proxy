@@ -29,6 +29,22 @@ class QueryHelper{
 }
 
 class Table{
+	static errors = {
+		ObjectValidateError: objValidate.ObjectValidateError,
+		EntryNameUsed: ()=>{
+			let error = new Error('EntryNameUsed');
+			error.name = 'EntryNameUsed';
+			error.message = `${this.prototype.constructor.name}:${data[this._key]} already exists`;
+			error.keys = [{
+				key: this._key,
+				message: `${this.prototype.constructor.name}:${data[this._key]} already exists`
+			}]
+			error.status = 409;
+
+			return error;
+		}
+	}
+
 	static redisClient = client;
 
 	static models = {}
@@ -137,6 +153,10 @@ class Table{
 		}
 
 		return out;
+	}
+
+	static findall(...args){
+		return this.listDetail(...args);
 	}
 
 	static async create(data){
