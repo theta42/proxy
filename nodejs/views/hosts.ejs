@@ -10,13 +10,6 @@
 		margin-bottom: 1px;
 	}
 
-	.card-title{
-		font-weight: bold;
-	}
-
-	div.hostEditPanel{
-		margin-bottom: 1em;
-	}
 	div.form-group{
 		margin-bottom: 1em;
 	}
@@ -89,7 +82,12 @@
 		hostEditCancle();
 		host = $.scope.hosts.getByKey(host);
 		host.__jq_$el.addClass('table-warning');
+		$editHostForm.find('[name=is_wildcard').attr('disabled', true);
 		$.scope.editHost.update({...host, form: $editHostForm.html()});
+
+		if(host.is_wildcard){
+			$('.hostEditPanel [name="host"]').attr('disabled', true);
+		}
 
 		$.each(host, function( key, value ) {			if(typeof value == "boolean"){
 				$(".hostEditPanel #"+ key +"-"+ value).prop('checked', true)
@@ -97,6 +95,8 @@
 				$(".hostEditPanel input[name='" + key + "']").val(value);
 			}
 		});
+
+		$('.hostEditPanel').scrollTo();
 	};
 
 	function hostDownloadCert(host, type){
@@ -127,7 +127,6 @@
 		$editHostForm = $('#addHost').clone();
 		$editHostForm.find('hr.buttonBreak').nextAll().remove();
 		// $editHostForm.find('.autoSll').addClass('bg-secondary');
-		$editHostForm.find('[name=is_wildcard').attr('disabled', true);
 		hostPopulate(); //populate the table
 
 		$.scope.hosts.take = function($el, item, list){
@@ -137,7 +136,7 @@
 			});
 		};
 
-		$.scope.hosts.update = function($el, $render, item, list){
+		$.scope.hosts.putUpdate = function($el, $render, item, list){
 			$render.show()
 			$el.replaceWith($render);
 		};
@@ -187,7 +186,7 @@
 	<!-- 
 		left column 
 	-->
-		<div jq-repeat="editHost" class="card shadow-lg border-warning hostEditPanel" style="display:none">
+		<div jq-repeat="editHost" class="card shadow-lg border-warning hostEditPanel mb-3" style="display:none">
 			<!--
 				Edit host card
 			-->
@@ -220,7 +219,7 @@
 			</div>
 		</div>
 
-		<div class="card shadow-lg hostAddPanel">
+		<div class="card shadow-lg mb-3 hostAddPanel">
 			<!--
 				Add new host card
 			-->
@@ -238,7 +237,7 @@
 
 			<div class="card-header actionMessage" style="display:none"></div>
 
-			<div class="card-body">
+			<div class="card-body d-none d-md-block">
 				<form class="addHost" id="addHost" method="POST" action="host" onsubmit="formAJAX(this)">
 
 					<div class="form-group">
@@ -357,98 +356,99 @@
 				<label class="form-label" for="search" style="margin-left: -5px;">
 					Search Hosts:
 				</label>
-				<input type="search" oninput="hostSearchInput()">
+				<input type="search" oninput="hostSearchInput()" />
 			</div>
-			<table class="m-0 card-body table table-striped table-sm overflow-x-scroll">
-	
-				<thead>
-					<th>
-						SSL Expire
-					</th>
-					<th>
-						Host Name
-					</th>
-					<th>
-						target
-					</th>
-					<th class="hidden-xs">
-						Updated
-					</th>
-					<th>
-						Actions
-					</th>
-				</thead>
+			<div class='table-responsive'>
+				<table class="m-0 card-body table table-striped overflow-x-scroll">
+		
+					<thead>
+						<th>
+							SSL Expire
+						</th>
+						<th>
+							Host Name
+						</th>
+						<th>
+							target
+						</th>
+						<th class="hidden-xs">
+							Updated
+						</th>
+						<th>
+							Actions
+						</th>
+					</thead>
 
-				<tbody>
-					<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
-						<td class="table-{{wildcard_text_bg}}">
-							{{{ wildcard_text }}}
-							{{#wildcard_expires}}
-								<span class="momentFromNow" data-date="{{ wildcard_expires }}" >{{wildcard_expires_text}}</span>
-							{{/wildcard_expires}}
-						</td>
-						<td>
-							<a target="_blank" href="{{ forcessl_text }}{{ host }}">
-								{{{ forcessl_text }}}{{ host }}
-							</a>
-							{{#domain.provider}}
-								<br />
-								<img width="24px" src="{{displayIconHtml}}" /> {{displayName}}
-							{{/domain.provider}}
-						</td>
-						<td>
-							{{{ targetssl_text }}}{{ ip }}:{{ targetPort }}
-						</td>
-						<td class="hidden-xs momentFromNow" data-date="{{ updated_on }}" >
-							{{ updated_on_text }}
-						</td>
-						<td>
-							<div class="btn-group">
+					<tbody>
+						<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
+							<td class="table-{{wildcard_text_bg}}">
+								{{{ wildcard_text }}}
+								{{#wildcard_expires}}
+									<span class="momentFromNow" data-date="{{ wildcard_expires }}" >{{wildcard_expires_text}}</span>
+								{{/wildcard_expires}}
+							</td>
+							<td>
+								<a target="_blank" href="{{ forcessl_text }}{{ host }}">
+									{{{ forcessl_text }}}{{ host }}
+								</a>
+								{{#domain.provider}}
+									<br />
+									<img width="24px" src="{{displayIconHtml}}" /> {{displayName}} - {{name}}
+								{{/domain.provider}}
+							</td>
+							<td>
+								{{{ targetssl_text }}}{{ ip }}:{{ targetPort }}
+							</td>
+							<td class="hidden-xs momentFromNow" data-date="{{ updated_on }}" >
+								{{ updated_on_text }}
+							</td>
+							<td>
+								<div class="btn-group">
 
-								<div class="btn-group" role="group">
-									<button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-										<i class="fa-brands fa-expeditedssl"></i>
-										Certs
+									<div class="btn-group" role="group">
+										<button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+											<i class="fa-brands fa-expeditedssl"></i>
+											Certs
+										</button>
+										<ul class="dropdown-menu">
+											<li>
+												<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'cert_pem')">
+													<i class="fa-solid fa-certificate"></i>
+													Cert
+													<i class="fa-solid fa-file-arrow-down float-end"></i>
+												</button>
+											</li>
+											<li>
+												<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'fullchain_pem')">
+													<i class="fa-solid fa-link"></i>
+													Full Chain
+													<i class="fa-solid fa-file-arrow-down float-end"></i>
+												</button>
+											</li>
+											<li>
+												<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'privkey_pem')">
+													<i class="fa-solid fa-key"></i>
+													Private key
+													<i class="fa-solid fa-file-arrow-down float-end"></i>
+												</button>
+											</li>
+										</ul>
+									</div>
+
+									<button type="button" onclick="hostEditOpen(this, '{{ host }}');" class="btn btn-sm btn-warning">
+										<i class="fa-solid fa-pencil"></i>
+										Edit
 									</button>
-									<ul class="dropdown-menu">
-										<li>
-											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'cert_pem')">
-												<i class="fa-solid fa-certificate"></i>
-												Cert
-												<i class="fa-solid fa-file-arrow-down float-end"></i>
-											</button>
-										</li>
-										<li>
-											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'fullchain_pem')">
-												<i class="fa-solid fa-link"></i>
-												Full Chain
-												<i class="fa-solid fa-file-arrow-down float-end"></i>
-											</button>
-										</li>
-										<li>
-											<button type="button" class="dropdown-item" onclick="hostDownloadCert('{{host}}', 'privkey_pem')">
-												<i class="fa-solid fa-key"></i>
-												Private key
-												<i class="fa-solid fa-file-arrow-down float-end"></i>
-											</button>
-										</li>
-									</ul>
+									<button type="button" method="DELETE" action="host/{{host}}" onclick="formAJAX()" class="btn btn-sm btn-danger">
+										<i class="fa-solid fa-trash-can"></i>
+										Delete
+									</button>
 								</div>
-
-								<button type="button" onclick="hostEditOpen(this, '{{ host }}');" class="btn btn-sm btn-warning">
-									<i class="fa-solid fa-pencil"></i>
-									Edit
-								</button>
-								<button type="button" method="DELETE" action="host/{{host}}" onclick="formAJAX()" class="btn btn-sm btn-danger">
-									<i class="fa-solid fa-trash-can"></i>
-									Delete
-								</button>
-							</div>
-						</td>
-					</tr>
-				</tbody>
-			</table>
-
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 		</div>
 	</div>
 </div>
