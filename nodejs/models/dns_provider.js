@@ -32,19 +32,7 @@ class Domain extends Table{
 			domain = tldExtract(domain).domain;
 		}catch{}
 
-		let instance = await super.get(domain, ...args);
-
-		return instance;
-	}
-
-	static async getByProviderId(id, ...args){
-		let domains = await this.listDetail(...args);
-		let results = [];
-		for(let domain of domains){
-			if(domain.dnsProvider_id == id) results.push(domain);
-		}
-
-		return results;
+		return await super.get(domain, ...args);
 	}
 
 	async getRecords(...args){
@@ -60,7 +48,7 @@ class Domain extends Table{
 	}
 }
 
-Domain.register(ModelPs(Domain))
+Domain.register(ModelPs(Domain));
 
 class DnsProvider extends Table{
 	static _key = 'id';
@@ -83,16 +71,12 @@ class DnsProvider extends Table{
 		let Provider = providers[provider];
 		let _keyMap = {...this._keyMap, ...Provider._keyMap};
 
-		let cls = ({
+		return ({
 			[this.name] : class extends this {
 				static _keyMap = _keyMap;
 				static Provider = Provider;
 			}
 		})[this.name];
-
-		Object.assign(cls.prototype, Provider)
-
-		return cls
 	}
 
 	static async create(data, ...args){
@@ -133,9 +117,6 @@ class DnsProvider extends Table{
 		for(let provider in providers){
 			out.push({
 				name: provider,
-				displayName: providers[provider].displayName || provider,
-				displayIconUni: providers[provider].displayIconUni || '&#x3f;',
-				displayIconHtml:  providers[provider].displayIconHtml || '<i class="fa-solid fa-question"></i>',
 				fields: providers[provider]._keyMap,
 			});
 		}
@@ -147,20 +128,32 @@ class DnsProvider extends Table{
 	}
 
 	async listDomains(){
-		return this.api.listDomains()
+		return this.api.listDomains();
 	}
 
 	async updateDomains(domains){
 		domains = domains || await this.listDomains();
+		let currentDomains = this.domains.map(domain => domain.domain);
+
+
 		for(let domain of domains){
-			if(!(await Domain.exists(domain.domain))){
-				await Domain.create({
-					created_by: this.created_by,
-					domain: domain.domain,
-					dnsProvider_id: this.id,
-					zoneId: domain.zoneId,
-				});
+			if(currentDomains.includes(domain.domain)){
+				delete currentDomains[currentDomains.indexOf(domain.domain)];
+				continue;
 			}
+			await Domain.create({
+				created_by: this.created_by,
+				domain: domain.domain,
+				dnsProvider_id: this.id,
+				zoneId: domain.zoneId,
+			});
+		}
+		console.log('currentDomains:', currentDomains)
+
+		for(let domain of currentDomains){
+			if(!domain) continue
+			domain = await Domain.get(domain);
+			await domain.remove();
 		}
 	}
 
