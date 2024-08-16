@@ -49,17 +49,6 @@ router.get('/domain', async function(req, res, next){
 	}
 });
 
-
-router.get('/domain/byProvider/:item', async function(req, res, next){
-	try{
-		return res.json({
-			results:  await Domain.getByProviderId(req.params.item)
-		});
-	}catch(error){
-		return next(error);
-	}
-});
-
 router.post('/domain/refresh/:item', async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
