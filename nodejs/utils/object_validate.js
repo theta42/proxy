@@ -34,7 +34,6 @@ function processKeys(map, data, partial){
 		// Remove undefined keys unless they have a default option or are a
 		// relation 
 		if(data[key] === undefined){
-			console.log('undefined key:', key, data[key], map[key], map[key].default);
 			if(!map[key].default){
 				if(map[key].model && !map[key].type) continue;
 				continue;
