@@ -12,7 +12,7 @@ class User extends Table{
 		'updated_by': {default:"__NONE__", isRequired: false, type: 'string',},
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
 		'username': {isRequired: true, type: 'string', min: 3, max: 500},
-		'password': {isRequired: true, type: 'string', min: 3, max: 500},
+		'password': {isRequired: true, type: 'string', min: 3, max: 500, isPrivate: true},
 		'backing': {default:"redis", isRequired: false, type: 'string',},
 	}
 
@@ -58,12 +58,9 @@ class User extends Table{
 			throw error;
 		}
 	};
-
-
 }
 
-module.exports = {User};
-
+User.register();
 
 (async function(){
 	var defaultUser = 'proxyadmin2'

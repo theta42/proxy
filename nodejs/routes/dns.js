@@ -1,14 +1,24 @@
 'use strict';
 
 const router = require('express').Router();
-const {Host, Domain} = require('../models').models;
+const {DnsProvider, Domain} = require('../models').models;
 
-const Model = Host;
+const Model = DnsProvider;
 
 router.get('/', async function(req, res, next){
 	try{
 		return res.json({
-			results: await Model[req.query.detail ? "listDetail" : "list"](),
+			results:  await Model[req.query.detail ? "listDetail" : "list"]()
+		});
+	}catch(error){
+		return next(error);
+	}
+});
+
+router.options('/', async function(req, res, next){
+	try{
+		return res.json({
+			results:  await Model.listProviders()
 		});
 	}catch(error){
 		return next(error);
@@ -29,13 +39,30 @@ router.post('/', async function(req, res, next){
 	}
 });
 
-router.get('/lookup/:item', async function(req, res, next){
+router.get('/domain', async function(req, res, next){
 	try{
 		return res.json({
-			string: req.params.item,
-			results: await Model.lookUp(req.params.item),
+			results:  await Domain[req.query.detail ? "listDetail" : "list"]()
 		});
+	}catch(error){
+		return next(error);
+	}
+});
 
+router.post('/domain/refresh/:item', async function(req, res, next){
+	try{
+		let item = await Model.get(req.params.item);
+		return res.json({results: await item.updateDomains()});
+	}catch(error){
+		next(error);
+	}
+})
+
+router.get('/domain/:item', async function(req, res, next){
+	try{
+		return res.json({
+			results:  [await Domain.get(req.params.item)]
+		});
 	}catch(error){
 		return next(error);
 	}
@@ -83,19 +110,6 @@ router.delete('/:item', async function(req, res, next){
 
 	}catch(error){
 		return next(error);
-	}
-});
-
-router.put('/:item/renew', async function(req, res, next){
-	try{
-		let item = await Model.get(req.params.item);
-		item.createWildcardCert();
-
-		return res.json({
-			message: `Requesting wildcard cert for ${req.params.item}`,
-		})
-	}catch(error){
-		next(error);
 	}
 });
 

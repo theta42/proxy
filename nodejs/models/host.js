@@ -1,18 +1,18 @@
 'use strict';
 
-const Table = require('../utils/redis_model');
+const Table = require('.');
+const {Domain} = require('.').models;
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
-const PorkBun = require('../utils/porkbun');
 const LetsEncrypt = require('../utils/letsencrypt');
 const conf = require('../conf');
 
-let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
-let letsEncrypt = new LetsEncrypt({
-	directoryUrl: LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
+const letsEncrypt = new LetsEncrypt({
+	directoryUrl: conf.environment === "production" ?
+		LetsEncrypt.AcmeClient.directory.letsencrypt.production :
+		LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
 });
-
 
 class Host extends Table{
 	static _key = 'host';
@@ -28,9 +28,10 @@ class Host extends Table{
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
 		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
-		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500, default: 'Requesting'},
+		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500},
 		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
 		'wildcard_expires': {isRequired: false, type: 'number'},
+		'domain': {model: 'Domain', rel: 'one'},
 	}
 
 	static lookUpObj = {};
@@ -38,7 +39,6 @@ class Host extends Table{
 
 	static async addCache(host, parentOBJ){
 		try{
-
 			console.log('addCache host:', host, 'parentOBJ host', parentOBJ.host)
 			parentOBJ = await this.get(parentOBJ.host);
 
@@ -88,6 +88,8 @@ class Host extends Table{
 
 	static async create(data, ...args){
 		try{
+			if(data.is_wildcard) await this.validateWildcardCreate(data, args);
+
 			let out = await super.create(data, ...args);
 			await this.buildLookUpObj();
 			if(out.is_wildcard) out.createWildcardCert();
@@ -96,6 +98,17 @@ class Host extends Table{
 
 		} catch(error){
 			throw error;
+		}
+	}
+
+	static async validateWildcardCreate(data, ...args){
+		try{
+			if(!data.host.startsWith('*.')) throw new Error('not wild card');
+			await Domain.get(data.host);
+		}catch(error){
+			console.log('validateWildcardCreate error', error)
+			if(error.status === 404) error.message = "No matching DNS provider registered"
+			throw this.errors.ObjectValidateError([{key: 'host', message: error.message}]);
 		}
 	}
 
@@ -116,12 +129,11 @@ class Host extends Table{
 					try{
 						let parts = tldExtract(authz.identifier.value);
 
-						let res = await porkBun.createRecordForce(
-							parts.domain,
+						let res = await host.domain.createRecord(
 							{
 								type:'TXT',
 								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`,
-								content: `${keyAuthorization}`
+								data: `${keyAuthorization}`
 							}
 						);
 					}catch(error){
@@ -162,8 +174,7 @@ class Host extends Table{
 					})
 					try{
 						let parts = tldExtract(authz.identifier.value);
-						await porkBun.deleteRecords(
-							parts.domain,
+						await host.domain.deleteRecords(
 							{
 								type:'TXT',
 								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''
@@ -322,6 +333,7 @@ class Host extends Table{
 		return true;
 	}
 }
+Host.register(ModelPs(Host))
 
 
 class Cached extends Table{
@@ -338,9 +350,16 @@ class Cached extends Table{
 
 module.exports = {Host: ModelPs(Host)};
 
-(async function(){
+if(require.main === module){(async function(){
 try{
 	await Host.lookUpReady();
+
+	let host = await Host.get('*.new.test.wtf')
+
+	console.log('host', host.domain.provider.api);
+
+
+
 	// let res = await Host.create({
 	// 	host: '*.test.holycore.quest',
 	// 	ip: '192.168.1.47',
@@ -353,8 +372,8 @@ try{
 	// console.log('IIFE res:\n', res)
 
 	// console.log(Host.test(55))
-	console.log(await Host.list())
-	console.log(await Cached.listDetail())
+	// console.log(await Host.list())
+	// console.log(await Cached.listDetail())
 	// console.log('IIFE lookup:', Host.lookUp('bld3324sdf.test.holycore.quest'))
 
 
@@ -389,4 +408,4 @@ try{
 }catch(error){
 	console.log('IIFE test area error:', error)
 }
-})()
+})()}

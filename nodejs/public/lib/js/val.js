@@ -50,6 +50,9 @@
 		var	value = this.val(); //link to input value
 		var message;
 
+		if(this.prop('disabled')) return true;
+
+
 		//checks if field is required, and length 
 		if(!isNaN(options) && value.length < options){
 			message = `Must be ${options} characters`;

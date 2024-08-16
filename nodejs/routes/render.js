@@ -6,12 +6,13 @@ const router = require('express').Router();
 const conf = require('../conf');
 
 const values ={
-  title: conf.environment !== 'production' ? `<i class="fa-brands fa-dev"></i>` : ''
+  title: conf.environment !== 'production' ? `dev` : '',
+  titleIcon: conf.environment !== 'production' ? `<i class="fa-brands fa-dev"></i>` : '',
 }
 
 // List of front end node modules to be served
 const frontEndModules = ['bootstrap', 'mustache', 'jquery', '@fortawesome',
-  'moment',
+  'moment', '@popper',
 ];
 
 // Server front end modules
@@ -31,6 +32,11 @@ router.get('/', async function(req, res, next) {
 router.get('/hosts', async function(req, res, next) {
   res.render('hosts', {...values});
 });
+
+router.get('/dns', async function(req, res, next) {
+  res.render('dns', {...values});
+});
+
 
 router.get('/users', async function(req, res, next) {
   res.render('users', {...values});

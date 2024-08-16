@@ -76,7 +76,8 @@ app.api = (function(app){
 	var baseURL = '/api/'
 
 	function post(url, data, callback){
-		$.ajax({
+		if(!$.isFunction(callback)) callback = callback2;
+		return $.ajax({
 			type: 'POST',
 			url: baseURL+url,
 			headers:{
@@ -86,17 +87,18 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
 			}
 		});
 	}
 
 	function put(url, data, callback){
-		$.ajax({
+		if(!$.isFunction(callback)) callback = callback2;
+		return $.ajax({
 			type: 'PUT',
 			url: baseURL+url,
 			headers:{
@@ -106,18 +108,18 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
 			}
 		});
 	}
 
 	function remove(url, callback, callback2){
 		if(!$.isFunction(callback)) callback = callback2;
-		$.ajax({
+		return $.ajax({
 			type: 'delete',
 			url: baseURL+url,
 			headers:{
@@ -126,17 +128,36 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
+			}
+		});
+	}
+
+	function options(url, callback){
+		return $.ajax({
+			type: 'OPTIONS',
+			url: baseURL+url,
+			headers:{
+				'auth-token': app.auth.getToken()
+			},
+			contentType: "application/json; charset=utf-8",
+			dataType: "json",
+			complete: function(res, text){
+				callback ? callback(
+					text !== 'success' ? res.statusText : null,
+					JSON.parse(res.responseText),
+					res.status
+				) : function(){}
 			}
 		});
 	}
 
 	function get(url, callback){
-		$.ajax({
+		return $.ajax({
 			type: 'GET',
 			url: baseURL+url,
 			headers:{
@@ -145,16 +166,16 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback(
+				callback ? callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				)
+				) : function(){}
 			}
 		});
 	}
 
-	return {post: post, get: get, put: put, delete: remove}
+	return {post: post, get: get, put: put, delete: remove, options: options,}
 })(app)
 
 app.auth = (function(app){
@@ -342,7 +363,12 @@ $( document ).ready(function(){
 	});
 
 	$('.fa-circle-minus').click(function(){
-		$(this).closest('.card').find('.card-body').slideToggle('fast');
+		let $body = $(this).closest('.card').find('.card-body');
+		if($body.hasClass('d-none')){
+			$body.removeClass("d-none").removeClass('d-md-block');
+			if($body.is(":visible")) $body.hide();
+		}
+		$body.slideToggle('fast');
 	});
 
 	$('.fa-circle-xmark').click(function(){
@@ -362,6 +388,17 @@ $( document ).ready(function(){
 		})
 	}, 30000,);
 });
+
+(function($){
+	$.fn.scrollTo = function(){
+		const yOffset = Number($('#spa-shell').css('margin-top').replace('px', ''));
+		const y = this[0].getBoundingClientRect().top + window.scrollY - yOffset;
+
+		console.log('y', y)
+		window.scrollTo({top: y, behavior: 'smooth'});
+	};
+
+})(jQuery);
 
 //ajax form submit
 function formAJAX(btn){

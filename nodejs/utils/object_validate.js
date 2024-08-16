@@ -21,22 +21,36 @@ function processKeys(map, data, partial){
 
 	for(let key of Object.keys(map)){
 
+		// Do not require "isRequired" fields for partial validation, useful for
+		// updates.
 		if(!map[key].always && partial && !data.hasOwnProperty(key)) continue;
 
+		// Make sure required keys are present
 		if(!partial && map[key].isRequired && !data.hasOwnProperty(key)){
 			errors.push({key, message:`${key} is required.`});
 			continue;
-		} 
+		}
 
+		// Remove undefined keys unless they have a default option or are a
+		// relation 
+		if(data[key] === undefined){
+			if(!map[key].default){
+				if(map[key].model && !map[key].type) continue;
+				continue;
+			}
+		}
+
+		// Check the type of the key
 		if(data.hasOwnProperty(key) && map[key].type && typeof(data[key]) !== map[key].type){
 			errors.push({key, message:`${key} is not ${map[key].type} type.`});
 			continue;
 		}
 
-		// console.log(key, data[key], map[key].default, data.hasOwnProperty(key) && data[key] !== undefined ? data[key] : returnOrCall(map[key].default))
-
+		// Add the key to the process object to be returned and set any default
+		// if the key is blank
 		out[key] = data.hasOwnProperty(key) && data[key] !== undefined ? data[key] : returnOrCall(map[key].default);
 
+		// Check for type specific validations, ie: string length
 		if(data.hasOwnProperty(key) && process_type[map[key].type]){
 			let typeError = process_type[map[key].type](map[key], data[key]);
 			if(typeError){
@@ -47,8 +61,9 @@ function processKeys(map, data, partial){
 		}
 	}
 
+	// Check for errors, throw validation error if any
 	if(errors.length !== 0){
-		throw new ObjectValidateError(errors);
+		throw ObjectValidateError(errors);
 		return {__errors__: errors};
 	}
 
@@ -56,6 +71,7 @@ function processKeys(map, data, partial){
 }
 
 function parseFromString(map, data){
+	// Use the key maps data type to return string values to native
 	let types = {
 		boolean: function(value){ return value === 'false' ? false : true },
 		number: Number,
@@ -80,11 +96,14 @@ function parseToString(data){
 	return (types[typeof(data)] || String)(data);
 }
 
-function ObjectValidateError(message){
-	this.name = 'ObjectValidateError';
-	this.message = (message || {});
-	this.keys = (message || {})
-	this.status = 422;
+function ObjectValidateError(keys, message){
+	let error = new Error('ObjectValidateError')
+	error.name = "ObjectValidateError"
+	error.message = message || `Invalid Keys: ${message}`
+	error.keys = (keys || {});
+	error.status = 422;
+
+	return error
 }
 
 ObjectValidateError.prototype = Error.prototype;

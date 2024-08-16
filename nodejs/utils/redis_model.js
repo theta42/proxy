@@ -5,14 +5,53 @@ const objValidate = require('../utils/object_validate');
 const conf = require('../conf');
 
 const client = createClient({});
-client.connect()
+client.connect();
 
 function redisPrefix(key){
 	return `${conf.redis.prefix}${key}`;
 }
 
+class QueryHelper{
+	hisroty = []
+	constructor(orgin){
+		this.orgin = orgin
+		this.hisroty.push(orgin.constructor.name);
+	}
+
+	static isNotCycle(modleName, queryHelper){
+		if(queryHelper instanceof this){
+			if(queryHelper.hisroty.includes(modleName)){
+				return true;
+			}
+			queryHelper.hisroty.push(modleName)
+		}
+	}
+}
+
 class Table{
+	static errors = {
+		ObjectValidateError: objValidate.ObjectValidateError,
+		EntryNameUsed: ()=>{
+			let error = new Error('EntryNameUsed');
+			error.name = 'EntryNameUsed';
+			error.message = `${this.prototype.constructor.name}:${data[this._key]} already exists`;
+			error.keys = [{
+				key: this._key,
+				message: `${this.prototype.constructor.name}:${data[this._key]} already exists`
+			}]
+			error.status = 409;
+
+			return error;
+		}
+	}
+
 	static redisClient = client;
+
+	static models = {}
+	static register = function(Model){
+		Model = Model || this;
+		this.models[Model.name] = Model;
+	}
 	
 	constructor(data){
 		for(let key in data){
@@ -20,7 +59,7 @@ class Table{
 		}
 	}
 
-	static async get(index){
+	static async get(index, queryHelper){
 		try{
 			if(typeof index === 'object'){
 				index = index[this._key];
@@ -42,10 +81,34 @@ class Table{
 			// back to native values.
 			result = objValidate.parseFromString(this._keyMap, result);
 
-			return new this(result);
-
+			let instance = new this(result);
+			await instance.buildRelations(queryHelper);
+			
+			return instance;
 		}catch(error){
 			throw error;
+		}
+	}
+
+	async buildRelations(queryHelper){
+
+		for(let [key, options] of Object.entries(this.constructor._keyMap)){
+			if(options.model){
+				let remoteModel = this.constructor.models[options.model]
+				try{
+					if(QueryHelper.isNotCycle(remoteModel.name, queryHelper)) continue;
+					if(options.rel === 'one'){
+						// console.log('relone:', this[key], queryHelper, remoteModel, await remoteModel.get(this[key], queryHelper || new QueryHelper(this)))
+						this[key] = await remoteModel.get(this[key] || this[options.localKey || this.constructor._key] , queryHelper || new QueryHelper(this))
+					}
+					if(options.rel === 'many'){
+						this[key] = await remoteModel.listDetail({
+							[options.remoteKey]: this[options.localKey || this.constructor._key],
+						},queryHelper || new QueryHelper(this))
+
+					}
+				}catch{}
+			}
 		}
 	}
 
@@ -72,15 +135,28 @@ class Table{
 		}
 	}
 
-	static async listDetail(){
+	static async listDetail(options, queryHelper){
+
 		// Return a list of the entries as instances.
 		let out = [];
 
 		for(let entry of await this.list()){
-			out.push(await this.get(entry));
+			let instance = await this.get(entry, arguments[arguments.length - 1]);
+			if(!options) out.push(instance);
+			let matchCount = 0;
+			for(let option in options){
+				if(instance[option] === options[option] && ++matchCount === Object.keys(options).length){
+					out.push(instance);
+					break;
+				}
+			}
 		}
 
 		return out;
+	}
+
+	static findall(...args){
+		return this.listDetail(...args);
 	}
 
 	static async create(data){
@@ -209,6 +285,22 @@ class Table{
 			throw error;
 		}
 	};
+
+	toJSON(){
+		let result = {};
+		for (const [key, value] of Object.entries(this)) {
+			if(this.constructor._keyMap[key] && this.constructor._keyMap[key].isPrivate) continue;
+			result[key] = value;
+		}
+
+		return result
+
+		// return JSON.stringify(result);
+	}
+
+	toString(){
+		return this[this.constructor._key];
+	}
 
 }
 

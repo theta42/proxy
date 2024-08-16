@@ -13,6 +13,8 @@ router.use('/user', middleware.auth, require('./user'));
 // API routes for working with hosts. All endpoints need to be have valid user.
 router.use('/host', middleware.auth, require('./host'));
 
+router.use('/dns', middleware.auth, require('./dns'));
+
 // API routes for working with hosts. All endpoints need to be have valid user.
 router.use('/cert', middleware.auth, require('./cert'));
 
