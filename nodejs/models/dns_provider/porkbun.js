@@ -1,10 +1,10 @@
 'use strict';
 
 const axios = require('axios');
-const {DnsApi} = require('./common');
+const {DnsProvider} = require('../').models;
 
 
-class PorkBun extends DnsApi{
+class PorkBun extends DnsProvider{
 	static _keyMap = {
 		'apiKey': {isRequired: true, type: 'string', isPrivate: true, displayName: 'API key'},
 		'secretApiKey': {isRequired: true, type: 'string', isPrivate: true, displayName: 'API Secret key'},
@@ -26,10 +26,16 @@ class PorkBun extends DnsApi{
    </g>
 </svg>`
 
-	constructor(args){
-		super()
-		this.apiKey = args.apiKey;
-		this.secretApiKey = args.secretApiKey;
+	/*
+	The API and the generic class interface have different opinions of what keys
+	hold what data, the __parseOptions and __pastseRes normal the keys to what
+	the class expects
+
+	What the the API calls it : What the class wants it as.
+	*/
+
+	__apiKeyMap = {
+		'content': 'data',
 	}
 
 	async post(url, data){
@@ -51,30 +57,6 @@ class PorkBun extends DnsApi{
 			// console.error('API error:', error)
 			throw this.errors.other(error.response.status, error.response.data.message)
 		}
-	}
-
-	__typeCheck(type){
-		if(!['A', 'MX', 'CNAME', 'ALIAS', 'TXT', 'NS', 'AAAA', 'SRV', 'TLSA', 'CAA', 'HTTPS', 'SVCB'].includes(type)) throw new Error('PorkBun API: Invalid type passed')
-	}
-
-	__parseName(domain, name){
-		if(name && !name.endsWith('.'+domain)){
-			return `${name}.${domain}`
-		}
-		return name;
-	}
-
-
-	/*
-	The API and the generic class interface have different opinions of what keys
-	hold what data, the __parseOptions and __pastseRes normal the keys to what
-	the class expects
-
-	What the the API calls it : What the class wants it as.
-	*/
-
-	__apiKeyMap = {
-		'content': 'data'
 	}
 
 	async getRecords(domain, options){
@@ -130,4 +112,4 @@ class PorkBun extends DnsApi{
 	}
 }
 
-module.exports = PorkBun;
+DnsProvider.extend('dnsProvider', PorkBun);

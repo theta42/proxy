@@ -55,7 +55,7 @@
 
 		//checks if field is required, and length 
 		if(!isNaN(options) && value.length < options){
-			message = `Must be ${options} characters`;
+			message = options == 1 ? 'Required' : `Must be ${options} characters`;
 		}
 
 		//checks if empty to stop processing 

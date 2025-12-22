@@ -41,6 +41,17 @@ router.get('/lookup/:item', async function(req, res, next){
 	}
 });
 
+router.get('/lookupobj', async function(req, res, next){
+	try{
+		return res.json({
+			results: await Model.lookUpObj,
+		});
+
+	}catch(error){
+		return next(error);
+	}
+});
+
 router.get('/:item', async function(req, res, next){
 	try{
 

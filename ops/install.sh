@@ -46,7 +46,7 @@ git clone https://github.com/theta42/proxy.git
 cd proxy/nodejs
 npm install
 
-ln -s ops/nginx_conf/targetinfo.lua /usr/local/openresty/lualib/
+ln -s `pwd`/ops/nginx_conf/targetinfo.lua /usr/local/openresty/lualib/targetinfo.lua
 
 systemctl start proxy.service
 systemctl enable proxy.service

@@ -37,16 +37,14 @@ class LetsEncrypt{
 		}
 	}
 
-	async dnsWildcard(domain, options){
+	async dnsWildcard(domains, options){
 		/*
 		https://github.com/publishlab/node-acme-client/tree/master/examples/dns-01
 		*/
 
 		try{
-			domain = domain.replace(/^\*\./, '');
-
 			const [key, csr] = await AcmeClient.crypto.createCsr({
-				altNames: [domain, `*.${domain}`],
+				altNames: domains,
 			});
 
 			let dnsToAdd = 0;
@@ -84,12 +82,11 @@ class LetsEncrypt{
 								await sleep(10000);
 								break;
 							}
-							if(checkCount++ > 60) throw new Error('challengeCreateFn validation timed out');
-							await sleep(1500);
+							if(checkCount++ > 100*dnsToAdd) throw new Error('challengeCreateFn validation timed out');
+							await sleep(2000);
 						}
 					}catch(error){
-						console.log('dns check failed error:', error)
-						options.onDnsCheckFail(authz, error)
+						throw error
 					}
 				},
 				challengeRemoveFn: options.challengeRemoveFn,
@@ -102,7 +99,8 @@ class LetsEncrypt{
 			};
 
 		}catch(error){
-			console.log('Error in LetsEncrypt.dnsChallenge', error)
+			console.log('LE dnsWildcard error:', error)
+			throw error
 		}
 	}
 }

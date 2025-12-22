@@ -81,6 +81,7 @@ MIT license
 				if(  i >= index){
 
 					this[i].__jq_$el.attr( 'jq-repeat-index', i+shift );
+					this[i].__jq_$el.attr( 'jq-repeat-scope', this.__jqRepeatId );
 				}
 			}
 
@@ -97,6 +98,7 @@ MIT license
 					
 					//set call name and index keys to DOM element
 					var $render = $( render ).addClass( 'jq-repeat-'+ this.__jqRepeatId ).attr( 'jq-repeat-index', key );
+					$render.attr( 'jq-repeat-scope', this.__jqRepeatId );
 
 					//if add new elements in proper stop, or after the place holder.
 					if( key === 0 ){
@@ -230,9 +232,11 @@ MIT license
 
 			var $render = $(Mustache.render(this.__jqTemplate, this.__buildData(index, this[index])));
 			$render.attr('jq-repeat-index', index);
+			$render.attr('jq-repeat-scope', this.__jqRepeatId);
 
 			this.__putUpdate(this[index].__jq_$el, $render, this[index], this);
 			this[index].__jq_$el = $render;
+			return $render
 		};
 		
 		result.getByKey = function(key, value){
@@ -250,8 +254,8 @@ MIT license
 		};
 
 		result.__putUpdate = function($el, $render, item, list){
+			$render.show()
 			$el.replaceWith($render);
-			$el.show();
 		};
 
 		result.__parseData = function(data){
@@ -345,6 +349,32 @@ MIT license
 			}
 		}
 		
+	};
+
+	$.fn.scopeGetEl = function(){
+		return this.closest('[jq-repeat-scope]');
+	};
+
+	$.fn.scopeGet = function(){
+		let $el = this.scopeGetEl()
+		if($el) return $.scope[$el.attr('jq-repeat-scope')];
+	};
+
+	$.fn.scopeItem = function(){
+		let $el = this.scopeGetEl()
+		if($el) return $.scope[$el.attr('jq-repeat-scope')][$el.attr('jq-repeat-index')];
+	};
+
+	$.fn.scopeItemUpdate = function(data){
+		console.log('args', arguments)
+		let $el = this.scopeGetEl();
+		console.log('scope', $.scope[$el.attr('jq-repeat-scope')])
+		$.scope[$el.attr('jq-repeat-scope')].update(Number($el.attr('jq-repeat-index')), data) ;
+	};
+
+	$.fn.scopeItemRemove = function(){
+		let $el = this.scopeGetEl()
+		$.scope[$el.attr('jq-repeat-scope')].remove(Number($el.attr('jq-repeat-index'))) ;
 	};
 
 	$( document ).ready( function(){

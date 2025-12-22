@@ -1,4 +1,5 @@
 'use strict';
+
 const ps = require('../controller/pubsub');
 
 
@@ -29,6 +30,7 @@ function ModelPs(model){
 			if(propKey == 'constructor') return target.constructor;
 			const targetValue = Reflect.get(target, propKey, receiver);
 			if (typeof targetValue === 'function') {
+				// console.log('prop called', propKey, target.name || target.constructor.name)
 				return function(...args){
 					try{
 					// let res = targetValue.apply(this, args); // (A)
@@ -37,8 +39,8 @@ function ModelPs(model){
 							res.then(function(res){
 								publish(propKey, res, ...args);
 							}).catch(function(error){
-
-								console.log('toDo, publish errors...');
+								// console.error('ASYNC error from proxy:', error)
+								console.log('toDo, publish async errors...');
 							});
 						}else{
 							publish(propKey, res, ...args);

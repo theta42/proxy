@@ -18,7 +18,7 @@ router.get('/', async function(req, res, next){
 router.options('/', async function(req, res, next){
 	try{
 		return res.json({
-			results:  await Model.listProviders()
+			results:  Model,
 		});
 	}catch(error){
 		return next(error);
@@ -30,9 +30,10 @@ router.post('/', async function(req, res, next){
 		req.body.created_by = req.user.username;
 		let item = await Model.create(req.body);
 
+		console.log('added', item)
+
 		return res.json({
-			message: `"${item[Model._key]}" added.`,
-			...item,
+			results: item
 		});
 	} catch (error){
 		next(error);

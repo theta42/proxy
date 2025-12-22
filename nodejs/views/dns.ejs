@@ -26,16 +26,17 @@
 
 <script type="text/javascript">
 
-	function providerGet(){
+	function providerPopulate(){
 		app.api.options('dns', function(error, res){
-			for(let provider of res.results){
-				$.scope.providerSelect.push(provider);
+			for(let [name, provider] of Object.entries(res.results.extend)){
+				$.scope.providerSelect.push({...provider, name:name});
 
-				for(let field in provider.fields){
+				for(let [field, options] of Object.entries(provider.fields)){
+					if(Object.keys(res.results.fields).includes(field)) continue;
 					$.scope.providerField.push({
-						...provider.fields[field],
+						...options,
 						keyName: field,
-						provider: provider.name
+						name: name
 					});
 				}
 			}
@@ -60,7 +61,7 @@
 	$.scope.DnsProvider.parseData = function(row){
 		row['created_on_text'] = moment(row['updated_on'], "x").fromNow();
 		row['domainsString'] = JSON.stringify(row.domains);
-		return row
+		return row;
 	};
 
 	$(document).ready(async function(){
@@ -69,7 +70,7 @@
 		$.scope.DnsProvider.push(...(await app.api.get('/dns?detail=true')).results);
 
 		// Populate 
-		providerGet();
+		providerPopulate();
 
 		app.subscribe(/^model:/, function(data, topic){
 			let [group, Model, action, pk] = topic.split(':');
@@ -79,7 +80,7 @@
 		app.subscribe(/^model:.+:create/, function(data, topic){
 			try{
 				let [group, Model, action, pk] = topic.split(':');
-				$.scope[Model].unshift(data)
+				$.scope[Model].unshift(data);
 			}catch{}
 		});
 
@@ -93,14 +94,18 @@
 		app.subscribe(/^model:.+:update/, function(data, topic){
 			try{
 				let [group, Model, action, pk] = topic.split(':');
-				$.scope[Model].update(pk, data)
+				$.scope[Model].update(pk, data);
 			}catch{}
 		});
+
 	});
 
 </script>
-<div class="row mb-3" style="display:none">
+<!-- Main row -->
+<div class="row" style="display:none">
+	<!-- Left column -->
 	<div class="col-md-3">
+		<!-- Add DNS card -->
 		<div class="card shadow-lg mb-3">
 
 			<div class="card-header text-center">
@@ -132,17 +137,17 @@
 						</label>
 						<select name="dnsProvider" class="form-select" aria-label="Default select example" validate=":1" oninput="providerShowForm()">
 							<option value="" selected>Select a provider</option>
-							<option jq-repeat="providerSelect" value="{{name}}">{{{displayIconUni}}} {{name}}</option>
+							<option jq-repeat="providerSelect" value="{{name}}">{{{displayIconUni}}} {{displayName}}</option>
 
 						</select>
 						<b class="invalid-feedback"></b>
 					</div>
 
-					<div class="form-group provider-form-{{ provider }}" jq-repeat="providerField" style="display:none;">
+					<div class="form-group provider-form-{{ name }}" jq-repeat="providerField" style="display:none;">
 						<label for="{{ keyName }}" class="form-label">
 							{{displayName}}
 						</label>
-						<input type="text"  name="{{ keyName }}" class="form-control" validate=":3" disabled/>
+						<input type="text"  name="{{ keyName }}" class="form-control" validate=":3" disabled />
 						<b class="invalid-feedback"></b>
 					</div>
 
@@ -153,11 +158,15 @@
 					</button>
 				</form>
 			</div>
-		</div>
-	</div>
+		</div> <!-- Close DNS card -->
+	</div> <!-- Close left column -->
+
+	<!-- Right column -->
 	<div class="col-md-9">
+		<!-- DNS card grid -->
 		<div class="row row-cols-1 row-cols-md-2 g-4">
 			
+			<!-- DNS provider card template -->
 			<div jq-repeat="DnsProvider" jq-repeat-index="id" style="display:none" class="col">
 				<div class="card shadow-lg">
 
@@ -183,9 +192,7 @@
 								{{domain}}
 							</b>
 							<script type="text/javascript">
-								try{
-									$.scope.Domain_{{id}}.push(...{{{domainsString}}});
-								}catch{}
+								$.scope.Domain_{{id}}.push(...{{{domainsString}}});
 							</script>
 						</div>
 					</div>
@@ -201,12 +208,10 @@
 						</span>
 					</div>
 
-					
 				</div>
+			</div> <!-- Close provider card template -->
+		</div> <!-- Close DNS card grid -->
 
-			</div>
-		</div>
-
-	</div>
-</div>
+	</div> <!-- Close right column -->
+</div> <!-- Close main row -->
 <%- include('bottom') %>

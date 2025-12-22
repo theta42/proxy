@@ -1,14 +1,10 @@
 'use strict';
 
 const axios = require('axios');
-const {DnsApi} = require('./common');
-
-//like the options obj will always use domain data and type
-// change content to data 
-// change name to domain
+const {DnsProvider} = require('../').models;
 
 
-class CloudFlare extends DnsApi{
+class CloudFlare extends DnsProvider{
 	static _keyMap = {
 		token: {isRequired: true, type: 'string', isPrivate: true, displayName: 'API Token'},
 	}
@@ -22,14 +18,16 @@ class CloudFlare extends DnsApi{
 	// Cloud icon for cloudflare
 	static displayIconUni =  '&#xf0c2;'
 
-	constructor(token){
-		super()
-		this.token = token.token || token;
-	}
+	/*
+	The API and the generic class interface have different opinions of what keys
+	hold what data, the __parseOptions and __pastseRes normal the keys to what
+	the class expects
 
-	__typeCheck(type){
-		if(!type) return;
-		if(!['A', 'MX', 'CNAME', 'ALIAS', 'TXT', 'NS', 'AAAA', 'SRV', 'TLSA', 'CAA', 'HTTPS', 'SVCB'].includes(type)) throw new Error(`${this.constructor.name} API: Invalid 'type' passed`)
+	What the the API calls it : What the class wants it as.
+	*/
+	__apiKeyMap = {
+		'content': 'data',
+		'id': 'zoneId',
 	}
 
 	async axios(method, ...args){
@@ -50,32 +48,17 @@ class CloudFlare extends DnsApi{
 	}
 
 	async listDomains(){
-        let res = await this.axios('get');
+		let res = await this.axios('get');
 
-        for(let domain of res.data.result){
-			domain.domain = domain.name
-            domain.zoneId = domain.id
-		}
+		console.log('cf domain red', res.data, '\n\n parsed res', this.__parseRes(res.data.result))
 
-		return res.data.result;
+		return this.__parseRes(res.data.result);
 	}
 
-	/*
-	The API and the generic class interface have different opinions of what keys
-	hold what data, the __parseOptions and __pastseRes normal the keys to what
-	the class expects
-
-	What the the API calls it : What the class wants it as.
-	*/
-	__apiKeyMap = {
-		'content': 'data',
-	}
-
-    //get records
 	async getRecords(domain, options){
-        let res = await this.axios('get',
-        	`${domain.zoneId}/dns_records`,
-        );
+		let res = await this.axios('get',
+			`${domain.zoneId}/dns_records`,
+		);
 		let records = this.__parseRes(res.data.result);
 
 		if(!options) return records;
@@ -104,7 +87,6 @@ class CloudFlare extends DnsApi{
 			}
 			throw error;
 		}
-
 	}
 
 	async deleteRecordById(domain, id){
@@ -121,28 +103,4 @@ class CloudFlare extends DnsApi{
 	}
 }
 
-module.exports = CloudFlare;
-
-
-if(require.main === module){(async function(){try{
-    // let cf = new CloudFlare(""); 
-    // let domain = {
-    //     domain: "example.uk",
-    //     zoneId: "5eb25c12cd7d22f11252330a29a0dd77"
-    // }
-
-	// console.log(await cf.listDomains())
-
-    //content = ip
-    //name = domain
-	// console.log('get', await cf.getRecords(domain, {content: '172.206.221.130'}))
-
-	// console.log('post', await cf.createRecord(domain, {name:'test', content: '10.0.0.1', type: "TXT"}))
-
-	// console.log('delete', await cf.deleteRecordById(domain , "5c0e958c3406a34d011459933d538b78"))
-
-	// console.log('delete', await cf.deleteRecords(domain, {type: 'A'}))
-
-}catch(error){
-	console.log('IIFE Error:', error)
-}})()}
+DnsProvider.extend('dnsProvider', CloudFlare);

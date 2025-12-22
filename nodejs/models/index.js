@@ -7,3 +7,5 @@ require('./dns_provider');
 require('./host');
 require('./token');
 require('./user');
+require('./domain');
+require('./cert');

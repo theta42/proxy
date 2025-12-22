@@ -1,0 +1,323 @@
+<%- include('top') %>
+<script type="text/javascript">
+	// Require login to see this page.
+	app.auth.forceLogin()
+</script>
+
+<style type="text/css">
+	label.form-label{
+		font-weight: bold;
+		margin-bottom: 1px;
+	}
+
+	div.form-group{
+		margin-bottom: 1em;
+	}
+	/* my Div class for my search bar */
+	.search-wrapper {
+		display: flex;
+		gap: .5rem;
+		align-items: center;
+		margin-top: 10px;
+	}
+	/* The input bar  */
+	input {
+		font-size: 1rem;
+		border-top-left-radius: 5px !important;
+		border-bottom-left-radius: 5px !important;
+		border-top-right-radius: 5px !important;
+		border-bottom-right-radius: 5px !important;    
+	}
+</style>
+
+<script type="text/javascript">
+	var $editHostForm;
+	
+	$.scope.Cert.parseData = function(data){
+		data['updated_on_text'] = moment(data['updated_on'], "x").fromNow();
+		data['expires_text'] = moment(data['expires'], "x").fromNow();
+		data['type_bg'] = data.is_active ? 'success' : 'danger';
+
+		return data;
+	};
+
+	app.api.get('cert', function(error, res){
+		$.scope.Cert.push(...res.results);
+	});
+
+	function certDownload(host, type){
+		app.api.get(`/cert/${host}/cert/${type}`, function(error, data){
+			if(error) app.util.actionMessage(error.message, $.scope.hosts.$this, 'danger');
+			app.util.downloadFile(`${host}-${type}.crt`, data.results);
+		});
+	}
+
+	$(document).ready(function(){
+
+		app.subscribe(/^model:/, function(data, topic){
+			let [group, Model, action, pk] = topic.split(':');
+			console.log('WS:', group, Model, action, pk, data);
+		});
+
+		app.subscribe(/^model:DnsProvider:create/, function(data, topic){
+			try{
+				let [group, Model, action, pk] = topic.split(':');
+				$.scope[Model].unshift(data);
+			}catch{}
+		});
+
+		app.subscribe(/^model:DnsProvider:remove/, function(data, topic){
+			try{
+				let [group, Model, action, pk] = topic.split(':');
+				$.scope[Model].remove(pk);
+			}catch{}
+		});
+
+		// app.subscribe(/^model:DnsProvider:update/, function(data, topic){
+		// 	try{
+		// 		let [group, Model, action, pk] = topic.split(':');
+		// 		if($.scope[Model].indexOf(pk) === -1) return;
+		// 		$.scope[Model].update(pk, data);
+		// 	}catch{}
+		// });
+
+		$.scope.Cert.take = function($el, item, list){
+			$el.addClass('table-danger');
+			$el.fadeOut(1000, function(){
+				$el.remove();
+			});
+		};
+
+		$.scope.wildcardHostField.put = function($el, item, list){
+			$el.slideDown();
+		};
+
+		$.scope.wildcardHostField.take = function($el, item, list){
+			$el.slideUp();
+		};
+	});
+</script>
+<div class="row" style="display:none">
+	<!-- Left column -->
+	<div class="col col-md-12 col-lg-4 col-xl-3 col-xxl-2">
+
+		<!-- Add new wildCard cert card -->
+		<div class="card shadow-lg mb-3 wildCardNewCard">
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-plus"></i>
+				</span>
+				<span class="card-title">
+					New Wildcard Cert
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
+			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+
+			<div class="card-body d-none d-md-block">
+				<form method="POST" action="/cert" onsubmit="formAJAX(this)">
+					<input type="hidden" name="type" value="WildCard" />
+					<div class="alert alert-info">
+						Add up to 100 host names. This action requires DNS
+						validation All, so all host names much have a matching
+						DNS API entries in the <a href="/dns">DNS Panel</a>.
+					</div>
+
+					<div>
+						<label for="name" class="form-label">
+							Name
+						</label>
+						<input type="text"  name="name" class="form-control" placeholder="ex: production" validate=":3"/>
+						<b class="invalid-feedback"></b>
+					</div>
+
+					<label for="host" class="mt-2 form-label">
+						Hosts
+					</label>
+
+					<ol class="ps-3">
+						<li>
+							<div class="form-group">
+								<div class="input-group mb-3">
+									<input 
+										type="text"
+										name="host"
+										class="form-control"
+										placeholder="ex: proxy.cloud-ops.net"
+										validate=":1"
+									/>
+									<button class="btn btn-danger" type="button" onclick="$(this).scopeItemRemove()" disabled>
+										<i class="fa-solid fa-xmark"></i>
+									</button>
+								<b class="invalid-feedback"></b>
+								</div>
+							</div>
+						</li>
+						<li jq-repeat="wildcardHostField" style="display:none;">
+							<div class="form-group">
+								<div class="input-group mb-3">
+									<input 
+										type="text"
+										name="host"
+										value="{{host}}"
+										class="form-control"
+										placeholder="ex: proxy.cloud-ops.net"
+										validate=":1"
+									/>
+									<button class="btn btn-danger" type="button" onclick="$(this).scopeItemRemove()">
+										<i class="fa-solid fa-xmark"></i>
+									</button>
+								<b class="invalid-feedback"></b>
+								</div>
+							</div>
+						</li>
+					</ol>
+
+					<button type="button" class="btn btn-sm btn-success" onclick="$.scope.wildcardHostField.push({})">
+						<i class="fa-solid fa-plus"></i>
+					</button>
+
+					<hr class="buttonBreak" />
+					<button type="submit" class="btn btn-success">
+						<i class="fa-solid fa-plus"></i>
+						Add
+					</button>
+				</form>
+			</div>
+		</div> <!-- Close new wildCard cert card -->
+
+	</div> <!-- Close left column -->
+
+	<!-- Right column -->
+	<div class="col col-md-12 col-lg-8 col-xl-9 col-xxl-10">
+		<div class="card shadow-lg hostListPanel">
+			<!--
+				List current hosts
+			-->
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-network-wired"></i>
+				</span>
+				<span class="card-title">
+					Cert List
+				</span>
+				<span class="float-end">
+					<i class="fa-solid fa-circle-minus"></i>
+				</span>
+			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+			<!-- <div class="card-body search-wrapper">
+				<label class="form-label" for="search" style="margin-left: -5px;">
+					Search Hosts:
+				</label>
+				<input type="search" oninput="hostSearchInput()" />
+			</div> -->
+			<div class='table-responsive'>
+				<table class="m-0 card-body table table-striped overflow-x-scroll">
+		
+					<thead>
+						<th>
+							Type
+						</th>
+						<th>
+							Name
+						</th>
+						<th>
+							Status
+						</th>
+						<th>
+							Hosts
+						</th>
+						<th class="hidden-xs">
+							Updated
+						</th>
+						<th>
+							Expires
+						</th>
+						<th>
+							Actions
+						</th>
+					</thead>
+
+					<tbody>
+						<tr action="api" jq-repeat="Cert" jq-repeat-index='id' style="display:none">
+							<td class="table-{{type_bg}}">
+								{{type}}
+							</td>
+							<td>
+								{{name}}
+								{{^name}}
+								{{id}}
+								{{/name}}
+							</td>
+							<td>
+								{{status}}
+							</td>
+							<td>
+								{{#hosts}}
+									{{host}}
+								{{/hosts}}
+							</td>
+							<td class="hidden-xs momentFromNow" data-date="{{ updated_on }}" >
+								{{ updated_on_text }}
+							</td>
+							<td class="hidden-xs momentFromNow" data-date="{{expires}}">
+								{{#expires}}
+								{{expires_text}}
+								{{/expires}}
+							</td>
+							<td>
+								<div class="btn-group">
+
+									<div class="btn-group" role="group">
+										<button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+											<i class="fa-brands fa-expeditedssl"></i>
+											Certs
+										</button>
+										<ul class="dropdown-menu">
+											<li>
+												<button type="button" class="dropdown-item" onclick="certDownload('{{id}}', 'cert_pem')">
+													<i class="fa-solid fa-certificate"></i>
+													Cert
+													<i class="fa-solid fa-file-arrow-down float-end"></i>
+												</button>
+											</li>
+											<li>
+												<button type="button" class="dropdown-item" onclick="certDownload('{{id}}', 'fullchain_pem')">
+													<i class="fa-solid fa-link"></i>
+													Full Chain
+													<i class="fa-solid fa-file-arrow-down float-end"></i>
+												</button>
+											</li>
+											<li>
+												<button type="button" class="dropdown-item" onclick="certDownload('{{id}}', 'privkey_pem')">
+													<i class="fa-solid fa-key"></i>
+													Private key
+													<i class="fa-solid fa-file-arrow-down float-end"></i>
+												</button>
+											</li>
+										</ul>
+									</div>
+
+									<button type="button" method="PUT" action="/cert/{{id}}/renew" onclick="formAJAX()" class="btn btn-sm btn-warning">
+										<i class="fa-solid fa-recycle"></i>
+										Renew
+									</button>
+									<button type="button" method="DELETE" action="/cert/{{id}}" onclick="formAJAX()" class="btn btn-sm btn-danger">
+										<i class="fa-solid fa-trash-can"></i>
+										Delete
+									</button>
+								</div>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div> <!-- Close right column -->
+</div>
+<%- include('bottom') %>

@@ -33,10 +33,13 @@ router.get('/hosts', async function(req, res, next) {
   res.render('hosts', {...values});
 });
 
+router.get('/cert', async function(req, res, next) {
+  res.render('cert', {...values});
+});
+
 router.get('/dns', async function(req, res, next) {
   res.render('dns', {...values});
 });
-
 
 router.get('/users', async function(req, res, next) {
   res.render('users', {...values});

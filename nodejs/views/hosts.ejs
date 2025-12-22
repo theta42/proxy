@@ -32,6 +32,8 @@
 
 <script type="text/javascript">
 	var $editHostForm;
+	
+	$.scope.wildcardHostField.push({})
 
 	function hostParseRow(host) {
 		host['updated_on_text'] = moment(host['updated_on'], "x").fromNow();
@@ -123,6 +125,7 @@
 		}
 	};
 
+
 	$(document).ready(function(){
 		$editHostForm = $('#addHost').clone();
 		$editHostForm.find('hr.buttonBreak').nextAll().remove();
@@ -182,10 +185,9 @@
 	});
 </script>
 <div class="row" style="display:none">
+	<!-- Left column -->
 	<div class="col col-md-12 col-lg-4 col-xl-3 col-xxl-2">
-	<!-- 
-		left column 
-	-->
+		<!-- Edit host card -->
 		<div jq-repeat="editHost" class="card shadow-lg border-warning hostEditPanel mb-3" style="display:none">
 			<!--
 				Edit host card
@@ -217,18 +219,16 @@
 					</button>
 				</form>
 			</div>
-		</div>
+		</div> <!-- Close edit host card -->
 
-		<div class="card shadow-lg mb-3 hostAddPanel">
-			<!--
-				Add new host card
-			-->
+		<!-- Add new host card -->
+		<div class="card shadow-lg mb-3 hostAdd">
 			<div class="card-header text-center">
 				<span class="card-icon float-start">
 					<i class="fa-solid fa-plus"></i>
 				</span>
 				<span class="card-title">
-					New Entry
+					New Proxy Config
 				</span>
 				<span class="float-end">
 					<i class="fa-solid fa-circle-minus"></i>
@@ -259,30 +259,12 @@
 						</div>
 					</div>
 
-					<div class="form-group autoSll">
-						<label class="form-label">
-							Auto SSL
-						</label>
-						<div class="radio">
-							<label>
-								<input type="radio" name="is_wildcard" id="is_wildcard-false" value="false" checked>
-								On demand certs
-							</label>
-						</div>
-						<div class="radio">
-							<label>
-								<input type="radio" name="is_wildcard" id="is_wildcard-true" value="true">
-								Request Wildcard cert
-							</label>
-						</div>
-					</div>
-
 					<div class="form-group">
 						<label for='host' class="form-label">
 							Incoming Host Name
 						</label>
 						<div>
-							<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
+							<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" oninput="">
 							<b class="invalid-feedback"></b>
 						</div>
 					</div>
@@ -328,13 +310,14 @@
 					</button>
 				</form>
 			</div>
-		</div>
-	</div>
+		</div> <!-- Close add new host card -->
 
+
+
+	</div> <!-- Close left column -->
+
+	<!-- Right column -->
 	<div class="col col-md-12 col-lg-8 col-xl-9 col-xxl-10">
-		<!--
-			Right column
-		-->
 		<div class="card shadow-lg hostListPanel">
 			<!--
 				List current hosts
@@ -363,7 +346,7 @@
 		
 					<thead>
 						<th>
-							SSL Expire
+							SSL
 						</th>
 						<th>
 							Host Name
@@ -450,6 +433,6 @@
 				</table>
 			</div>
 		</div>
-	</div>
+	</div> <!-- Close right column -->
 </div>
 <%- include('bottom') %>

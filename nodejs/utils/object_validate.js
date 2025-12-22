@@ -99,8 +99,8 @@ function parseToString(data){
 function ObjectValidateError(keys, message){
 	let error = new Error('ObjectValidateError')
 	error.name = "ObjectValidateError"
-	error.message = message || `Invalid Keys: ${message}`
-	error.keys = (keys || {});
+	error.message = `Invalid Keys`
+	error.keys = (keys || []);
 	error.status = 422;
 
 	return error

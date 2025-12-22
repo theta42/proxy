@@ -302,6 +302,8 @@ app.util = (function(app){
 			$target.html(message).slideDown('fast');
 		}
 		setTimeout(callback,10)
+
+		return $target;
 	}
 
 	$.fn.serializeObject = function(){
@@ -383,18 +385,20 @@ $( document ).ready(function(){
 		$('.momentFromNow').each((idx, el)=>{
 			var $el = $(el);
 			try{
-				$el.html(moment($(el).data('date')).fromNow());
+				let date = $(el).data('date');
+				if(data) $el.html(moment(date).fromNow());
 			}catch{}
 		})
 	}, 30000,);
 });
 
+
+// 
 (function($){
 	$.fn.scrollTo = function(){
 		const yOffset = Number($('#spa-shell').css('margin-top').replace('px', ''));
 		const y = this[0].getBoundingClientRect().top + window.scrollY - yOffset;
 
-		console.log('y', y)
 		window.scrollTo({top: y, behavior: 'smooth'});
 	};
 
@@ -412,27 +416,25 @@ function formAJAX(btn){
 		return false;
 	}
 	
-	app.util.actionMessage( 
+	var $actionTarget = app.util.actionMessage( 
 		'<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div>',
 		$form,
 		'info'
 	);
 
 	app.api[method]($form.attr('action'), formData, function(error, data){
-		app.util.actionMessage(data.message, $form, error ? 'danger' : 'success'); //re-populate table
+		app.util.actionMessage(data.message, $actionTarget, error ? 'danger' : 'success');
 		$form.validateClear();
 		if(!error){
 			$form.trigger("reset");
 			eval($form.attr('evalAJAX')); //gets JS to run after completion
 		}else{
-			console.log('formAJAX res error', error, data)
 			if(data && data.name === 'ObjectValidateError'){
-				app.util.actionMessage('Please fix the form errors', $form, 'danger'); //re-populate table
+				app.util.actionMessage('Please fix the form errors', $actionTarget, 'danger');
 			}
 			if(data && data.keys){
-				console.log('form key errors', data.keys)
 				for(let keyError of data.keys){
-					$form.find(`[name=${keyError.key}]`).validateMessage(keyError.message);
+					$($form.find(`[name=${keyError.key}]`)[Number(keyError.keyIndex) || 0]).validateMessage(keyError.message);
 				}
 			}
 		}

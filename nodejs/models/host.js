@@ -1,7 +1,7 @@
 'use strict';
 
 const Table = require('.');
-const {Domain} = require('.').models;
+const {Domain, Cert} = require('.').models;
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
@@ -14,6 +14,7 @@ const letsEncrypt = new LetsEncrypt({
 		LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
 });
 
+
 class Host extends Table{
 	static _key = 'host';
 	static _keyMap = {
@@ -21,17 +22,17 @@ class Host extends Table{
 		'created_on': {default: function(){return (new Date).getTime()}},
 		'updated_by': {default:"__NONE__", isRequired: false, type: 'string',},
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
-		'host': {isRequired: true, type: 'string', min: 3, max: 500},
-		'ip': {isRequired: true, type: 'string', min: 3, max: 500},
+		'host': {isRequired: true, type: 'string', min: 1, max: 500},
+		'ip': {isRequired: true, type: 'string', min: 1, max: 500},
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
-		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
-		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500},
-		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
-		'wildcard_expires': {isRequired: false, type: 'number'},
+		// 'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
+		'cert_id': {type: 'string', isRequired: false},
+		// 'cert': {model: 'Cert', rel:'one', localKey: 'cert_id'},
 		'domain': {model: 'Domain', rel: 'one'},
+		'prevent_remove': {type:'boolean', default: false},
 	}
 
 	static lookUpObj = {};
@@ -112,108 +113,6 @@ class Host extends Table{
 		}
 	}
 
-	async createWildcardCert(){
-		if(!this.host.startsWith('*.')) throw new Error('not wild card');
-
-		try{
-			let host = this;
-
-			await host.update({
-				wildcard_status: 'Requesting',
-			});
-			let cert = await letsEncrypt.dnsWildcard(this.host, {
-				challengeCreateFn: async (authz, challenge, keyAuthorization) => {
-					await host.update({
-						wildcard_status: `Adding record`
-					});
-					try{
-						let parts = tldExtract(authz.identifier.value);
-
-						let res = await host.domain.createRecord(
-							{
-								type:'TXT',
-								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`,
-								data: `${keyAuthorization}`
-							}
-						);
-					}catch(error){
-						console.log('model Host challengeCreateFn error:', error)
-						await host.update({
-							wildcard_status: `Add DNS record failed`
-						});
-					}
-				},
-				onDnsCheck: async(authz, checkCount)=>{
-					await host.update({
-						wildcard_status: `${checkCount} Checking DNS`
-					});
-				},
-				onDnsCheckFail: async(authz, error)=>{
-					await host.update({
-						wildcard_status: `DNS check failed for ${authz.identifier.value}`
-					});
-				},
-				onDnsCheckFound: async(authz)=>{
-					await host.update({
-						wildcard_status: `DNS check found`
-					});
-				},
-				onDnsCheckSuccess: async(authz)=>{
-					await host.update({
-						wildcard_status: `DNS check success`
-					})
-				},
-				onDnsCheckRemove: async(authz)=>{
-					await host.update({
-						wildcard_status: `DNS remove record`
-					})
-				},
-				challengeRemoveFn: async (authz, challenge, keyAuthorization)=>{
-					await host.update({
-						wildcard_status: `DNS remove record`
-					})
-					try{
-						let parts = tldExtract(authz.identifier.value);
-						await host.domain.deleteRecords(
-							{
-								type:'TXT',
-								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''
-							}`,
-							content: `${keyAuthorization}`}
-						);
-
-					}catch(error){
-						await host.update({
-							wildcard_status: `DNS remove record failed for ${authz.identifier.value}`
-						})
-					}
-				},
-			});
-
-			let toAdd = {
-				cert_pem: cert.cert.split('\n\n')[0],
-				fullchain_pem: cert.cert,
-				privkey_pem: cert.key.toString(),
-				csr_pem: cert.csr.toString(),
-				expiry: 4120307657,
-				real_expiry: +LetsEncrypt.AcmeClient.crypto.readCertificateInfo(cert.cert).notAfter/1000,
-			}
-
-
-			await this.constructor.redisClient.SET(`${this.host}:latest`, JSON.stringify(toAdd));
-			await this.update({
-				wildcard_status: `Done`,
-				wildcard_expires: toAdd.real_expiry*1000,
-			});
-
-			return this;
-		}catch(error){
-			console.log('le failed', error)
-			this.update({
-				wildcard_status: `LE failed`
-			});
-		}
-	}
 
 	async update(...args){
 		try{
@@ -227,8 +126,12 @@ class Host extends Table{
 		}
 	}
 
-	async remove(...args){
+	async remove(force, ...args){
 		try{
+			if(this.prevent_remove && !force){
+				// throw error or something here
+				return;
+			}
 			let out = await super.remove(...args);
 			await Host.buildLookUpObj();
 			await this.bustCache(this.host);
@@ -333,7 +236,7 @@ class Host extends Table{
 		return true;
 	}
 }
-Host.register(ModelPs(Host))
+Host.register(ModelPs(Host));
 
 
 class Cached extends Table{
@@ -344,19 +247,20 @@ class Cached extends Table{
 	}
 }
 
-(async function(){
-	await Host.buildLookUpObj();
-})();
+// (async function(){
+// 	await Host.buildLookUpObj();
+// })();
 
-module.exports = {Host: ModelPs(Host)};
 
 if(require.main === module){(async function(){
 try{
-	await Host.lookUpReady();
 
-	let host = await Host.get('*.new.test.wtf')
+	// await Host.lookUpReady();
+	console.log(JSON.stringify(Host, null, 2))
 
-	console.log('host', host.domain.provider.api);
+	// let host = await Host.get('*.new.test.wtf')
+
+	// console.log('host', host.domain.provider.api);
 
 
 
