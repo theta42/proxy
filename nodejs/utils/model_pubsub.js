@@ -38,6 +38,7 @@ function ModelPs(model){
 								publish(propKey, res, ...args);
 							}).catch(function(error){
 
+								// console.error("Error PS", model.name, propKey, error)
 								console.log('toDo, publish errors...');
 							});
 						}else{
@@ -45,6 +46,7 @@ function ModelPs(model){
 						}
 						return res;
 					}catch(error){
+						// console.error("Error PS", model.name, propKey, error)
 						console.log("toDo, publish errors...");
 					}
 				}

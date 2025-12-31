@@ -304,31 +304,38 @@ app.util = (function(app){
 		setTimeout(callback,10)
 	}
 
-	$.fn.serializeObject = function(){
-		var 
-			arr = $(this).serializeArray(), 
-			obj = {};
+	$.fn.serializeObject = function() {
+		var obj = {};
 
-		for(var i = 0; i < arr.length; i++){
-			if(obj[arr[i].name] === undefined) {
-				if(!arr[i].value) continue;
-				obj[arr[i].name] = arr[i].value;
-				let type = $(this).parent().find(`[name="${arr[i].name}"]`).attr('type');
-				if(['number', 'range'].includes(type)){
-					obj[arr[i].name] = Number(arr[i].value);
+		// Get the form values and work over them
+		for (let {name, value} of $(this).serializeArray()) {
+			console.log(name, value)
+			if (obj[name] === undefined) {
+				if (!value 
+					&& !$(this).parent().find(`[name="${name}"]`).attr('value')
+				){
+					continue;
 				}
 
-				if(['radio'].includes(type) && ['true', 'false'].includes(arr[i].value)){
-					obj[arr[i].name] = arr[i].value	== 'true' ? true : false;
+				obj[name] = value;
+
+				let type = $(this).parent().find(`[name="${name}"]`).attr('type');
+				if (['number', 'range'].includes(type)) {
+					obj[name] = Number(value);
+				}
+
+				if (['radio'].includes(type) && ['true', 'false'].includes(value)) {
+					obj[name] = value == 'true' ? true : false;
 				}
 			} else {
-				if(!(obj[arr[i].name] instanceof Array)) {
-					obj[arr[i].name] = [obj[arr[i].name]];
+				if (!(obj[name] instanceof Array)) {
+					obj[name] = [obj[name]];
 				}
-				obj[arr[i].name].push(arr[i].value);
+				obj[name].push(value);
 			}
 
 		}
+
 		return obj;
 	};
 
