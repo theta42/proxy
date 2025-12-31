@@ -1,0 +1,61 @@
+name: Pull Request Tests
+
+# Run tests on pull requests to master and when pushing to PRs
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches-ignore:
+      - master
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: nodejs/package-lock.json
+
+      - name: Install dependencies
+        working-directory: ./nodejs
+        run: npm ci
+
+      - name: Run unit tests
+        working-directory: ./nodejs
+        run: npm run test:unit
+
+      - name: Run integration tests
+        working-directory: ./nodejs
+        run: npm run test:integration
+
+      - name: Run all tests
+        working-directory: ./nodejs
+        run: npm test
+
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: test
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          if [ "${{ needs.test.result }}" != "success" ]; then
+            echo "Tests failed. PR cannot be merged."
+            exit 1
+          fi
+          echo "All tests passed successfully!"
