@@ -12,7 +12,7 @@ const values ={
 
 // List of front end node modules to be served
 const frontEndModules = ['bootstrap', 'mustache', 'jquery', '@fortawesome',
-  'moment', '@popper',
+  'moment', '@popper', 'jq-repeat',
 ];
 
 // Server front end modules

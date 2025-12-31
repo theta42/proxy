@@ -179,14 +179,11 @@
 								<h3><img height="32px" src="{{ displayIconHtml }}"/> {{name}} </h3>
 						</div>
 						<div>
-							<b jq-repeat='Domain_{{id}}' jq-repeat-index="domain" class="me-2 my-1 badge text-bg-info rounded-pill fs-6">
+							{{#domains}}
+							<b class="me-2 my-1 badge text-bg-info rounded-pill fs-6">
 								{{domain}}
 							</b>
-							<script type="text/javascript">
-								try{
-									$.scope.Domain_{{id}}.push(...{{{domainsString}}});
-								}catch{}
-							</script>
+							{{/domains}}
 						</div>
 					</div>
 					<div class="card-footer">
