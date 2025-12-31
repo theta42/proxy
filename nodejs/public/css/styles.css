@@ -12,3 +12,7 @@ nav.navbar{
 	font-weight: bold;
 }
 
+.actionMessage{
+	position: fixed;
+}
+

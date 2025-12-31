@@ -1,7 +1,7 @@
 'use strict';
 
 const router = require('express').Router();
-const { Auth } = require('../controller/auth');
+const { Auth } = require('../models/auth');
 
 
 router.post('/login', async function(req, res, next){

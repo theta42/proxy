@@ -1,4 +1,11 @@
+---
+layout: default
+title: API Reference
+---
+
 # API Documentation
+
+[← Back to Home](index.html)
 
 All API endpoints require authentication via the `auth-token` header unless otherwise noted.
 

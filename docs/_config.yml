@@ -1,0 +1,9 @@
+title: Proxy
+description: A reverse proxy and HTTPS termination service using OpenResty/nginx with a management API and web GUI
+theme: jekyll-theme-cayman
+show_downloads: true
+github:
+  repository_url: https://github.com/theta42/proxy
+  zip_url: https://github.com/theta42/proxy/archive/refs/heads/master.zip
+  tar_url: https://github.com/theta42/proxy/archive/refs/heads/master.tar.gz
+  repository_name: theta42/proxy

@@ -13,6 +13,7 @@
 	div.form-group{
 		margin-bottom: 1em;
 	}
+
 	/* my Div class for my search bar */
 	.search-wrapper {
 		display: flex;
@@ -20,6 +21,7 @@
 		align-items: center;
 		margin-top: 10px;
 	}
+
 	/* The input bar  */
 	input {
 		font-size: 1rem;
@@ -28,17 +30,26 @@
 		border-top-right-radius: 5px !important;
 		border-bottom-right-radius: 5px !important;    
 	}
+
+	.challengeType-container {
+	    pointer-events: none; /* Prevents clicking */
+	    opacity: 0.5;         /* Greys it out */
+	    filter: grayscale(1); /* Removes blue/color tint */
+	    cursor: not-allowed;
+	  }
 </style>
 
 <script type="text/javascript">
 	var $editHostForm;
 
+	// Parse the JSON object for a host to something the UI wants
 	function hostParseRow(host) {
 		host['updated_on_text'] = moment(host['updated_on'], "x").fromNow();
 		host['wildcard_expires_text'] = moment(host['wildcard_expires'], "x").fromNow();
 		host['targetssl_text'] = host['targetssl'] ? 'https://' : 'http://';
 		host['forcessl_text'] = host['forcessl'] ? 'https://' : 'http://';
 		host['wildcard_text'] = host['is_wildcard'] ? host['wildcard_status'] : 'Auto';
+		host['wildcard_text'] = host['wildcard_parent'] ? 'Child' : host['wildcard_text'];
 		host['wildcard_text_bg'] = 'warning';
 		if(!host['is_wildcard']){
 			host['wildcard_text_bg'] = 'success';
@@ -80,6 +91,7 @@
 
 	function hostEditOpen(btn, host){
 		hostEditCancle();
+		console.log('host:', host)
 		host = $.scope.hosts.getByKey(host);
 		host.__jq_$el.addClass('table-warning');
 		$editHostForm.find('[name=is_wildcard').attr('disabled', true);
@@ -123,15 +135,73 @@
 		}
 	};
 
+	async function verifyWildcardRequirements(host){
+		try{
+
+			let res = await app.api.get(`dns/domain/${host}`);
+
+			return res.results.length === 1;
+		}catch(error){
+			return false;
+		}
+	}
+
+	async function hostMatchWildcard(host){
+		try{
+			let res = await app.api.get(`host/lookup/${host}`);
+
+			if(res.results && res.results.is_wildcard){
+				return res.results;
+			}
+		}catch(error){
+			return false;
+		}
+	}
+
 	$(document).ready(function(){
+		// Clone the new host form to be used on edit requests.
 		$editHostForm = $('#addHost').clone();
 		$editHostForm.find('hr.buttonBreak').nextAll().remove();
 		// $editHostForm.find('.autoSll').addClass('bg-secondary');
-		hostPopulate(); //populate the table
 
+		// Populate the host UI table 
+		hostPopulate();
+
+		// Determine what lets encrypt challenge type the given host name can use
+		$hostField = $('[name=host');
+		$hostField.keyup(async function(){
+			// Reset the allowed types on start
+			$('#challengeType-child-container').addClass('challengeType-container');
+			$('#challengeType-DNS-01-wildcard-container').addClass('challengeType-container');
+
+			let host = $hostField.val();
+
+			// If its a wild card, we must check if the domain has a registered
+			// provider.
+			if(host.startsWith("*.") && await verifyWildcardRequirements(host)){
+				$('#challengeType-DNS-01-wildcard-container').removeClass('challengeType-container');
+
+				return;
+			}
+
+			// Check if a wildcard cert is available for the given host.
+			let wildcardParent = await hostMatchWildcard($hostField.val());
+			if(wildcardParent){
+				$('#challengeType-child-container').removeClass('challengeType-container');
+				$('#challengeType-child-relatedHost').text(wildcardParent.host);
+
+				return;
+			}
+
+			// If we hit here, make sure the form is reverted to a valid state
+			$('#challengeType-child-relatedHost').text('');
+			$('#challengeType-HTTP-01').prop('checked', true);
+		});
+
+		// 
 		$.scope.hosts.take = function($el, item, list){
 			$el.addClass('table-danger');
-			$el.fadeOut(1000, function(){
+			$el.fadeOut(500, function(){
 				$el.remove()
 			});
 		};
@@ -149,9 +219,9 @@
 			$el.slideUp();
 		};
 
-		app.subscribe(/^model:Host/, function(data, topic){
-			console.log(topic, data);
-		});
+		// app.subscribe(/^model:Host/, function(data, topic){
+		// 	console.log(topic, data);
+		// });
 
 		app.subscribe(/^model:Host:create/, function(data, topic){
 			let [a,b, action, host] = topic.split(':');
@@ -259,31 +329,37 @@
 						</div>
 					</div>
 
-					<div class="form-group autoSll">
-						<label class="form-label">
-							Auto SSL
-						</label>
-						<div class="radio">
-							<label>
-								<input type="radio" name="is_wildcard" id="is_wildcard-false" value="false" checked>
-								On demand certs
-							</label>
-						</div>
-						<div class="radio">
-							<label>
-								<input type="radio" name="is_wildcard" id="is_wildcard-true" value="true">
-								Request Wildcard cert
-							</label>
-						</div>
-					</div>
-
 					<div class="form-group">
-						<label for='host' class="form-label">
+						<label for="host" class="form-label">
 							Incoming Host Name
 						</label>
 						<div>
 							<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
 							<b class="invalid-feedback"></b>
+						</div>
+					</div>
+
+					<div class="form-group autoSll">
+						<label class="form-label">
+							SSL <a href="https://letsencrypt.org/docs/challenge-types/" target="_blank">Validation Type</a>:
+						</label>
+						<div class="radio" id="challengeType-HTTP-01-container">
+							<label>
+								<input type="radio" name="challengeType" id="challengeType-HTTP-01" value="HTTP-01" checked>
+								HTTP-01
+							</label>
+						</div>
+						<div class="radio challengeType-container" id="challengeType-DNS-01-wildcard-container">
+							<label>
+								<input type="radio" name="challengeType" id="challengeType-DNS-01-wildcard" value="DNS-01-wildcard">
+								DNS-01 Wildcard
+							</label>
+						</div>
+						<div class="radio challengeType-container" id="challengeType-child-container">
+							<label>
+								<input type="radio" name="challengeType" id="challengeType-wildcardChild" value="wildcardChild">
+								Parent Wildcard from <i id="challengeType-child-relatedHost"></i>
+							</label>
 						</div>
 					</div>
 
@@ -363,6 +439,19 @@
 		
 					<thead>
 						<th>
+							<input type="checkbox"
+								onclick="$('.host_checkbox:visible').each((i, element)=>{
+									$(element).prop('checked', $(this).prop('checked'));
+								})"
+							/>
+							<br />
+							<button type="button" class="btn btn-sm btn-danger" onclick="$('.host_checkbox:checked').each((i, element)=>{
+								app.api.delete(`host/${$(element).parents('[jq-repeat-index]').attr('jq-repeat-index')}`, function(){});
+							})">
+								<i class="fa-solid fa-trash-can"></i>
+							</button>
+						</th>
+						<th>
 							SSL Expire
 						</th>
 						<th>
@@ -380,7 +469,10 @@
 					</thead>
 
 					<tbody>
-						<tr action="api" jq-repeat="hosts" jq-repeat-index='host' style="display:none">
+						<tr action="api" jq-repeat="hosts" jq-index-key='host' style="display:none">
+							<td>
+								<input type="checkbox" class="host_checkbox">
+							</td>
 							<td class="table-{{wildcard_text_bg}}">
 								{{{ wildcard_text }}}
 								{{#wildcard_expires}}
@@ -395,6 +487,10 @@
 									<br />
 									<img width="24px" src="{{displayIconHtml}}" /> {{displayName}} - {{name}}
 								{{/domain.provider}}
+
+								{{#wildcard_parent}}
+									<i>{{wildcard_parent}}</i>
+								{{/wildcard_parent}}
 							</td>
 							<td>
 								{{{ targetssl_text }}}{{ ip }}:{{ targetPort }}

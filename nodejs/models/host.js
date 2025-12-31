@@ -39,16 +39,11 @@ class Host extends Table{
 
 	static async addCache(host, parentOBJ){
 		try{
-			console.log('addCache host:', host, 'parentOBJ host', parentOBJ.host)
 			parentOBJ = await this.get(parentOBJ.host);
 
 			if(parentOBJ.is_cache){
-				console.log('addCache parentOBJ is chace, skipping')
 				return;
 			}
-
-			console.log('addCache, corrent parent?', parentOBJ.wildcard_parent || parentOBJ.host)
-			console.log('addCache, got parent', parentOBJ)
 
 			await this.create({
 				...parentOBJ,
@@ -63,7 +58,7 @@ class Host extends Table{
 				parent: parentOBJ.host
 			});
 		}catch(error){
-			console.error('add cache error', {...parentOBJ, host, is_cache: true}, error)
+			console.error('add cache error', {...parentOBJ, host, is_cache: true}, error);
 			throw error;
 		}
 	}
@@ -81,18 +76,35 @@ class Host extends Table{
 
 		}catch(error){
 			console.error('bust cache error', error)
-
 			throw error;
 		}
 	}
 
 	static async create(data, ...args){
 		try{
-			if(data.is_wildcard) await this.validateWildcardCreate(data, args);
+			// Validate requested host is valid host and domain
+			if(data.challengeType === 'DNS-01-wildcard') await this.validateWildcardCreate(data, args);
 
+			// Validate requested host has a valid wildcard parent
+			if(data.challengeType === 'wildcardChild'){
+				let parentHost = await this.lookUp(data.host);
+				console.log('parentHost:', parentHost)
+				if(parentHost.is_wildcard){
+					data.wildcard_parent = parentHost.host;
+				}else{
+					throw new Error(`No parent wild card for ${data.host}`);
+				}
+			}
+
+			// Create the new host entry
 			let out = await super.create(data, ...args);
+
+			// Update the lookup table to reflect new host
 			await this.buildLookUpObj();
-			if(out.is_wildcard) out.createWildcardCert();
+
+			// Fire the request for the wild card cert
+			// This is "back ground" job, await is intentionally missing
+			if(out.challengeType === 'DNS-01-wildcard') out.createWildcardCert();
 
 			return out;
 
@@ -134,7 +146,8 @@ class Host extends Table{
 								type:'TXT',
 								name: `_acme-challenge${parts.sub ? `.${parts.sub}` : ''}`,
 								data: `${keyAuthorization}`
-							}
+							},
+							true // Force the record creation, even if the record exists
 						);
 					}catch(error){
 						console.log('model Host challengeCreateFn error:', error)
@@ -212,6 +225,26 @@ class Host extends Table{
 			this.update({
 				wildcard_status: `LE failed`
 			});
+		}
+	}
+
+	async checkWildcardForRenew(){
+		try{
+			if(this.is_wildcard && Date.now() > this.wildcard_expires - (30 * 24 * 60 * 60 * 1000)){
+				this.createWildcardCert();
+			}
+		}catch(error){
+			throw error;
+		}
+	}
+
+	static async checkWildcardForRenew(){
+		try{
+			for(let host of await this.listDetail()){
+				host.createWildcardCert();
+			}
+		}catch(error){
+			throw error;
 		}
 	}
 
@@ -330,6 +363,7 @@ class Host extends Table{
 
 		// Check every 5ms to see if the look up tree is ready
 		while(!this.__lookUpIsReady) await new Promise(r => setTimeout(r, 5));
+		
 		return true;
 	}
 }

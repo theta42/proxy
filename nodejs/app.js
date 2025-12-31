@@ -19,6 +19,15 @@ const middleware = require('./middleware/auth');
 // Grab the projects PubSub
 app.contoller = require('./controller');
 
+/**
+ * Start background services
+ * These services run independently of the HTTP server:
+ * - host_lookup: Unix socket server for OpenResty host lookups
+ * - host_scheduler: Scheduled tasks for wildcard cert renewal
+ */
+require('./services/host_lookup');
+require('./services/host_scheduler');
+
 // Push pubsub over the socket and back.
 app.onListen.push(function(){
   app.io.use(middleware.authIO);

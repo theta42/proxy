@@ -9,7 +9,15 @@
     }
   ],
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node ./bin/www",
+    "dev": "npx nodemon --ignore public/ ./bin/www",
+    "test": "node --test test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/unix_socket.test.js test/integration/dns_provider.test.js",
+    "test:unit": "node --test test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/unix_socket.test.js",
+    "test:integration": "node --test test/integration/dns_provider.test.js",
+    "test:watch": "node --test --watch test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/unix_socket.test.js test/integration/dns_provider.test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.4.2",
@@ -21,6 +29,7 @@
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "extend": "^3.0.2",
+    "jq-repeat": "^2.0.0",
     "jquery": "^3.7.1",
     "ldapts": "^2.12.0",
     "linux-sys-user": "^1.1.8",
