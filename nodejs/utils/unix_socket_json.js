@@ -29,8 +29,14 @@ class SocketServerJson {
 
 		// Set socket file permissions after listening
 		// 777 is acceptable here for single-use container environments
-		this.onListen.push(function(){
-			fs.chmodSync(args.socketFile, '777');
+		// Wrapped in try-catch as chmod may fail in test/restricted environments
+		this.onListen.push(() => {
+			try {
+				fs.chmodSync(this.socketFile, '777');
+			} catch(err) {
+				// Chmod may fail in test environments or certain filesystems
+				// Socket will still work with default permissions
+			}
 		});
 
 		this.listen();

@@ -162,6 +162,7 @@ function validateMethodSignatures(instance, mockDomain = {domain: 'example.com',
 
 	// These tests just verify the methods accept the expected parameters
 	// and return promises (actual API calls would require real credentials)
+	// We catch and suppress errors since these calls will fail with mock credentials
 
 	// listDomains() should return a promise
 	const listDomainsResult = instance.listDomains();
@@ -169,6 +170,7 @@ function validateMethodSignatures(instance, mockDomain = {domain: 'example.com',
 		listDomainsResult instanceof Promise,
 		`${className}.listDomains() must return a Promise`
 	);
+	listDomainsResult.catch(() => {}); // Suppress unhandled rejection
 
 	// getRecords(domain, options) should return a promise
 	const getRecordsResult = instance.getRecords(mockDomain, {type: 'A'});
@@ -176,6 +178,7 @@ function validateMethodSignatures(instance, mockDomain = {domain: 'example.com',
 		getRecordsResult instanceof Promise,
 		`${className}.getRecords() must return a Promise`
 	);
+	getRecordsResult.catch(() => {}); // Suppress unhandled rejection
 
 	// createRecord(domain, options) should return a promise
 	const createRecordResult = instance.createRecord(mockDomain, {
@@ -187,6 +190,7 @@ function validateMethodSignatures(instance, mockDomain = {domain: 'example.com',
 		createRecordResult instanceof Promise,
 		`${className}.createRecord() must return a Promise`
 	);
+	createRecordResult.catch(() => {}); // Suppress unhandled rejection
 
 	// deleteRecords(domain, options) should return a promise
 	const deleteRecordsResult = instance.deleteRecords(mockDomain, {
@@ -197,6 +201,7 @@ function validateMethodSignatures(instance, mockDomain = {domain: 'example.com',
 		deleteRecordsResult instanceof Promise,
 		`${className}.deleteRecords() must return a Promise`
 	);
+	deleteRecordsResult.catch(() => {}); // Suppress unhandled rejection
 }
 
 /**
