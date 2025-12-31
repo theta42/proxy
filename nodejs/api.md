@@ -1,132 +1,542 @@
-## get host info 
+# API Documentation
 
-**GET** `/api/hosts<HOST>`
+All API endpoints require authentication via the `auth-token` header unless otherwise noted.
 
-```bash
-curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" https://proxy-host.com/api/hostsmine.com
-```
+Base URL: `https://your-proxy-host.com/api`
 
-* 200 {"host":"yours.com","results":{"ip":"127.0.0.1:4000","updated":"1518595297563","username":"test10","forceSSL": false, "targetSSL": true, "targetPort": "443"}}
-* 404 {"name": "HostNotFound", "message": "Host does not exists"}
+---
 
+## Authentication
 
-## view all hosts 
+### Login
 
-**GET** `/api/hosts`
+**POST** `/api/auth/login`
 
-```bash
-curl -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" https://proxy-host.com/api/hosts
-```
-
-* 200 {"hosts":["mine.com","mine2.com"]}
-
-
-## Add host 
-
-**POST** `/api/hosts`
-
-Params
-* **host** -- Required, The domain name for the new record.
-* **ip** -- Required, The target IP or FQDN for the record.
-* **targetSSL** -- If the remote IP target is SSL. Default is false and this is
-not recommended.
-* **targetPort** -- Required, TCP port for the remote server. Unless you know 
-otherwise, 80 for targetSSL false and 443 for true.
-* **forceSSL** -- If requests should be forced to use SSL from the client to
-the proxy. The default is false and this is HIGHLY recommended.
-* **
+Authenticate a user and receive an auth token.
 
 ```bash
-curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d '{"host": "test.vm42.com", "ip": "192.168.1.21", "targetSSL": false, "targetPort": "443", "forceSSL": true} https://proxy-host.com/api/hosts
+curl -H "Content-Type: application/json" \
+  -X POST \
+  -d '{"username": "myuser", "password": "mypassword"}' \
+  https://proxy-host.com/api/auth/login
 ```
 
-* 200 {"message":"Host yours.com added."}
-* 409 {"name":"HostNameUsed", "message":"Host already exists"} 
-* 422 {"name":"ObjectValidateError","message":[{"key":"ip","message":"ip is required."}]} Missing or incorrect keys/values. Returns a list with a message per key error.
+**Responses:**
+- `200` `{"login": true, "token": "027d3964-7d81-4462-a6f9-2c1f9b40b4be", "message": "myuser logged in!"}`
+- `401` `{"name": "LoginFailed", "message": "Invalid Credentials, login failed."}`
 
-## Edit
+### Logout
 
-**PUT** `/api/hosts<host>`
+**ALL** `/api/auth/logout`
 
-Takes the same params as add, but none are required
-
-curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d '{"host": "test.vm42.com", "ip": "192.168.1.21", "targetSSL": false, "targetPort": "443", "forceSSL": true} https://proxy-host.com/api/hosts
-
-* 200 {"message":"Host yours.com updated."}
-* 404 {"name": "HostNotFound", "message": "Host does not exists"}
-* 409 {"name":"HostNameUsed", "message":"Host already exists"} 
-* 422 {"name":"ObjectValidateError","message":[{"key":"ip","message":"ip is required."}]} Missing or incorrect keys/values. Returns a list with a message per key error.
-
-
-## delete host
-
-**DELETE** /`api/hosts/<host>`
+Invalidate the current auth token.
 
 ```bash
-curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X DELETE https://proxy-host.com/api/hosts
+curl -H "auth-token: your-token-here" \
+  -X POST \
+  https://proxy-host.com/api/auth/logout
 ```
 
-* 200 {"message":"Host yours.com deleted"}
-* 404 {"name": "HostNotFound", "message": "Host does not exists"}
+**Responses:**
+- `200` `{"message": "Bye"}`
 
+---
 
-## create invite token
+## Users
 
-**post** `/users/invite`
+All user endpoints require authentication.
+
+### List Users
+
+**GET** `/api/user`
+
+Get list of all users.
 
 ```bash
-curl -H "Content-Type: application/json" -H "auth-token: 0b06eb2e-4ca4-4881-9a0f-b8df55431cd1" -X POST https://proxy-host.com/users/invite
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/user
 ```
 
-* 200 {"token":"5caf94d2-2c91-4010-8df7-968d10802b9d"}
+**Query Parameters:**
+- `detail` - Include full user details (optional)
 
+**Responses:**
+- `200` `{"results": ["user1", "user2"]}`
+- `200` `{"results": [{"username": "user1", ...}, ...]}` (with `?detail=true`)
 
-## sing up
+### Get Current User
 
-**post** `/auth/invite/<INVITE TOKEN>`
+**GET** `/api/user/me`
+
+Get information about the currently authenticated user.
 
 ```bash
-curl -H "Content-Type: application/json" -X POST -d "{\"username\": \"test9\", \"password\": \"palm7\"}" https://proxy-host.com/auth/invite/b33d8819-ec64-4cf4-a6ec-77562d738fa4
-
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/user/me
 ```
 
-* 200 {"user":"test9","token":"af662d8b-3d44-4110-8ad9-047dc752d97f"}
-* 400 {"message":"Missing fields"}
-* 401 {"message":"Token not valid"}
-* 409 {"message":"username taken"}
+**Responses:**
+- `200` `{"username": "myuser"}`
 
+### Create User
 
-## login
+**POST** `/api/user`
 
-**post** `/auth/login`
+Create a new user.
 
 ```bash
-curl -H "Content-Type: application/json" -X POST -d '{"username": "test8", "password": "mypassword"}' https://proxy-host.com/auth/login
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"username": "newuser", "password": "newpassword"}' \
+  https://proxy-host.com/api/user
 ```
 
-* 200 {"login":true,"token":"027d3964-7d81-4462-a6f9-2c1f9b40b4be"}
-* 401 {"login":false}
+**Responses:**
+- `200` User created successfully
+- `409` Username already exists
+- `422` `{"name": "ObjectValidateError", "message": ...}` Validation error
 
+### Delete User
 
-## verify SSH key
+**DELETE** `/api/user/:username`
 
-**post** `/auth/verifykey`
+Delete a user account.
 
 ```bash
-curl -H "Content-Type: application/json" -X POST -d "{\"key\":\"ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDM9vboz5YGgESsrR2e4JOeP2qtmQo2S8BjI+Y/VxPQ6WbNFzAkXxDniHcnPCrhkeX36SKINvMjWnt4XOK2S+X+1tCoXJzqtcKKyK0gx8ijBxcWVPxsMWjMYTGSVSKiKnt6CyQzrbVGJMh3iAQ8Yv1JwH+6SAtMgT8it7iLyntNFJCesh4I/znEG58A5VBbdUle1Ztz9afjj1CZns17jk7KPm9ig5DmuvdvnMEfhFjfKv1Rp6S5nxacMoTP4tJNSEUh55IicoWk94ii5GwUVLYgyMmzdlA32TqVLFpU2yAvdA9WSnBaI/ZyktlfI7YAmK2wFBsagr9Pq1TcUAY6rZ/GTMjDxExgdYn/FxlufcuqeNJsJXs2A+0xDS/9mv/yGQzNZrL8DrVhY2OKKLoH4Q7enDbhSgEFmJUJMqPxuPEgLEvKfzcURSvIwRj1iCEw6S4dhdaLJl2RRBb1ZWBQbE5ogIbvAl7GFJUAhj3pqYJnd30VENv1MkK+IoCS7EEP0caqL9RNAId0Plud7q2XElHqzkYUE+z+Q/LvGgclXK1ZmZejNaMnV53wfhAevfwVyNGK9i5gbwc1P2lplIa5laXCcVWezqELEkTpdjp4AeKmMuCr8rY8EnLKIcKWEOsX5UumztCow6e1E55v3VeHvRZLpw4DZP7EE0Q8B/jPFWqbCw== wmantly@gmail.com\"}" https://proxy-host.com/auth/verifykey
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/user/olduser
 ```
 
-* 200 {"info":"4096 SHA256:dfdCYzt0atMBXVZTJzUxsu99IjXXFXpocSox5q+jOs8 wmantly@gmail.com (RSA)\n"}
-* 400 {"message":"Key is not a public key file!"}
+**Responses:**
+- `200` `{"username": "olduser", "results": ...}`
+- `404` User not found
 
+### Change Password (Self)
 
-## add ssh key to current user
+**PUT** `/api/user/password`
 
-**post** `/users/key`
+Change the password for the currently authenticated user.
 
 ```bash
-curl -H "Content-Type: application/json" -H "auth-token: 8eff4f16-086d-40fd-acbd-7634b9a36117" -X POST -d "{\"key\": \"ssh-rsa AAAAB3NzaC1yc2EAAjWnt4XOK2S+X+1tCoXJzqtcKKyK0gx8ijBxcWVPxsMWjMYTGSVSKiKnt6CyQzrbVGJMh3iAQ8Yv1JwH+6SAtMgT8it7iLyntNFJCesh4I/znEG58A5VBbdUle1Ztz9afjj1CZns17jk7KPm9ig5DmuvdvnMEfhFjfKv1Rp6S5nxacMoTP4tJNSEUh55IicoWk94ii5GwUVLYgyMmzdlA32TqVLFpU2yAvdA9WSnBaI/ZyktlfI7YAmK2wFBsagr9Pq1TcUAY6rZ/GTMjDxExgdYn/FxlufcuqeNJsJXs2A+0xDS/9mv/yGQzNZrL8DrVhY2OKKLoH4Q7enDbhSgEFmJUJMqPxuPEgLEvKfzcURSvIwRj1iCEw6S4dhdaLJl2RRBb1ZWBQbE5ogIbvAl7GFJUAhj3pqYJnd30VENv1MkK+IoCS7EEP0caqL9RNAId0Plud7q2XElHqzkYUE+z+Q/LvGgclXK1ZmZejNaMnV53wfhAevfwVyNGK9i5gbwc1P2lplIa5laXCcVWezqELEkTpdjp4AeKmMuCr8rY8EnLKIcKWEOsX5UumztCow6e1E55v3VeHvRZLpw4DZP7EE0Q8B/jPFWqbCw== wmantly@gmail.co\"}" https://proxy-host.com/users/key
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X PUT \
+  -d '{"password": "newpassword"}' \
+  https://proxy-host.com/api/user/password
 ```
 
-* 200 {"message":true}
-* 400 {"message":"Bad SSH key"}
+**Responses:**
+- `200` `{"results": ...}` Password changed successfully
+
+### Change Password (Other User)
+
+**PUT** `/api/user/password/:username`
+
+Change the password for another user (admin function).
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X PUT \
+  -d '{"password": "newpassword"}' \
+  https://proxy-host.com/api/user/password/otheruser
+```
+
+**Responses:**
+- `200` `{"results": ...}` Password changed successfully
+- `404` User not found
+
+### Create Invite Token
+
+**POST** `/api/user/invite`
+
+Create an invitation token for new user registration.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X POST \
+  https://proxy-host.com/api/user/invite
+```
+
+**Responses:**
+- `200` `{"token": "5caf94d2-2c91-4010-8df7-968d10802b9d"}`
+
+### Add SSH Key
+
+**POST** `/api/user/key`
+
+Add an SSH public key to the current user's account.
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"key": "ssh-rsa AAAAB3..."}' \
+  https://proxy-host.com/api/user/key
+```
+
+**Responses:**
+- `200` `{"message": true}` Key added successfully
+- `400` `{"message": "Bad SSH key"}` Invalid key format
+
+---
+
+## Hosts
+
+Manage proxy host configurations.
+
+### List Hosts
+
+**GET** `/api/host`
+
+Get list of all configured hosts.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/host
+```
+
+**Query Parameters:**
+- `detail` - Include full host details (optional)
+
+**Responses:**
+- `200` `{"results": ["example.com", "*.wildcard.com"]}`
+- `200` `{"results": [{"host": "example.com", "ip": "192.168.1.10", ...}, ...]}` (with `?detail=true`)
+
+### Get Host
+
+**GET** `/api/host/:host`
+
+Get configuration for a specific host.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/host/example.com
+```
+
+**Responses:**
+- `200` `{"item": "example.com", "results": {"host": "example.com", "ip": "192.168.1.10", "targetPort": 8080, ...}}`
+- `404` `{"name": "HostNotFound", "message": "Host does not exists"}`
+
+### Lookup Host
+
+**GET** `/api/host/lookup/:domain`
+
+Test the host lookup algorithm (supports wildcard matching).
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/host/lookup/sub.example.com
+```
+
+**Responses:**
+- `200` `{"string": "sub.example.com", "results": {"host": "*.example.com", ...}}`
+- `200` `{"string": "sub.example.com", "results": null}` (no match)
+
+### Get Lookup Tree
+
+**GET** `/api/host/lookupobj`
+
+Get the internal lookup tree structure (for debugging).
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/host/lookupobj
+```
+
+**Responses:**
+- `200` `{"results": {"com": {"example": {...}}}}`
+
+### Create Host
+
+**POST** `/api/host`
+
+Add a new host configuration.
+
+**Parameters:**
+- `host` (required) - Domain name (e.g., `example.com`, `*.example.com`)
+- `ip` (required) - Target IP address or FQDN
+- `targetPort` (required) - Target port number (1-65535)
+- `forcessl` (optional) - Force HTTPS redirect (default: true)
+- `targetssl` (optional) - Use HTTPS to backend (default: false)
+- `challengeType` (optional) - For wildcards: `DNS-01-wildcard` or `wildcardChild`
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"host": "example.com", "ip": "192.168.1.10", "targetPort": 8080, "forcessl": true, "targetssl": false}' \
+  https://proxy-host.com/api/host
+```
+
+**Responses:**
+- `200` `{"message": "\"example.com\" added.", "host": "example.com", ...}`
+- `409` `{"name": "HostNameUsed", "message": "Host already exists"}`
+- `422` `{"name": "ObjectValidateError", "message": ...}` Validation error
+
+### Update Host
+
+**PUT** `/api/host/:host`
+
+Update an existing host configuration.
+
+**Parameters:** Same as Create Host (all optional)
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X PUT \
+  -d '{"ip": "192.168.1.20", "targetPort": 9000}' \
+  https://proxy-host.com/api/host/example.com
+```
+
+**Responses:**
+- `200` `{"message": "\"example.com\" updated.", ...}`
+- `404` `{"name": "HostNotFound", "message": "Host does not exists"}`
+- `422` Validation error
+
+### Delete Host
+
+**DELETE** `/api/host/:host`
+
+Remove a host configuration.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/host/example.com
+```
+
+**Responses:**
+- `200` `{"message": "example.com deleted", ...}`
+- `404` `{"name": "HostNotFound", "message": "Host does not exists"}`
+
+### Renew Wildcard Certificate
+
+**PUT** `/api/host/:host/renew`
+
+Manually trigger wildcard certificate renewal.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X PUT \
+  https://proxy-host.com/api/host/*.example.com/renew
+```
+
+**Responses:**
+- `200` `{"message": "Requesting wildcard cert for *.example.com"}`
+- `404` Host not found
+
+---
+
+## DNS Providers
+
+Manage DNS provider integrations for wildcard SSL certificates.
+
+### List DNS Providers
+
+**GET** `/api/dns`
+
+Get list of configured DNS providers.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/dns
+```
+
+**Query Parameters:**
+- `detail` - Include full provider details (optional)
+
+**Responses:**
+- `200` `{"results": ["provider-id-1", "provider-id-2"]}`
+
+### List Available Provider Types
+
+**OPTIONS** `/api/dns`
+
+Get list of supported DNS provider types and their configuration requirements.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X OPTIONS \
+  https://proxy-host.com/api/dns
+```
+
+**Responses:**
+- `200` `{"results": [{"name": "CloudFlare", "fields": {...}}, {"name": "DigitalOcean", ...}, ...]}`
+
+### Create DNS Provider
+
+**POST** `/api/dns`
+
+Configure a new DNS provider.
+
+**CloudFlare:**
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"name": "My CloudFlare", "dnsProvider": "Cloudflare", "token": "your-api-token"}' \
+  https://proxy-host.com/api/dns
+```
+
+**DigitalOcean:**
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"name": "My DO", "dnsProvider": "DigitalOcean", "token": "your-api-token"}' \
+  https://proxy-host.com/api/dns
+```
+
+**PorkBun:**
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"name": "My PorkBun", "dnsProvider": "PorkBun", "apiKey": "pk_xxx", "secretApiKey": "sk_xxx"}' \
+  https://proxy-host.com/api/dns
+```
+
+**Responses:**
+- `200` `{"message": "\"provider-id\" added.", ...}`
+- `422` Validation error or invalid API credentials
+
+### Get DNS Provider
+
+**GET** `/api/dns/:id`
+
+Get a specific DNS provider configuration.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/dns/provider-id
+```
+
+**Responses:**
+- `200` `{"item": "provider-id", "results": {...}}`
+- `404` Provider not found
+
+### Update DNS Provider
+
+**PUT** `/api/dns/:id`
+
+Update DNS provider configuration.
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X PUT \
+  -d '{"name": "Updated Name"}' \
+  https://proxy-host.com/api/dns/provider-id
+```
+
+**Responses:**
+- `200` `{"message": "\"provider-id\" updated.", ...}`
+- `404` Provider not found
+
+### Delete DNS Provider
+
+**DELETE** `/api/dns/:id`
+
+Remove a DNS provider and all associated domains.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/dns/provider-id
+```
+
+**Responses:**
+- `200` `{"message": "provider-id deleted", ...}`
+- `404` Provider not found
+
+### List Domains
+
+**GET** `/api/dns/domain`
+
+List all domains from all configured providers.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/dns/domain
+```
+
+**Query Parameters:**
+- `detail` - Include full domain details (optional)
+
+**Responses:**
+- `200` `{"results": ["example.com", "test.com"]}`
+
+### Get Domain
+
+**GET** `/api/dns/domain/:domain`
+
+Get details for a specific domain.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/dns/domain/example.com
+```
+
+**Responses:**
+- `200` `{"results": [{"domain": "example.com", "zoneId": "...", ...}]}`
+- `404` Domain not found
+
+### Refresh Domains
+
+**POST** `/api/dns/domain/refresh/:providerId`
+
+Refresh the domain list from a DNS provider's API.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X POST \
+  https://proxy-host.com/api/dns/domain/refresh/provider-id
+```
+
+**Responses:**
+- `200` `{"results": ...}` Updated domain list
+- `404` Provider not found
+
+---
+
+## Certificates
+
+Retrieve SSL certificate information.
+
+### Get Certificate
+
+**GET** `/api/cert/:host`
+
+Get the SSL certificate for a host.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/cert/example.com
+```
+
+**Responses:**
+- `200` Certificate data including `cert_pem`, `fullchain_pem`, `privkey_pem`, expiry information
+- `404` Certificate not found
+
+---
+
+## Error Responses
+
+All endpoints may return the following error responses:
+
+- `401` `{"name": "LoginFailed", "message": "Invalid Credentials, login failed."}` - Authentication required or invalid
+- `404` `{"name": "NotFound", "message": "..."}` - Resource not found
+- `422` `{"name": "ObjectValidateError", "message": [...], "keys": [...]}` - Validation errors
+- `500` Internal server error
+
+## Notes
+
+- All timestamps are in milliseconds since epoch
+- The `auth-token` header is required for all authenticated endpoints
+- Host names support wildcards: `*` (single level) and `**` (multi-level)
+- DNS providers are validated on creation - invalid API credentials will be rejected
+- Wildcard certificates are automatically renewed 30 days before expiration

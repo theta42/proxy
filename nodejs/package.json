@@ -10,7 +10,14 @@
   ],
   "scripts": {
     "start": "node ./bin/www",
-    "dev": "npx nodemon --ignore public/ ./bin/www"
+    "dev": "npx nodemon --ignore public/ ./bin/www",
+    "test": "node --test test/**/*.test.js",
+    "test:unit": "node --test test/unit/**/*.test.js",
+    "test:integration": "node --test test/integration/**/*.test.js",
+    "test:watch": "node --test --watch test/**/*.test.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@fortawesome/fontawesome-free": "^6.4.2",
