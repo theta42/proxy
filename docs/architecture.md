@@ -23,33 +23,30 @@ The proxy system consists of three main components working together to provide h
 │  │ SSL Termination│  │ Host Routing │  │ Request Proxying│  │
 │  │ (lua-resty-    │  │ (targetinfo. │  │                 │  │
 │  │  auto-ssl)     │  │  lua)        │  │                 │  │
-│  └────────────────┘  └──────────────┘  └─────────────────┘  │
-└────────────┬──────────────────┬───────────────────────────┬──┘
+│  └────────────────┘  └──────┬───────┘  └─────────────────┘  │
+└────────────┬──────────────────┼───────────────────────────┬──┘
              │                  │                           │
-     Let's Encrypt       Unix Socket                   Backend
-       HTTP-01          Lookup Query                  Services
+     Let's Encrypt       1. Check Redis FIRST          Backend
+       HTTP-01           2. Unix Socket (fallback)    Services
              │                  │                           │
              ▼                  ▼                           ▼
-┌──────────────────────────────────────────────────────────────┐
-│                    Node.js Application                        │
-│  ┌──────────────┐  ┌────────────────┐  ┌─────────────────┐  │
-│  │   Services   │  │    Models      │  │     Routes      │  │
-│  │ - host_lookup│  │ - Host         │  │ - /api/host     │  │
-│  │ - scheduler  │  │ - DNS Provider │  │ - /api/dns      │  │
-│  └──────────────┘  │ - User         │  │ - /api/user     │  │
-│                    │ - Auth         │  │ - /api/auth     │  │
-│                    └────────────────┘  │ - /api/cert     │  │
-│                                        └─────────────────┘  │
-└────────────┬────────────────────┬────────────────────────────┘
-             │                    │
-             ▼                    ▼
-┌──────────────────────┐  ┌──────────────────────┐
-│       Redis          │  │    DNS Providers     │
-│  - Host configs      │  │  - CloudFlare        │
-│  - User accounts     │  │  - DigitalOcean      │
-│  - SSL certs         │  │  - PorkBun           │
-│  - Auth tokens       │  │  (DNS-01 challenges) │
-└──────────────────────┘  └──────────────────────┘
+┌──────────────────────┐  ┌──────────────────────────────────┐
+│       Redis          │  │      Node.js Application         │
+│  (Primary Cache)     │  │  ┌──────────────┐  ┌─────────┐  │
+│  - Host configs ◄────┼──┼──┤   Services   │  │ Routes  │  │
+│  - User accounts     │  │  │ - host_lookup│  │ - /api/*│  │
+│  - SSL certs         │  │  │ - scheduler  │  │         │  │
+│  - Auth tokens       │  │  └──────────────┘  └─────────┘  │
+└──────────────────────┘  └─────────┬────────────────────────┘
+                                    │
+                                    ▼
+                          ┌──────────────────────┐
+                          │    DNS Providers     │
+                          │  - CloudFlare        │
+                          │  - DigitalOcean      │
+                          │  - PorkBun           │
+                          │  (DNS-01 challenges) │
+                          └──────────────────────┘
 ```
 
 ## Component Details
@@ -59,14 +56,15 @@ The proxy system consists of three main components working together to provide h
 **Responsibilities:**
 - Accept incoming HTTP/HTTPS requests
 - SSL termination using lua-resty-auto-ssl
-- Host-based routing decisions
+- Host-based routing decisions (Redis-first lookup)
 - Proxy requests to backend services
 
 **Key Features:**
 - HTTP-01 ACME challenge handling for automatic SSL
-- Lua-based host lookup via Unix socket
+- Redis-first host lookup with Node.js fallback via Unix socket
 - High-performance event-driven architecture
 - Support for WebSocket connections
+- Continues serving cached hosts even if Node.js is down
 
 **Configuration Files:**
 - `/etc/openresty/nginx.conf` - Main configuration
@@ -131,12 +129,14 @@ proxy_Domain_<domain>           # Domain info
 
 1. **Client** sends HTTPS request to `app.example.com`
 2. **OpenResty** receives request, terminates SSL
-3. **Lua script** (`targetinfo.lua`) queries Redis for host config
-4. If **cache miss**, Lua queries Node.js via Unix socket
-5. **Node.js** performs host lookup (supports wildcards)
-6. **Response** returned with target IP and port
-7. **OpenResty** proxies request to backend service
+3. **Lua script** (`targetinfo.lua`) queries **Redis first** for host config
+4. If **found in Redis**, jump to step 7 (Node.js not involved)
+5. If **not in Redis**, Lua queries Node.js via Unix socket as fallback
+6. **Node.js** performs host lookup (supports wildcards), caches result in Redis
+7. **OpenResty** proxies request to backend service using target IP and port
 8. **Response** proxied back to client
+
+**Resilience**: If Node.js goes down, all hosts already cached in Redis continue to work. Only new/uncached hosts will fail until Node.js recovers.
 
 ### Wildcard SSL Certificate Request
 
@@ -210,10 +210,21 @@ Priority: Exact > Single wildcard (*) > Double wildcard (**)
 
 ### Caching Strategy
 
-1. **Redis cache** - Primary host configuration storage
-2. **Lookup tree** - In-memory host lookup (rebuilt on changes)
-3. **OpenResty cache** - Reduces Unix socket calls
-4. **Wildcard parent caching** - Stores resolved wildcard parents
+The system uses a multi-tier caching approach:
+
+1. **Redis (L1 Cache)** - OpenResty checks Redis FIRST for every request
+   - Primary host configuration storage
+   - Survives Node.js restarts/failures
+   - Shared across all OpenResty workers
+
+2. **Node.js Lookup Tree (L2 Cache)** - In-memory host lookup with wildcard matching
+   - Only queried when Redis has no entry
+   - Rebuilt automatically when hosts change
+   - Supports complex wildcard resolution
+
+3. **Wildcard Parent Caching** - Resolved wildcard matches stored back to Redis
+   - Subsequent requests to `api.example.com` hit Redis directly
+   - No repeated wildcard resolution needed
 
 ### Unix Socket vs HTTP API
 
