@@ -147,7 +147,7 @@ The system consists of three main components:
    - Host lookup tree with wildcard matching
    - User authentication and authorization
 
-3. **Redis** - Data store
+3. **Redis** - Data store (using [model-redis](https://www.npmjs.com/package/model-redis) ORM)
    - Host configurations
    - User accounts and tokens
    - SSL certificate storage

@@ -248,6 +248,28 @@ When you open a PR:
 4. Review from maintainers
 5. Merge to master
 
+## Data Models
+
+The project uses [model-redis](https://www.npmjs.com/package/model-redis) as the ORM for Redis data storage. All models extend the `Table` class and use a declarative schema via `_keyMap`.
+
+**Example Model:**
+```javascript
+const Table = require('../utils/redis_model');
+
+class Host extends Table {
+    static _key = 'host';  // Primary key field
+    static _keyMap = {
+        'host': {isRequired: true, type: 'string', min: 3, max: 500},
+        'ip': {isRequired: true, type: 'string', min: 3, max: 500},
+        'targetPort': {isRequired: true, type: 'number', min: 0, max: 65535},
+        'forcessl': {default: true, type: 'boolean'},
+        'created_on': {default: () => Date.now(), type: 'number'}
+    };
+}
+```
+
+**Learn more:** [model-redis documentation](https://www.npmjs.com/package/model-redis)
+
 ## Adding Features
 
 ### Adding a DNS Provider
