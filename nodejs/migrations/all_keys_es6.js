@@ -2,7 +2,7 @@
 
 const {createClient} = require('redis');
 const objValidate = require('../utils/object_validate');
-const conf = require('../conf/conf');
+const conf = require('@simpleworkjs/conf');
 
 const client = createClient({});
 

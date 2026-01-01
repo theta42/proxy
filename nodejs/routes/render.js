@@ -3,7 +3,7 @@
 const path = require('path');
 const express = require('express');
 const router = require('express').Router();
-const conf = require('../conf');
+const conf = require('@simpleworkjs/conf');
 
 const values ={
   title: conf.environment !== 'production' ? `dev` : '',

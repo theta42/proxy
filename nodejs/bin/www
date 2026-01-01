@@ -7,7 +7,7 @@
 var app = require('../app');
 var debug = require('debug')('proxy-api:server');
 var http = require('http');
-const conf = require('../conf');
+const conf = require('@simpleworkjs/conf');
 
 /**
  * Get port from environment and store in Express.

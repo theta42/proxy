@@ -2,7 +2,7 @@
 
 const {Host} = require('../models/host');
 const {SocketServerJson} = require('../utils/unix_socket_json');
-const conf = require('../conf');
+const conf = require('@simpleworkjs/conf');
 
 /**
  * Host Lookup Service

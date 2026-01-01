@@ -1,4 +1,5 @@
 'use strict';
+// Using https://github.com/simpleworkjs/conf to handle configuration
 
 module.exports = {
 	userModel: 'redis', // pam, redis, ldap
