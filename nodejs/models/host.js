@@ -6,7 +6,7 @@ const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
 const LetsEncrypt = require('../utils/letsencrypt');
-const conf = require('../conf');
+const conf = require('@simpleworkjs/conf');
 
 const letsEncrypt = new LetsEncrypt({
 	directoryUrl: conf.environment === "production" ?

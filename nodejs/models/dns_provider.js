@@ -2,7 +2,7 @@
 
 const crypto = require("crypto");
 
-const conf = require('../conf');
+const conf = require('@simpleworkjs/conf');
 const Table = require('../utils/redis_model');
 const ModelPs = require('../utils/model_pubsub');
 
@@ -178,7 +178,7 @@ DnsProvider.register(ModelPs(DnsProvider))
 
 
 if(require.main === module){(async function(){try{
-	const conf = require('../conf');
+	const conf = require('@simpleworkjs/conf');
 
 	// console.log(await DnsProvider.findall());
 

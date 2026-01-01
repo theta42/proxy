@@ -113,7 +113,7 @@ if(require.main === module){(async function(){try{
 
 	const tldExtract = require('tld-extract').parse_host;
 	const PorkBun = require('./porkbun');
-	const conf = require('../conf/conf');
+	const conf = require('@simpleworkjs/conf');
 
 	let porkBun = new PorkBun(conf.porkBun.apiKey, conf.porkBun.secretApiKey);
 	let letsEncrypt = new LetsEncrypt({
