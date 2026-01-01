@@ -105,6 +105,8 @@ nodejs/
 
 ### Redis (Data Store)
 
+**ORM:** [model-redis](https://www.npmjs.com/package/model-redis) - A lightweight Redis ORM for Node.js with schema validation, relationships, and automatic key management.
+
 **Stored Data:**
 - Host configurations (domain, IP, port, SSL settings)
 - User accounts and hashed passwords
