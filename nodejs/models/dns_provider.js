@@ -3,7 +3,7 @@
 const crypto = require("crypto");
 
 const conf = require('@simpleworkjs/conf');
-const Table = require('../utils/redis_model');
+const Table = require('.');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;

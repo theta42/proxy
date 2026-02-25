@@ -1,6 +1,9 @@
 'use strict';
+const conf = require('@simpleworkjs/conf');
+const {setUpTable} = require('model-redis');
 
-const Table = require('../utils/redis_model');
+const Table = setUpTable(conf.redis);
+
 module.exports = Table;
 
 require('./dns_provider');
