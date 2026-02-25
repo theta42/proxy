@@ -76,7 +76,7 @@ class Host extends Table{
 
 		}catch(error){
 			console.error('bust cache error', error)
-			throw error;
+			// throw error;
 		}
 	}
 

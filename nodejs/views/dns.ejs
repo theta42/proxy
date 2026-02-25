@@ -66,7 +66,7 @@
 	$(document).ready(async function(){
 		// Set the jq Templates
 		$.scope.providerField.put = function(){};
-		$.scope.DnsProvider.push(...(await app.api.get('/dns?detail=true')).results);
+		$.scope.DnsProvider.push(...(await app.api.get('dns?detail=true')).results);
 
 		// Populate 
 		providerGet();
