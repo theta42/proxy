@@ -38,16 +38,16 @@ function ModelPs(model){
 								publish(propKey, res, ...args);
 							}).catch(function(error){
 
-								// console.error("Error PS", model.name, propKey, error)
-								console.log('toDo, publish errors...');
+								console.error("Error async PS", model.name, propKey, error)
+								// console.log('toDo, publish errors...');
 							});
 						}else{
 							publish(propKey, res, ...args);
 						}
 						return res;
 					}catch(error){
-						// console.error("Error PS", model.name, propKey, error)
-						console.log("toDo, publish errors...");
+						console.error("Error PS", model.name, propKey, error)
+						// console.log("toDo, publish errors...");
 					}
 				}
 			} else {

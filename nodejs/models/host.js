@@ -82,8 +82,15 @@ class Host extends Table{
 
 	static async create(data, ...args){
 		try{
+
+			console.log('host create data', data.challengeType, data.challengeType === 'DNS-01-wildcard')
+
 			// Validate requested host is valid host and domain
-			if(data.challengeType === 'DNS-01-wildcard') await this.validateWildcardCreate(data, args);
+			if(data.challengeType === 'DNS-01-wildcard'){
+				data.is_wildcard = true;
+				data.wildcard_status = "Starting"
+				await this.validateWildcardCreate(data, args);
+			}
 
 			// Validate requested host has a valid wildcard parent
 			if(data.challengeType === 'wildcardChild'){
@@ -96,24 +103,31 @@ class Host extends Table{
 				}
 			}
 
+			console.log('Host create here 102')
+
 			// Create the new host entry
 			let out = await super.create(data, ...args);
+			console.log('Host create here 106')
 
 			// Update the lookup table to reflect new host
 			await this.buildLookUpObj();
 
+			console.log('Host create here 111')
 			// Fire the request for the wild card cert
 			// This is "back ground" job, await is intentionally missing
-			if(out.challengeType === 'DNS-01-wildcard') out.createWildcardCert();
+			if(data.challengeType === 'DNS-01-wildcard') out.createWildcardCert();
 
+			console.log('Host create here 111')
 			return out;
 
 		} catch(error){
+			console.log(error)
 			throw error;
 		}
 	}
 
 	static async validateWildcardCreate(data, ...args){
+		console.log('validateWildcardCreate here')
 		try{
 			if(!data.host.startsWith('*.')) throw new Error('not wild card');
 			await Domain.get(data.host);
@@ -125,9 +139,11 @@ class Host extends Table{
 	}
 
 	async createWildcardCert(){
+		console.log('createWildcardCert here')
 		if(!this.host.startsWith('*.')) throw new Error('not wild card');
 
 		try{
+		console.log('createWildcardCert here in try')
 			let host = this;
 
 			await host.update({

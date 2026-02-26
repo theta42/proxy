@@ -15,13 +15,9 @@ module.exports = {
 	redis: {
 		prefix: 'proxy_'
 	},
-
-
 	service:{
 		hostScheduler:{
-			enabled: true,
-			initial: 30000,
-			interval: 86400000,
+			enabled: false,
 		}
 	},
 };
