@@ -274,7 +274,7 @@
 			</div>
 
 			<div class="card-body">
-				<form class="addHost" method="PUT" action="/host/{{ host }}" onsubmit="formAJAX(this)" evalAJAX="hostEditCancle()">
+				<form class="addHost" method="PUT" action="host/{{ host }}" onsubmit="formAJAX(this)" evalAJAX="hostEditCancle()">
 					{{{ form }}}
 					<input type="hidden" name="edit_host" />
 					<button type="submit" data-type="edit" class="btn btn-warning">
