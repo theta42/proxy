@@ -86,7 +86,7 @@
 		$('tr.jq-repeat-hosts').each(function(idx, el){
 			$(el).removeClass('table-warning');
 		});
-		$.scope.editHost.remove();
+		$.scope.editHost.remove(0);
 	}
 
 	function hostEditOpen(btn, host){

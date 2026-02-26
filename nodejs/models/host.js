@@ -2,6 +2,7 @@
 
 const Table = require('.');
 const {Domain} = require('.').models;
+const {deleteCert} = require('./cert');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
@@ -82,9 +83,6 @@ class Host extends Table{
 
 	static async create(data, ...args){
 		try{
-
-			console.log('host create data', data.challengeType, data.challengeType === 'DNS-01-wildcard')
-
 			// Validate requested host is valid host and domain
 			if(data.challengeType === 'DNS-01-wildcard'){
 				data.is_wildcard = true;
@@ -95,33 +93,25 @@ class Host extends Table{
 			// Validate requested host has a valid wildcard parent
 			if(data.challengeType === 'wildcardChild'){
 				let parentHost = await this.lookUp(data.host);
-				console.log('parentHost:', parentHost)
 				if(parentHost.is_wildcard){
 					data.wildcard_parent = parentHost.host;
 				}else{
 					throw new Error(`No parent wild card for ${data.host}`);
 				}
 			}
-
-			console.log('Host create here 102')
-
 			// Create the new host entry
 			let out = await super.create(data, ...args);
-			console.log('Host create here 106')
 
 			// Update the lookup table to reflect new host
 			await this.buildLookUpObj();
 
-			console.log('Host create here 111')
 			// Fire the request for the wild card cert
 			// This is "back ground" job, await is intentionally missing
 			if(data.challengeType === 'DNS-01-wildcard') out.createWildcardCert();
 
-			console.log('Host create here 111')
 			return out;
 
 		} catch(error){
-			console.log(error)
 			throw error;
 		}
 	}
@@ -139,11 +129,10 @@ class Host extends Table{
 	}
 
 	async createWildcardCert(){
-		console.log('createWildcardCert here')
+		console.log('createWildcardCert', this.domain)
 		if(!this.host.startsWith('*.')) throw new Error('not wild card');
 
 		try{
-		console.log('createWildcardCert here in try')
 			let host = this;
 
 			await host.update({
@@ -246,6 +235,7 @@ class Host extends Table{
 
 	async checkWildcardForRenew(){
 		try{
+			console.log(`Checking ${this.host}`);
 			if(this.is_wildcard && Date.now() > this.wildcard_expires - (30 * 24 * 60 * 60 * 1000)){
 				this.createWildcardCert();
 			}
@@ -257,6 +247,7 @@ class Host extends Table{
 
 	static async checkWildcardForRenew(){
 		try{
+			console.log('checkWildcardForRenew here', this)
 			for(let host of await this.listDetail()){
 				host.createWildcardCert();
 			}
@@ -283,6 +274,7 @@ class Host extends Table{
 			let out = await super.remove(...args);
 			await Host.buildLookUpObj();
 			await this.bustCache(this.host);
+			await deleteCert(this.domain);
 
 			return out;
 		} catch(error){
