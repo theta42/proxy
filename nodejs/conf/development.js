@@ -17,7 +17,9 @@ module.exports = {
 	},
 	service:{
 		hostScheduler:{
-			enabled: false,
+			enabled: true,
+			initial: 5000,
+			interval: 86400000,
 		}
 	},
 };

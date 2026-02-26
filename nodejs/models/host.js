@@ -235,7 +235,6 @@ class Host extends Table{
 
 	async checkWildcardForRenew(){
 		try{
-			console.log(`Checking ${this.host}`);
 			if(this.is_wildcard && Date.now() > this.wildcard_expires - (30 * 24 * 60 * 60 * 1000)){
 				this.createWildcardCert();
 			}
@@ -247,9 +246,8 @@ class Host extends Table{
 
 	static async checkWildcardForRenew(){
 		try{
-			console.log('checkWildcardForRenew here', this)
 			for(let host of await this.listDetail()){
-				host.createWildcardCert();
+				host.checkWildcardForRenew();
 			}
 		}catch(error){
 			console.error('checkWildcardForRenew', error)
