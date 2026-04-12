@@ -24,7 +24,7 @@
     "@popperjs/core": "^2.11.8",
     "@simpleworkjs/conf": "^1.0.0",
     "acme-client": "^5.4.0",
-    "axios": "^1.13.2",
+    "axios": "^1.15.0",
     "bcrypt": "^6.0.0",
     "bootstrap": "^5.3.8",
     "ejs": "^3.1.10",
