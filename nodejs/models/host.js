@@ -22,14 +22,18 @@ class Host extends Table{
 		'created_on': {default: function(){return (new Date).getTime()}},
 		'updated_by': {default:"__NONE__", isRequired: false, type: 'string',},
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
+
 		'host': {isRequired: true, type: 'string', min: 3, max: 500},
 		'ip': {isRequired: true, type: 'string', min: 3, max: 500},
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
+
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
+		
 		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500},
+		'wildcard_matchAny': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
 		'wildcard_expires': {isRequired: false, type: 'number'},
 		'domain': {model: 'Domain', rel: 'one'},
@@ -85,9 +89,9 @@ class Host extends Table{
 		try{
 			// Validate requested host is valid host and domain
 			if(data.challengeType === 'DNS-01-wildcard'){
+				await this.validateWildcardCreate(data, args);
 				data.is_wildcard = true;
 				data.wildcard_status = "Starting"
-				await this.validateWildcardCreate(data, args);
 			}
 
 			// Validate requested host has a valid wildcard parent
@@ -272,7 +276,7 @@ class Host extends Table{
 			let out = await super.remove(...args);
 			await Host.buildLookUpObj();
 			await this.bustCache(this.host);
-			await deleteCert(this.domain);
+			await deleteCert(this.host);
 
 			return out;
 		} catch(error){
