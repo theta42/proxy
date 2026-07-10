@@ -415,7 +415,7 @@ function formAJAX(btn){
 	var method = ($form.attr('method') || 'post').toLowerCase();
 
 	if($form.validate && !$form.validate()){
-		app.util.actionMessage('Please fix the form errors.', $form, 'danger')
+		app.util.actionMessage('Please fix the form errors.', $form, 'danger');
 		return false;
 	}
 	

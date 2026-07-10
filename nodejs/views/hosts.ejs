@@ -148,6 +148,18 @@
 		}
 	}
 
+	function hostClearCache(btn){
+		let $btn = $(btn);
+		$btn.prop('disabled', true);
+		app.host.clearCache(function(error, data){
+			$btn.prop('disabled', false);
+			if(error){
+				return app.util.actionMessage(error.message || error, $.scope.hosts.$this, 'danger');
+			}
+			app.util.actionMessage(data.message, $.scope.hosts.$this, 'success');
+		});
+	}
+
 	async function hostMatchWildcard(host){
 		try{
 			let res = await app.api.get(`host/lookup/${host}`);
@@ -446,6 +458,10 @@
 					Proxy List
 				</span>
 				<span class="float-end">
+					<button type="button" class="btn btn-sm btn-outline-secondary me-2" onclick="hostClearCache(this)" title="Clear cached wildcard subdomain lookups">
+						<i class="fa-solid fa-broom"></i>
+						Clear Cache
+					</button>
 					<i class="fa-solid fa-circle-minus"></i>
 				</span>
 			</div>

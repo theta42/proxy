@@ -35,6 +35,12 @@ app.host = (function(app){
 		});
 	}
 
+	function clearCache(callack){
+		app.api.delete('host/cache', function(error, data){
+			callack(error, data);
+		});
+	}
+
 	return {
 		getCert,
 		list: list,
@@ -42,5 +48,6 @@ app.host = (function(app){
 		add: add,
 		edit: edit,
 		remove: remove,
+		clearCache: clearCache,
 	}
 })(app);
