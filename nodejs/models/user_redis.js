@@ -2,6 +2,7 @@
 
 const Table = require('.');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const saltRounds = 10;
 
 class User extends Table{
@@ -37,6 +38,28 @@ class User extends Table{
 			return this.update(data);
 		}catch(error){
 			throw error;
+		}
+	}
+
+	/**
+	 * Just-in-time provisioning for an OIDC-authenticated user. Creates the
+	 * local user on first login so relations (tokens, created_by, grants) have
+	 * something to point at. OIDC users get a random, unusable password — they
+	 * authenticate through the SSO, never the local password form.
+	 *
+	 * @param {Object} data - {username, ...} from the OIDC userinfo claims
+	 * @returns {User} the existing or newly created user
+	 */
+	static async upsertOidc(data){
+		try{
+			return await User.get(data.username);
+		}catch(error){
+			return await User.create({
+				username: data.username,
+				password: crypto.randomBytes(24).toString('hex'),
+				created_by: data.username,
+				backing: 'oidc',
+			});
 		}
 	}
 

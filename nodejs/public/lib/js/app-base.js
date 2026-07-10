@@ -76,7 +76,7 @@ app.api = (function(app){
 	var baseURL = '/api/'
 
 	function post(url, data, callback){
-		if(!$.isFunction(callback)) callback = callback2;
+		if(typeof callback !== 'function') callback = callback2;
 		return $.ajax({
 			type: 'POST',
 			url: baseURL+url,
@@ -97,7 +97,7 @@ app.api = (function(app){
 	}
 
 	function put(url, data, callback){
-		if(!$.isFunction(callback)) callback = callback2;
+		if(typeof callback !== 'function') callback = callback2;
 		return $.ajax({
 			type: 'PUT',
 			url: baseURL+url,
@@ -118,7 +118,7 @@ app.api = (function(app){
 	}
 
 	function remove(url, callback, callback2){
-		if(!$.isFunction(callback)) callback = callback2;
+		if(typeof callback !== 'function') callback = callback2;
 		return $.ajax({
 			type: 'delete',
 			url: baseURL+url,
@@ -191,12 +191,48 @@ app.auth = (function(app){
 	function isLoggedIn(callback){
 		if(getToken()){
 			return app.api.get('user/me', function(error, data){
-				if(!error) app.auth.user = data;
+				// data now carries effective rights (isAdmin, global, domains).
+				if(!error) app.auth.user = app.auth.perms = data;
 				return callback(error, data);
 			});
 		}else{
 			callback(null, false);
 		}
+	}
+
+	// Constrain a redirect target to a same-origin absolute path. Rejects
+	// absolute URLs (open redirect), protocol-relative "//host" and "/\host",
+	// and non-path schemes like "javascript:" (XSS). Falls back to "/".
+	function safeInternalPath(path){
+		if(typeof path !== 'string' || path.charAt(0) !== '/'
+				|| path.charAt(1) === '/' || path.charAt(1) === '\\'){
+			return '/';
+		}
+		return path;
+	}
+
+	// Consume an app token handed back by the OIDC callback via the URL
+	// fragment (#token=…&redirect=…). Stores it, strips the fragment, and
+	// forwards to the intended page. Returns true if a token was consumed.
+	function consumeTokenFragment(){
+		if(!location.hash) return false;
+		var params = new URLSearchParams(location.hash.replace(/^#/, ''));
+		var token = params.get('token');
+		if(!token) return false;
+
+		setToken(token);
+		// redirect comes from the URL fragment (attacker-controllable); only
+		// allow a same-origin path so it can't become an open redirect / XSS.
+		var redirect = safeInternalPath(params.get('redirect') || '/');
+		// Drop the token from the address bar before navigating on.
+		history.replaceState(null, '', location.pathname + location.search);
+		window.location.href = redirect;
+		return true;
+	}
+
+	// True when the logged-in user is a global admin (per user/me).
+	function isAdmin(){
+		return !!(app.auth.perms && app.auth.perms.isAdmin);
 	}
 
 	function logIn(args, callback){
@@ -214,25 +250,27 @@ app.auth = (function(app){
 	}
 
 	function forceLogin(){
-		$.holdReady(true);
+		// jQuery 4 removed $.holdReady; rely on the redirect below to keep an
+		// unauthenticated user off the page instead of pausing document ready.
 		app.auth.isLoggedIn(function(error, isLoggedIn){
 			if(error || !isLoggedIn){
 				app.auth.logOut(function(){})
 				location.replace(`/login${location.href.replace(location.origin, '')}`);
-			}else{
-				$.holdReady(false);
 			}
 		});
 	}
 
 	function logInRedirect(){
-		window.location.href = location.href.replace(location.origin+'/login', '') || '/'
+		window.location.href = safeInternalPath(location.href.replace(location.origin+'/login', '') || '/')
 	}
 
 	return {
 		getToken: getToken,
 		setToken: setToken,
 		isLoggedIn: isLoggedIn,
+		consumeTokenFragment: consumeTokenFragment,
+		isAdmin: isAdmin,
+		perms: null,
 		logIn: logIn,
 		logOut: logOut,
 		forceLogin,
@@ -267,6 +305,29 @@ app.user = (function(app){
 	}
 
 	return {list, remove};
+
+})(app);
+
+app.grant = (function(app){
+	function list(callback){
+		app.api.get('grant/', function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function add(args, callback){
+		app.api.post('grant/', args, function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function remove(id, callback){
+		app.api.delete('grant/' + encodeURIComponent(id), function(error, data){
+			callback(error, data);
+		});
+	}
+
+	return {list, add, remove};
 
 })(app);
 

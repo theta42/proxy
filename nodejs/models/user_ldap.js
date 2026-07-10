@@ -9,6 +9,19 @@ const client = new Client({
 });
 
 
+// Best-effort group extraction from a directory entry's `memberOf` values.
+// Turns `cn=dns-team,ou=groups,dc=...` into `dns-team`. Directories that don't
+// return memberOf simply yield no groups (see conf note); explicit group-search
+// can be added later if needed.
+const parse_groups = function(memberOf){
+	if(!memberOf) return [];
+	let values = Array.isArray(memberOf) ? memberOf : [memberOf];
+	return values.map(function(dn){
+		let match = /^cn=([^,]+)/i.exec(String(dn));
+		return match ? match[1] : String(dn);
+	});
+}
+
 const user_parse = function(data){
 	if(data[conf.userNameAttribute]){
 		data.username = data[conf.userNameAttribute]
@@ -19,6 +32,8 @@ const user_parse = function(data){
 		data.uid = data.uidNumber;
 		delete data.uidNumber;
 	}
+
+	data.groups = parse_groups(data.memberOf);
 
 	return data;
 }

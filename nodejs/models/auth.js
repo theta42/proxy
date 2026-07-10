@@ -47,13 +47,35 @@ class Auth{
 	static async login(data){
 		try{
 			let user = await User.login(data);
-			let token = await AuthToken.create({username: user.username});
+			// Backends may attach group membership to the user (LDAP); default
+			// to none for local/redis users.
+			let groups = Array.isArray(user.groups) ? user.groups : [];
+			let token = await AuthToken.create({username: user.username, groups});
 
 			return {user, token}
 		}catch(error){
 			console.log('login error', error);
 			throw this.errors.login();
 		}
+	}
+
+	/**
+	 * Establish a session for an OIDC-authenticated identity: JIT-provision the
+	 * local user (redis-backed) and mint an AuthToken carrying the SSO groups.
+	 *
+	 * @param {Object} identity - {username, groups} from utils/oidc claims
+	 * @returns {Object} {user, token}
+	 */
+	static async oidcSession(identity){
+		let user = typeof User.upsertOidc === 'function'
+			? await User.upsertOidc(identity)
+			: await User.get(identity.username);
+		let token = await AuthToken.create({
+			username: user.username,
+			groups: identity.groups || [],
+		});
+
+		return {user, token};
 	}
 
 	/**

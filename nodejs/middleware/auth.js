@@ -6,6 +6,8 @@ async function auth(req, res, next){
 	try{
 		req.token = await Auth.checkToken(req.header('auth-token'));
 		req.user = req.token.user;
+		// Session group memberships captured at login, used by authz middleware.
+		req.groups = typeof req.token.groupsArray === 'function' ? req.token.groupsArray() : [];
 		return next();
 	}catch(error){
 		next(error);

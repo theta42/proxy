@@ -7,6 +7,11 @@ const express = require('express');
 // Set up the express app.
 const app = express();
 
+// The app always runs behind the OpenResty reverse proxy (a single hop) which
+// sets X-Real-IP / X-Forwarded-For. Trust that one proxy so req.ip reflects the
+// real client — needed for correct per-client rate limiting on /api/auth.
+app.set('trust proxy', 1);
+
 // Hold list of functions to run when the server is ready
 app.onListen = [];
 

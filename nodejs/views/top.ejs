@@ -51,9 +51,14 @@
 							DNS
 						</a>
 					</li>
-					<li class="nav-item">
+					<li class="nav-item nav-admin" style="display: none;">
 						<a class="nav-link" href="/users"><i class="fa-solid fa-users"></i>
 							Users
+						</a>
+					</li>
+					<li class="nav-item nav-admin" style="display: none;">
+						<a class="nav-link" href="/grants"><i class="fa-solid fa-user-shield"></i>
+							Grants
 						</a>
 					</li>
 					<li class="nav-item">
@@ -87,10 +92,13 @@
 					}
 				})
 
-				// Set the correct login/logout button
+				// Set the correct login/logout button, and reveal admin-only nav
+				// items for global admins.
 				app.auth.isLoggedIn(function(error, data){
 					if(data) $('#cl-logout-button').show();
 					else $('#cl-login-button').show();
+
+					if(data && data.isAdmin) $('.nav-admin').css('display', '');
 				});
 
 			});
