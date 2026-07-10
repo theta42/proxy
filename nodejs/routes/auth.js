@@ -1,13 +1,25 @@
 'use strict';
 
 const router = require('express').Router();
+const { rateLimit } = require('express-rate-limit');
 const conf = require('@simpleworkjs/conf');
 const { Auth } = require('../models/auth');
 const { OidcState } = require('../models/oidc_state');
 const oidc = require('../utils/oidc');
+const { safeInternalPath } = require('../utils/safe_redirect');
+
+// Throttle unauthenticated auth endpoints (credential login + the OIDC
+// handshake) to blunt brute-force / callback abuse. Keyed per IP.
+const authLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,   // 15 minutes
+	max: 60,                    // 60 attempts per IP per window
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: {name: 'TooManyRequests', message: 'Too many attempts, please try again later.'},
+});
 
 
-router.post('/login', async function(req, res, next){
+router.post('/login', authLimiter, async function(req, res, next){
 	try{
 		let auth = await Auth.login(req.body);
 		return res.json({
@@ -36,7 +48,7 @@ router.all('/logout', async function(req, res, next){
  * OIDC login start: create a PKCE + state challenge, persist it (auto-expiring
  * via OidcState TTL), and redirect the browser to the SSO authorize endpoint.
  */
-router.get('/oidc/start', async function(req, res, next){
+router.get('/oidc/start', authLimiter, async function(req, res, next){
 	try{
 		if(!conf.oidc || !conf.oidc.enabled){
 			let error = new Error('OidcDisabled');
@@ -49,7 +61,9 @@ router.get('/oidc/start', async function(req, res, next){
 		await OidcState.create({
 			state,
 			codeVerifier,
-			redirect: req.query.redirect || '/',
+			// Sanitize now so a hostile ?redirect= can't be stored and later
+			// reflected into the login page's navigation.
+			redirect: safeInternalPath(req.query.redirect || '/'),
 		});
 
 		return res.redirect(oidc.buildAuthUrl(state, codeChallenge));
@@ -64,7 +78,7 @@ router.get('/oidc/start', async function(req, res, next){
  * the app token back to the browser via a URL fragment for the login page to
  * store in localStorage.
  */
-router.get('/oidc/callback', async function(req, res, next){
+router.get('/oidc/callback', authLimiter, async function(req, res, next){
 	try{
 		let {code, state} = req.query;
 		if(!code || !state){
@@ -85,7 +99,7 @@ router.get('/oidc/callback', async function(req, res, next){
 
 		let {token} = await Auth.oidcSession(identity);
 
-		let redirect = saved.redirect || '/';
+		let redirect = safeInternalPath(saved.redirect || '/');
 		return res.redirect(
 			`/login#token=${encodeURIComponent(token.token)}&redirect=${encodeURIComponent(redirect)}`
 		);

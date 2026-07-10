@@ -200,6 +200,17 @@ app.auth = (function(app){
 		}
 	}
 
+	// Constrain a redirect target to a same-origin absolute path. Rejects
+	// absolute URLs (open redirect), protocol-relative "//host" and "/\host",
+	// and non-path schemes like "javascript:" (XSS). Falls back to "/".
+	function safeInternalPath(path){
+		if(typeof path !== 'string' || path.charAt(0) !== '/'
+				|| path.charAt(1) === '/' || path.charAt(1) === '\\'){
+			return '/';
+		}
+		return path;
+	}
+
 	// Consume an app token handed back by the OIDC callback via the URL
 	// fragment (#token=…&redirect=…). Stores it, strips the fragment, and
 	// forwards to the intended page. Returns true if a token was consumed.
@@ -210,7 +221,9 @@ app.auth = (function(app){
 		if(!token) return false;
 
 		setToken(token);
-		var redirect = params.get('redirect') || '/';
+		// redirect comes from the URL fragment (attacker-controllable); only
+		// allow a same-origin path so it can't become an open redirect / XSS.
+		var redirect = safeInternalPath(params.get('redirect') || '/');
 		// Drop the token from the address bar before navigating on.
 		history.replaceState(null, '', location.pathname + location.search);
 		window.location.href = redirect;
@@ -248,7 +261,7 @@ app.auth = (function(app){
 	}
 
 	function logInRedirect(){
-		window.location.href = location.href.replace(location.origin+'/login', '') || '/'
+		window.location.href = safeInternalPath(location.href.replace(location.origin+'/login', '') || '/')
 	}
 
 	return {

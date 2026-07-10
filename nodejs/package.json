@@ -11,10 +11,10 @@
   "scripts": {
     "start": "node ./bin/www",
     "dev": "npx nodemon --ignore public/ ./bin/www",
-    "test": "node --test test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/wildcard_matchany.test.js test/unit/roles.test.js test/unit/oidc.test.js test/unit/unix_socket.test.js test/integration/dns_provider.test.js",
-    "test:unit": "node --test test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/wildcard_matchany.test.js test/unit/roles.test.js test/unit/oidc.test.js test/unit/unix_socket.test.js",
+    "test": "node --test test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/wildcard_matchany.test.js test/unit/roles.test.js test/unit/oidc.test.js test/unit/safe_redirect.test.js test/unit/unix_socket.test.js test/integration/dns_provider.test.js",
+    "test:unit": "node --test test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/wildcard_matchany.test.js test/unit/roles.test.js test/unit/oidc.test.js test/unit/safe_redirect.test.js test/unit/unix_socket.test.js",
     "test:integration": "node --test test/integration/dns_provider.test.js",
-    "test:watch": "node --test --watch test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/wildcard_matchany.test.js test/unit/roles.test.js test/unit/oidc.test.js test/unit/unix_socket.test.js test/integration/dns_provider.test.js"
+    "test:watch": "node --test --watch test/unit/callback_queue.test.js test/unit/host_lookup.test.js test/unit/wildcard_matchany.test.js test/unit/roles.test.js test/unit/oidc.test.js test/unit/safe_redirect.test.js test/unit/unix_socket.test.js test/integration/dns_provider.test.js"
   },
   "engines": {
     "node": ">=18.0.0"
@@ -29,6 +29,7 @@
     "bootstrap": "^5.3.8",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
     "extend": "^3.0.2",
     "jq-repeat": "^2.0.1",
     "jquery": "^4.0.0",
