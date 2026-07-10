@@ -76,7 +76,7 @@ app.api = (function(app){
 	var baseURL = '/api/'
 
 	function post(url, data, callback){
-		if(!$.isFunction(callback)) callback = callback2;
+		if(typeof callback !== 'function') callback = callback2;
 		return $.ajax({
 			type: 'POST',
 			url: baseURL+url,
@@ -97,7 +97,7 @@ app.api = (function(app){
 	}
 
 	function put(url, data, callback){
-		if(!$.isFunction(callback)) callback = callback2;
+		if(typeof callback !== 'function') callback = callback2;
 		return $.ajax({
 			type: 'PUT',
 			url: baseURL+url,
@@ -118,7 +118,7 @@ app.api = (function(app){
 	}
 
 	function remove(url, callback, callback2){
-		if(!$.isFunction(callback)) callback = callback2;
+		if(typeof callback !== 'function') callback = callback2;
 		return $.ajax({
 			type: 'delete',
 			url: baseURL+url,
@@ -214,13 +214,12 @@ app.auth = (function(app){
 	}
 
 	function forceLogin(){
-		$.holdReady(true);
+		// jQuery 4 removed $.holdReady; rely on the redirect below to keep an
+		// unauthenticated user off the page instead of pausing document ready.
 		app.auth.isLoggedIn(function(error, isLoggedIn){
 			if(error || !isLoggedIn){
 				app.auth.logOut(function(){})
 				location.replace(`/login${location.href.replace(location.origin, '')}`);
-			}else{
-				$.holdReady(false);
 			}
 		});
 	}
