@@ -313,6 +313,23 @@ curl -H "auth-token: your-token-here" \
 - `200` `{"message": "example.com deleted", ...}`
 - `404` `{"name": "HostNotFound", "message": "Host does not exists"}`
 
+### Clear Host Cache
+
+**DELETE** `/api/host/cache`
+
+Remove all cached wildcard-subdomain host lookups. Cache entries are created on
+demand when a wildcard host serves a subdomain; clearing them forces the next
+request for each subdomain to be resolved fresh through the lookup tree.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/host/cache
+```
+
+**Responses:**
+- `200` `{"message": "Cleared 3 cached hosts.", "count": 3}`
+
 ### Renew Wildcard Certificate
 
 **PUT** `/api/host/:host/renew`

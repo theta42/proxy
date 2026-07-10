@@ -35,6 +35,24 @@ const socket = new SocketServerJson({
 			// If we don't have a match, return empty object
 			if(!parentHost) return clientSocket.write(JSON.stringify({}));
 
+			// lookUp returns the live #record object stored inside the shared
+			// lookup tree. Everything below mutates parentHost (sets
+			// wildcard_parent, stringifies every value), so work on a shallow
+			// copy — mutating the shared node would corrupt the tree, e.g. turn
+			// wildcard_matchAny into the string "false" (truthy) and break the
+			// matchAny guard on subsequent lookups.
+			parentHost = {...parentHost};
+
+			// A wildcard host with matchAny disabled only serves subdomains that
+			// are explicitly defined in redis. Reaching this service means redis
+			// had no direct entry for the requested domain, so an inexact match
+			// here (the request isn't the wildcard host itself) is an undefined
+			// subdomain and must not be routed to the wildcard parent.
+			if(parentHost.is_wildcard && !parentHost.wildcard_matchAny
+					&& parentHost.host !== data['domain']){
+				return clientSocket.write(JSON.stringify({}));
+			}
+
 			// If the matched host belongs to a wildcard domain, set wildcard_parent
 			// This allows child domains to use the parent's wildcard SSL certificate
 			if(!parentHost.wildcard_parent){

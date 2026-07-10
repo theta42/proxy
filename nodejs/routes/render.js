@@ -25,8 +25,8 @@ frontEndModules.forEach(dep => {
 // local folder.
 router.use('/static', express.static(path.join(__dirname, '../public')))
 
-router.get('/', async function(req, res, next) {
-  res.render('hosts', {...values});
+router.get('/', (req, res) => {
+  res.redirect(301, '/hosts');
 });
 
 router.get('/hosts', async function(req, res, next) {

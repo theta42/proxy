@@ -3,7 +3,7 @@
 const crypto = require("crypto");
 
 const conf = require('@simpleworkjs/conf');
-const Table = require('../utils/redis_model');
+const Table = require('.');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
@@ -182,17 +182,21 @@ if(require.main === module){(async function(){try{
 
 	// console.log(await DnsProvider.findall());
 
-	let provider = await DnsProvider.get('e8443e03ac503c7b');
+	let provider = await DnsProvider.get('84c6613b9464fbe1');
 
-	console.log(await provider.listDomains())
+	// console.log(await provider.listDomains())
 
 	let domain = await Domain.get('holycore.quest') // pork
 	// let domain = await Domain.get('rm-rf.stream') // DO
 	// let domain = await Domain.get('test.wtf') // CF
 
-	// console.log(await domain.createRecord({type: 'TXT', name: 'apitewefweefwsewft222', data:'hiiiiiii'}))
+	console.log(await domain.createRecord({
+		type: 'TXT',
+		name: 'apitewefweefwsewft222',
+		data: 'sdddddddad'
+	}));
 
-	let txtRecords = await domain.getRecords({type: 'TXT'});
+	let txtRecords = await domain.getRecords();
 	console.log(txtRecords.map(i=>`${i.name}: ${i.data}`))
 	// console.log(await domain.deleteRecords({type: 'TXT'}))
 

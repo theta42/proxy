@@ -1,6 +1,6 @@
 'use strict';
 
-const Table = require('../utils/redis_model');
+const Table = require('.');
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 

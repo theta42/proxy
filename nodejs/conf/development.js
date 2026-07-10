@@ -15,17 +15,10 @@ module.exports = {
 	redis: {
 		prefix: 'proxy_'
 	},
-
-	// Lifetime, in seconds, of on-demand wildcard-subdomain cache entries
-	// (the is_cache Host records created by Host.addCache). They expire on
-	// their own via redis TTL so they stop accumulating and stale routes
-	// self-correct. 0 disables expiry (entries live until bustCache/clearCache).
-	cacheTTL: 3600,
-
 	service:{
 		hostScheduler:{
 			enabled: true,
-			initial: 30000,
+			initial: 5000,
 			interval: 86400000,
 		}
 	},

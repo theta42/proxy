@@ -93,13 +93,19 @@ class PorkBun extends DnsApi{
 		});
 	}
 
-	async createRecord(domain, options, force){
-		if(force){
-			await this.deleteRecords(domain, options)
-		}
-
+	async createRecord(domain, options, force = true){
 		try{
+			// Throw errors for missing keys, do this first.
 			options = this.__parseOptions(options, ['type', 'name', 'data']);
+
+			// Delete the current records
+			if(force){
+				let forceOptions = new Map(Object.entries(options));
+				forceOptions.delete('data');
+				forceOptions.delete('content');
+				await this.deleteRecords(domain, Object.fromEntries(forceOptions));
+			}
+
 			let res = await this.post(`/dns/create/${domain}`, options);
 
 			return res.data.result;

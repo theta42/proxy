@@ -2,6 +2,7 @@
 
 const Table = require('.');
 const {Domain} = require('.').models;
+const {deleteCert} = require('./cert');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
@@ -21,14 +22,18 @@ class Host extends Table{
 		'created_on': {default: function(){return (new Date).getTime()}},
 		'updated_by': {default:"__NONE__", isRequired: false, type: 'string',},
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
+
 		'host': {isRequired: true, type: 'string', min: 3, max: 500},
 		'ip': {isRequired: true, type: 'string', min: 3, max: 500},
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
+
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
+		
 		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500},
+		'wildcard_matchAny': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
 		'wildcard_expires': {isRequired: false, type: 'number'},
 		'domain': {model: 'Domain', rel: 'one'},
@@ -45,18 +50,25 @@ class Host extends Table{
 				return;
 			}
 
+			// Give the on-demand cache entry a TTL so it auto-expires instead of
+			// living forever. Only the record hash carries the TTL (model-redis
+			// reaps the dangling index member on the next read), so OpenResty's
+			// direct HGETALL sees a miss once it expires and re-resolves through
+			// this lookup path. 0/falsy conf disables expiry.
+			let ttl = conf.cacheTTL > 0 ? {ttl: conf.cacheTTL} : undefined;
+
 			await this.create({
 				...parentOBJ,
 				host: host,
 				is_cache: true,
 				is_wildcard: false,
 				wildcard_parent: parentOBJ.host
-			}, true);
+			}, ttl);
 
 			await Cached.create({
 				host: host,
 				parent: parentOBJ.host
-			});
+			}, ttl);
 		}catch(error){
 			console.error('add cache error', {...parentOBJ, host, is_cache: true}, error);
 			throw error;
@@ -76,26 +88,55 @@ class Host extends Table{
 
 		}catch(error){
 			console.error('bust cache error', error)
+			// throw error;
+		}
+	}
+
+	// Remove every cached host entry regardless of its parent. Cache entries are
+	// the `is_cache` hosts created on demand by addCache() for wildcard subdomain
+	// lookups; clearing them forces the next request for each subdomain to be
+	// resolved fresh through the lookup tree / host_lookup service.
+	static async clearCache(){
+		let count = 0;
+		try{
+			for(let cache of await Cached.listDetail()){
+				try{
+					let host = await Host.get(cache.host);
+					if(host && host.is_cache) await host.remove();
+					await cache.remove();
+					count++;
+				}catch(error){
+					console.error('clear cache entry error', cache.host, error);
+				}
+			}
+
+			await this.buildLookUpObj();
+		}catch(error){
+			console.error('clear cache error', error);
 			throw error;
 		}
+
+		return count;
 	}
 
 	static async create(data, ...args){
 		try{
 			// Validate requested host is valid host and domain
-			if(data.challengeType === 'DNS-01-wildcard') await this.validateWildcardCreate(data, args);
+			if(data.challengeType === 'DNS-01-wildcard'){
+				await this.validateWildcardCreate(data, args);
+				data.is_wildcard = true;
+				data.wildcard_status = "Starting"
+			}
 
 			// Validate requested host has a valid wildcard parent
 			if(data.challengeType === 'wildcardChild'){
 				let parentHost = await this.lookUp(data.host);
-				console.log('parentHost:', parentHost)
 				if(parentHost.is_wildcard){
 					data.wildcard_parent = parentHost.host;
 				}else{
 					throw new Error(`No parent wild card for ${data.host}`);
 				}
 			}
-
 			// Create the new host entry
 			let out = await super.create(data, ...args);
 
@@ -104,7 +145,7 @@ class Host extends Table{
 
 			// Fire the request for the wild card cert
 			// This is "back ground" job, await is intentionally missing
-			if(out.challengeType === 'DNS-01-wildcard') out.createWildcardCert();
+			if(data.challengeType === 'DNS-01-wildcard') out.createWildcardCert();
 
 			return out;
 
@@ -114,6 +155,7 @@ class Host extends Table{
 	}
 
 	static async validateWildcardCreate(data, ...args){
+		console.log('validateWildcardCreate here')
 		try{
 			if(!data.host.startsWith('*.')) throw new Error('not wild card');
 			await Domain.get(data.host);
@@ -125,6 +167,7 @@ class Host extends Table{
 	}
 
 	async createWildcardCert(){
+		console.log('createWildcardCert', this.domain)
 		if(!this.host.startsWith('*.')) throw new Error('not wild card');
 
 		try{
@@ -234,6 +277,7 @@ class Host extends Table{
 				this.createWildcardCert();
 			}
 		}catch(error){
+			console.error('checkWildcardForRenew instance', this.host, error)
 			throw error;
 		}
 	}
@@ -241,9 +285,10 @@ class Host extends Table{
 	static async checkWildcardForRenew(){
 		try{
 			for(let host of await this.listDetail()){
-				host.createWildcardCert();
+				host.checkWildcardForRenew();
 			}
 		}catch(error){
+			console.error('checkWildcardForRenew', error)
 			throw error;
 		}
 	}
@@ -265,6 +310,7 @@ class Host extends Table{
 			let out = await super.remove(...args);
 			await Host.buildLookUpObj();
 			await this.bustCache(this.host);
+			await deleteCert(this.domain);
 
 			return out;
 		} catch(error){
@@ -278,9 +324,15 @@ class Host extends Table{
 		complex looks with wildcards.
 		*/
 
-		// Hold lookUp ready while the look up object is being built.
-		this.__lookUpIsReady = false;
-		this.lookUpObj = {};
+		// Build into a fresh, local tree instead of mutating the live one.
+		// buildLookUpObj is async (it awaits a redis get() per host) and runs on
+		// every host create/update/remove. If we wiped and repopulated the live
+		// this.lookUpObj in place, any concurrent lookUp() — which is called
+		// synchronously by the host_lookup service and never waits for readiness —
+		// would resolve against a half-built tree and randomly miss defined hosts.
+		// We only swap the completed tree in at the very end, so lookUp() always
+		// sees a complete tree (either the previous one or the new one).
+		let lookUpObj = {};
 
 		try{
 
@@ -291,7 +343,7 @@ class Host extends Table{
 				let fragments = host.split('.');
 
 				// Hold a pointer to the root of the lookup tree.
-				let pointer = this.lookUpObj;
+				let pointer = lookUpObj;
 
 				// Walk over each fragment, popping from right to left. 
 				while(fragments.length){
@@ -313,7 +365,8 @@ class Host extends Table{
 				}
 			}
 
-			// When the look up tree is finished, remove the ready hold.
+			// Atomically publish the completed tree and mark lookUp ready.
+			this.lookUpObj = lookUpObj;
 			this.__lookUpIsReady = true;
 
 		}catch(error){
@@ -333,8 +386,12 @@ class Host extends Table{
 		// Hold the last passed long wild card.
 		let last_resort = {};
 
+		// Hold the parent element
+		let parent = undefined;
+
 		// Walk over each fragment of the host, from right to left
 		for(let fragment of host.split('.').reverse()){
+			parent = place;
 
 			// If a long wild card is found on this level, hold on to it
 			if(place['**']) last_resort = place['**'];
@@ -343,9 +400,11 @@ class Host extends Table{
 			// A match in the lookup tree takes priority being a more exact match.
 			if({...last_resort, ...place}[fragment]){
 				place = {...last_resort, ...place}[fragment];
+
 			// If we have a not exact fragment match, a wild card will do.
 			}else if(place['*']){
 				place = place['*']
+
 			// If no fragment can be matched, continue with the long wild card branch.
 			}else if(last_resort){
 				place = last_resort;
@@ -354,6 +413,9 @@ class Host extends Table{
 
 		// After the tree has been traversed, see if we have leaf node to return. 
 		if(place && place['#record']) return place['#record'];
+
+		// If the parent has a wild, its the wildcard we want.
+		if(parent && parent['*'] && parent['*']['#record']) return parent['*']['#record'];
 	}
 
 	static async lookUpReady(){
