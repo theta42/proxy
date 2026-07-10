@@ -2,6 +2,7 @@
 
 const Table = require('.');
 const {Domain} = require('.').models;
+const {deleteCert} = require('./cert');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
@@ -21,14 +22,18 @@ class Host extends Table{
 		'created_on': {default: function(){return (new Date).getTime()}},
 		'updated_by': {default:"__NONE__", isRequired: false, type: 'string',},
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
+
 		'host': {isRequired: true, type: 'string', min: 3, max: 500},
 		'ip': {isRequired: true, type: 'string', min: 3, max: 500},
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
+
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
+		
 		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500},
+		'wildcard_matchAny': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
 		'wildcard_expires': {isRequired: false, type: 'number'},
 		'domain': {model: 'Domain', rel: 'one'},
@@ -76,26 +81,28 @@ class Host extends Table{
 
 		}catch(error){
 			console.error('bust cache error', error)
-			throw error;
+			// throw error;
 		}
 	}
 
 	static async create(data, ...args){
 		try{
 			// Validate requested host is valid host and domain
-			if(data.challengeType === 'DNS-01-wildcard') await this.validateWildcardCreate(data, args);
+			if(data.challengeType === 'DNS-01-wildcard'){
+				await this.validateWildcardCreate(data, args);
+				data.is_wildcard = true;
+				data.wildcard_status = "Starting"
+			}
 
 			// Validate requested host has a valid wildcard parent
 			if(data.challengeType === 'wildcardChild'){
 				let parentHost = await this.lookUp(data.host);
-				console.log('parentHost:', parentHost)
 				if(parentHost.is_wildcard){
 					data.wildcard_parent = parentHost.host;
 				}else{
 					throw new Error(`No parent wild card for ${data.host}`);
 				}
 			}
-
 			// Create the new host entry
 			let out = await super.create(data, ...args);
 
@@ -104,7 +111,7 @@ class Host extends Table{
 
 			// Fire the request for the wild card cert
 			// This is "back ground" job, await is intentionally missing
-			if(out.challengeType === 'DNS-01-wildcard') out.createWildcardCert();
+			if(data.challengeType === 'DNS-01-wildcard') out.createWildcardCert();
 
 			return out;
 
@@ -114,6 +121,7 @@ class Host extends Table{
 	}
 
 	static async validateWildcardCreate(data, ...args){
+		console.log('validateWildcardCreate here')
 		try{
 			if(!data.host.startsWith('*.')) throw new Error('not wild card');
 			await Domain.get(data.host);
@@ -125,6 +133,7 @@ class Host extends Table{
 	}
 
 	async createWildcardCert(){
+		console.log('createWildcardCert', this.domain)
 		if(!this.host.startsWith('*.')) throw new Error('not wild card');
 
 		try{
@@ -234,6 +243,7 @@ class Host extends Table{
 				this.createWildcardCert();
 			}
 		}catch(error){
+			console.error('checkWildcardForRenew instance', this.host, error)
 			throw error;
 		}
 	}
@@ -241,9 +251,10 @@ class Host extends Table{
 	static async checkWildcardForRenew(){
 		try{
 			for(let host of await this.listDetail()){
-				host.createWildcardCert();
+				host.checkWildcardForRenew();
 			}
 		}catch(error){
+			console.error('checkWildcardForRenew', error)
 			throw error;
 		}
 	}
@@ -265,6 +276,7 @@ class Host extends Table{
 			let out = await super.remove(...args);
 			await Host.buildLookUpObj();
 			await this.bustCache(this.host);
+			await deleteCert(this.host);
 
 			return out;
 		} catch(error){

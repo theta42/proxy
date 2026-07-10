@@ -14,4 +14,13 @@ async function getCert(host){
 	}
 }
 
-module.exports = {getCert};
+async function deleteCert(host){
+	try{
+		console.log('looking for', host);
+		return JSON.parse(await client.DEL(`${host}:latest`));
+	}catch(error){
+		return {}
+	}
+}
+
+module.exports = {getCert, deleteCert};

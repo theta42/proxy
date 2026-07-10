@@ -86,7 +86,7 @@
 		$('tr.jq-repeat-hosts').each(function(idx, el){
 			$(el).removeClass('table-warning');
 		});
-		$.scope.editHost.remove();
+		$.scope.editHost.remove(0);
 	}
 
 	function hostEditOpen(btn, host){
@@ -99,6 +99,8 @@
 
 		if(host.is_wildcard){
 			$('.hostEditPanel [name="host"]').attr('disabled', true);
+			// Allow toggling the wildcard matching mode when editing a wildcard host.
+			$('.hostEditPanel #wildcard_matchAny-container').removeClass('challengeType-container');
 		}
 
 		$.each(host, function( key, value ) {			if(typeof value == "boolean"){
@@ -173,6 +175,7 @@
 			// Reset the allowed types on start
 			$('#challengeType-child-container').addClass('challengeType-container');
 			$('#challengeType-DNS-01-wildcard-container').addClass('challengeType-container');
+			$('#wildcard_matchAny-container').addClass('challengeType-container');
 
 			let host = $hostField.val();
 
@@ -180,6 +183,8 @@
 			// provider.
 			if(host.startsWith("*.") && await verifyWildcardRequirements(host)){
 				$('#challengeType-DNS-01-wildcard-container').removeClass('challengeType-container');
+				// Wildcard matching mode only applies to wildcard hosts.
+				$('#wildcard_matchAny-container').removeClass('challengeType-container');
 
 				return;
 			}
@@ -274,7 +279,7 @@
 			</div>
 
 			<div class="card-body">
-				<form class="addHost" method="PUT" action="/host/{{ host }}" onsubmit="formAJAX(this)" evalAJAX="hostEditCancle()">
+				<form class="addHost" method="PUT" action="host/{{ host }}" onsubmit="formAJAX(this)" evalAJAX="hostEditCancle()">
 					{{{ form }}}
 					<input type="hidden" name="edit_host" />
 					<button type="submit" data-type="edit" class="btn btn-warning">
@@ -359,6 +364,24 @@
 							<label>
 								<input type="radio" name="challengeType" id="challengeType-wildcardChild" value="wildcardChild">
 								Parent Wildcard from <i id="challengeType-child-relatedHost"></i>
+							</label>
+						</div>
+					</div>
+
+					<div class="form-group challengeType-container" id="wildcard_matchAny-container">
+						<label class="form-label">
+							Wildcard Matching
+						</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="wildcard_matchAny" id="wildcard_matchAny-false" value="false" checked>
+								Match only subdomains defined here <b>Recommended</b>
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="wildcard_matchAny" id="wildcard_matchAny-true" value="true">
+								Match any subdomain and proxy to this host
 							</label>
 						</div>
 					</div>

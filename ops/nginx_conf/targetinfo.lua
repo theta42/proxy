@@ -37,6 +37,14 @@ function M.get(ngx, domain, targetInfo)
     local res, err = red:hgetall("proxy_Host_"..domain)
     res = red:array_to_hash(res)
 
+    -- Return the connection to the pool instead of closing it, so it can be
+    -- reused by later requests. Without this a new connection is opened per
+    -- request and never released, exhausting sockets under load.
+    local ok, err = red:set_keepalive(10000, 100)
+    if not ok then
+        ngx.log(ngx.ERR, "failed to set redis keepalive: ", err)
+    end
+
     if not res["ip"] then
         if connect("/var/run/proxy_lookup.socket") then 
             local socket = require("socket.unix")()
