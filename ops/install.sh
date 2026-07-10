@@ -3,17 +3,23 @@
 # Install / update the Theta42 proxy on a fresh or existing host.
 #
 # This script is idempotent: run it to install, and re-run it to update. It
-# installs system dependencies (Node, OpenResty, Redis, Lua modules), checks
-# out (or fast-forwards) the repo at $REPO_DIR, and symlinks the OpenResty and
+# installs system dependencies (Node, OpenResty, Redis, Lua modules), force-syncs
+# the repo at $REPO_DIR to its remote branch, and symlinks the OpenResty and
 # systemd config straight from the repo. Because the config is symlinked, an
-# update is just "git pull + reload" -- the files under /etc always track the
-# repo, so there is nothing to re-copy.
+# update is just "sync the repo + reload" -- the files under /etc always track
+# the repo, so there is nothing to re-copy.
 #
-# Usage: sudo ./install.sh
+# Intended to be driven by CI/CD with no human writes on prod: the checkout is
+# hard-reset to origin/$BRANCH on every run, so the box deterministically mirrors
+# the repo (any drift on the box is discarded).
+#
+# Usage: sudo ./install.sh   (override with REPO_URL=, REPO_DIR=, BRANCH=)
 set -euo pipefail
+# Never block on an interactive git credential prompt in CI.
+export GIT_TERMINAL_PROMPT=0
 
-REPO_URL="https://github.com/theta42/proxy.git"
-REPO_DIR="/var/www/proxy"
+REPO_URL="${REPO_URL:-https://github.com/theta42/proxy.git}"
+REPO_DIR="${REPO_DIR:-/var/www/proxy}"
 BRANCH="${BRANCH:-master}"
 NODE_MAJOR=22
 
@@ -69,9 +75,12 @@ fi
 echo "==> Repo checkout at ${REPO_DIR} (branch ${BRANCH})"
 install -d "$(dirname "$REPO_DIR")"
 if [ -d "$REPO_DIR/.git" ]; then
+	# Force the box to match the remote branch exactly. No human edits configs
+	# on prod, so discarding local drift is the desired, deterministic behavior.
 	git -C "$REPO_DIR" fetch --prune origin
-	git -C "$REPO_DIR" checkout "$BRANCH"
-	git -C "$REPO_DIR" pull --ff-only origin "$BRANCH"
+	git -C "$REPO_DIR" checkout -B "$BRANCH" "origin/$BRANCH"
+	git -C "$REPO_DIR" reset --hard "origin/$BRANCH"
+	git -C "$REPO_DIR" clean -fd
 else
 	git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
 fi
@@ -85,7 +94,9 @@ link "$REPO_DIR/ops/nginx_conf/targetinfo.lua" /usr/local/openresty/lualib/targe
 link "$REPO_DIR/ops/proxy.service"             /etc/systemd/system/proxy.service
 
 echo "==> Node dependencies"
-( cd "$REPO_DIR/nodejs" && npm install )
+# Deterministic, production-only install from the lockfile. Falls back to a
+# plain install if the lockfile and manifest are out of step.
+( cd "$REPO_DIR/nodejs" && { npm ci --omit=dev || npm install --omit=dev; } )
 
 echo "==> Services"
 systemctl daemon-reload
