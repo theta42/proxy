@@ -290,9 +290,15 @@ class Host extends Table{
 		complex looks with wildcards.
 		*/
 
-		// Hold lookUp ready while the look up object is being built.
-		this.__lookUpIsReady = false;
-		this.lookUpObj = {};
+		// Build into a fresh, local tree instead of mutating the live one.
+		// buildLookUpObj is async (it awaits a redis get() per host) and runs on
+		// every host create/update/remove. If we wiped and repopulated the live
+		// this.lookUpObj in place, any concurrent lookUp() — which is called
+		// synchronously by the host_lookup service and never waits for readiness —
+		// would resolve against a half-built tree and randomly miss defined hosts.
+		// We only swap the completed tree in at the very end, so lookUp() always
+		// sees a complete tree (either the previous one or the new one).
+		let lookUpObj = {};
 
 		try{
 
@@ -303,7 +309,7 @@ class Host extends Table{
 				let fragments = host.split('.');
 
 				// Hold a pointer to the root of the lookup tree.
-				let pointer = this.lookUpObj;
+				let pointer = lookUpObj;
 
 				// Walk over each fragment, popping from right to left. 
 				while(fragments.length){
@@ -325,7 +331,8 @@ class Host extends Table{
 				}
 			}
 
-			// When the look up tree is finished, remove the ready hold.
+			// Atomically publish the completed tree and mark lookUp ready.
+			this.lookUpObj = lookUpObj;
 			this.__lookUpIsReady = true;
 
 		}catch(error){
