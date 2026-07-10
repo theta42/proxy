@@ -85,6 +85,33 @@ class Host extends Table{
 		}
 	}
 
+	// Remove every cached host entry regardless of its parent. Cache entries are
+	// the `is_cache` hosts created on demand by addCache() for wildcard subdomain
+	// lookups; clearing them forces the next request for each subdomain to be
+	// resolved fresh through the lookup tree / host_lookup service.
+	static async clearCache(){
+		let count = 0;
+		try{
+			for(let cache of await Cached.listDetail()){
+				try{
+					let host = await Host.get(cache.host);
+					if(host && host.is_cache) await host.remove();
+					await cache.remove();
+					count++;
+				}catch(error){
+					console.error('clear cache entry error', cache.host, error);
+				}
+			}
+
+			await this.buildLookUpObj();
+		}catch(error){
+			console.error('clear cache error', error);
+			throw error;
+		}
+
+		return count;
+	}
+
 	static async create(data, ...args){
 		try{
 			// Validate requested host is valid host and domain
