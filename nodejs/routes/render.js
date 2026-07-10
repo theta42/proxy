@@ -42,6 +42,15 @@ router.get('/users', async function(req, res, next) {
   res.render('users', {...values});
 });
 
+router.get('/grants', async function(req, res, next) {
+  res.render('grants', {...values});
+});
+
+// Bare /login (the OIDC callback redirect target) and /login/<path>.
+router.get('/login', async function(req, res, next) {
+  res.render('login', {...values, redirect: req.query.redirect});
+});
+
 router.get('/login/*splat', async function(req, res, next) {
   res.render('login', {...values, redirect: req.query.redirect});
 });

@@ -33,12 +33,30 @@ class AuthToken extends Token{
 	static _keyMap = {
 		...super._keyMap,
 		user: {model: 'User', rel: 'one', localKey: 'created_by'},
+		// Group memberships captured at login (OIDC `groups` claim or LDAP
+		// group membership), stored as a JSON string. Drives authorization for
+		// the life of the session without re-querying the IdP on every request.
+		groups: {default: '[]', isRequired: false, type: 'string'},
 	}
 
 	static async create(data){
 		data.created_by = data.username;
+		if(Array.isArray(data.groups)){
+			data.groups = JSON.stringify(data.groups);
+		}
 		return super.create(data)
 
+	}
+
+	// Parse the stored groups JSON back into an array, tolerating bad/missing
+	// data so authorization never crashes on a malformed token.
+	groupsArray(){
+		try{
+			let parsed = JSON.parse(this.groups);
+			return Array.isArray(parsed) ? parsed : [];
+		}catch(error){
+			return [];
+		}
 	}
 }
 AuthToken.register();

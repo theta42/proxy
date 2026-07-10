@@ -1,0 +1,138 @@
+<%- include('top') %>
+<script type="text/javascript">
+	// Require login to see this page. The API is admin-only; non-admins get 403s.
+	app.auth.forceLogin();
+</script>
+
+<style type="text/css">
+	label.control-label{
+		font-weight: bold;
+		margin-bottom: 1px;
+	}
+	.card-title{
+		font-weight: bold;
+	}
+</style>
+
+<script type="text/javascript">
+
+	function populateGrants(){
+		app.grant.list(function(error, data){
+			if(error) return app.util.actionMessage(error, $.scope.grants.$this, 'danger');
+			for(let grant of data.results){
+				$.scope.grants.push(grant);
+			}
+		});
+	}
+
+	function removeGrant(id){
+		app.grant.remove(id, function(error, data){
+			if(error) return app.util.actionMessage(error, $.scope.grants.$this, 'danger');
+			$.scope.grants.remove(id);
+		});
+	}
+
+	$(document).ready(function(){
+		populateGrants();
+
+		$.scope.grants.__setTake(function($el, item, list){
+			$el.addClass('bg-danger');
+			$el.fadeOut(1000, function(){ $el.remove(); });
+		});
+	});
+</script>
+
+<div class="row" style="display:none">
+	<div class="col-md-4">
+		<div class="card shadow-lg">
+
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-user-shield"></i>
+				</span>
+				<span class="card-title">Add Grant</span>
+			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+			<div class="card-body">
+				<form action="grant/" onsubmit="formAJAX(this)" evalAJAX="
+					$.scope.grants.remove(data.id);
+					$.scope.grants.splice(0, 0, data);
+				">
+					<div class="form-group">
+						<label class="control-label">Subject type</label>
+						<select class="form-control" name="subjectType">
+							<option value="user">User</option>
+							<option value="group">Group</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label class="control-label">Subject (username or group)</label>
+						<input type="text" class="form-control" name="subject" placeholder="alice or dns-team" />
+					</div>
+					<div class="form-group">
+						<label class="control-label">Scope</label>
+						<select class="form-control" name="scope">
+							<option value="domain">Domain</option>
+							<option value="global">Global</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label class="control-label">Domain (for domain scope)</label>
+						<input type="text" class="form-control" name="domain" placeholder="example.com" />
+					</div>
+					<div class="form-group">
+						<label class="control-label">Role</label>
+						<select class="form-control" name="role">
+							<option value="viewer">Viewer (read)</option>
+							<option value="manager">Manager (full over domain)</option>
+							<option value="admin">Admin (global only)</option>
+						</select>
+					</div>
+					<hr />
+					<button type="submit" class="btn btn-info">Add Grant</button>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-md-8">
+		<div class="card shadow-lg">
+
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-list-check"></i>
+				</span>
+				<span class="card-title">Grants</span>
+			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+			<table class="card-body table table-striped" style="margin-bottom:0">
+				<thead>
+					<th>Type</th>
+					<th>Subject</th>
+					<th>Scope</th>
+					<th>Domain</th>
+					<th>Role</th>
+					<th>Delete</th>
+				</thead>
+				<tbody>
+					<tr jq-repeat="grants" jq-repeat-index="id" style="display:none">
+						<td class="align-middle">{{ subjectType }}</td>
+						<td class="align-middle">{{ subject }}</td>
+						<td class="align-middle">{{ scope }}</td>
+						<td class="align-middle">{{ domain }}</td>
+						<td class="align-middle">{{ role }}</td>
+						<td class="align-middle">
+							<button type="button" class="btn btn-danger" onclick="removeGrant('{{id}}')">
+								<i class="fa-solid fa-trash"></i>
+								Delete
+							</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+<%- include('bottom') %>

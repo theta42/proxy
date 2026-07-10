@@ -2,22 +2,28 @@
 
 const router = require('express').Router();
 const {Host, Domain} = require('../models').models;
+const authz = require('../middleware/authz');
 
 const Model = Host;
 
 router.get('/', async function(req, res, next){
 	try{
-		return res.json({
-			results: await Model[req.query.detail ? "listDetail" : "list"](),
-		});
+		let results = await Model[req.query.detail ? "listDetail" : "list"]();
+
+		// Restrict to hosts whose domain the caller may view. list() yields host
+		// strings; listDetail() yields instances with a .host.
+		results = await authz.filterViewable(req, results,
+			item => (typeof item === 'string' ? item : item.host));
+
+		return res.json({results});
 	}catch(error){
 		return next(error);
 	}
 });
 
-router.post('/', async function(req, res, next){
+router.post('/', authz.requireDomainRole('manager', authz.resolve.hostBody), async function(req, res, next){
 	try{
-		req.body.created_by = req.user.username;
+		req.body.created_by = authz.reqUsername(req);
 		let item = await Model.create(req.body);
 
 		return res.json({
@@ -29,7 +35,7 @@ router.post('/', async function(req, res, next){
 	}
 });
 
-router.get('/lookup/:item', async function(req, res, next){
+router.get('/lookup/:item', authz.requireDomainRole('viewer', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		return res.json({
 			string: req.params.item,
@@ -41,7 +47,8 @@ router.get('/lookup/:item', async function(req, res, next){
 	}
 });
 
-router.get('/lookupobj', async function(req, res, next){
+// The full lookup tree exposes every host, so restrict it to admins.
+router.get('/lookupobj', authz.requireAdmin, async function(req, res, next){
 	try{
 		return res.json({
 			results: Model.lookUpObj,
@@ -52,7 +59,7 @@ router.get('/lookupobj', async function(req, res, next){
 	}
 });
 
-router.delete('/cache', async function(req, res, next){
+router.delete('/cache', authz.requireAdmin, async function(req, res, next){
 	try{
 		let count = await Model.clearCache();
 
@@ -65,7 +72,7 @@ router.delete('/cache', async function(req, res, next){
 	}
 });
 
-router.get('/:item', async function(req, res, next){
+router.get('/:item', authz.requireDomainRole('viewer', authz.resolve.hostParam), async function(req, res, next){
 	try{
 
 		return res.json({
@@ -77,9 +84,9 @@ router.get('/:item', async function(req, res, next){
 	}
 });
 
-router.put('/:item', async function(req, res, next){
+router.put('/:item', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
-		req.body.updated_by = req.user.username;
+		req.body.updated_by = authz.reqUsername(req);
 		let item = await Model.get(req.params.item);
 		item = await item.update(req.body);
 
@@ -95,7 +102,7 @@ router.put('/:item', async function(req, res, next){
 	}
 });
 
-router.delete('/:item', async function(req, res, next){
+router.delete('/:item', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		let count = await item.remove();
@@ -110,7 +117,7 @@ router.delete('/:item', async function(req, res, next){
 	}
 });
 
-router.put('/:item/renew', async function(req, res, next){
+router.put('/:item/renew', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		item.createWildcardCert();
