@@ -276,7 +276,7 @@ class Host extends Table{
 			let out = await super.remove(...args);
 			await Host.buildLookUpObj();
 			await this.bustCache(this.host);
-			await deleteCert(this.host);
+			await deleteCert(this.domain);
 
 			return out;
 		} catch(error){
@@ -345,8 +345,12 @@ class Host extends Table{
 		// Hold the last passed long wild card.
 		let last_resort = {};
 
+		// Hold the parent element
+		let parent = undefined;
+
 		// Walk over each fragment of the host, from right to left
 		for(let fragment of host.split('.').reverse()){
+			parent = place;
 
 			// If a long wild card is found on this level, hold on to it
 			if(place['**']) last_resort = place['**'];
@@ -366,6 +370,9 @@ class Host extends Table{
 
 		// After the tree has been traversed, see if we have leaf node to return. 
 		if(place && place['#record']) return place['#record'];
+
+		// If the parent has a wild, its the wildcard we want.
+		if(parent && parent['*']['#record']) return parent['*']['#record'];
 	}
 
 	static async lookUpReady(){

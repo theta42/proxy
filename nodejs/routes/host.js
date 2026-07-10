@@ -52,6 +52,19 @@ router.get('/lookupobj', async function(req, res, next){
 	}
 });
 
+router.delete('/cache', async function(req, res, next){
+	try{
+		let count = await Model.clearCache();
+
+		return res.json({
+			message: `Cleared ${count} cached host${count === 1 ? '' : 's'}.`,
+			count,
+		});
+	}catch(error){
+		return next(error);
+	}
+});
+
 router.get('/:item', async function(req, res, next){
 	try{
 
