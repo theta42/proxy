@@ -2,10 +2,14 @@
 
 const router = require('express').Router();
 const {DnsProvider, Domain} = require('../models').models;
+const authz = require('../middleware/authz');
 
 const Model = DnsProvider;
 
-router.get('/', async function(req, res, next){
+// Provider listing exposes credentials/config for every domain, so it is
+// admin-only. The creator of a provider still owns its domains (via created_by)
+// and manages hosts/records under them without being a global admin.
+router.get('/', authz.requireAdmin, async function(req, res, next){
 	try{
 		return res.json({
 			results:  await Model[req.query.detail ? "listDetail" : "list"]()
@@ -15,7 +19,7 @@ router.get('/', async function(req, res, next){
 	}
 });
 
-router.options('/', async function(req, res, next){
+router.options('/', authz.requireAdmin, async function(req, res, next){
 	try{
 		return res.json({
 			results:  await Model.listProviders()
@@ -25,9 +29,9 @@ router.options('/', async function(req, res, next){
 	}
 });
 
-router.post('/', async function(req, res, next){
+router.post('/', authz.requireAdmin, async function(req, res, next){
 	try{
-		req.body.created_by = req.user.username;
+		req.body.created_by = authz.reqUsername(req);
 		let item = await Model.create(req.body);
 
 		return res.json({
@@ -41,15 +45,19 @@ router.post('/', async function(req, res, next){
 
 router.get('/domain', async function(req, res, next){
 	try{
-		return res.json({
-			results:  await Domain[req.query.detail ? "listDetail" : "list"]()
-		});
+		let results = await Domain[req.query.detail ? "listDetail" : "list"]();
+
+		// Only surface domains the caller may view.
+		results = await authz.filterViewable(req, results,
+			item => (typeof item === 'string' ? item : item.domain));
+
+		return res.json({results});
 	}catch(error){
 		return next(error);
 	}
 });
 
-router.post('/domain/refresh/:item', async function(req, res, next){
+router.post('/domain/refresh/:item', authz.requireAdmin, async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		return res.json({results: await item.updateDomains()});
@@ -58,7 +66,7 @@ router.post('/domain/refresh/:item', async function(req, res, next){
 	}
 })
 
-router.get('/domain/:item', async function(req, res, next){
+router.get('/domain/:item', authz.requireDomainRole('viewer', authz.resolve.domainParam), async function(req, res, next){
 	try{
 		return res.json({
 			results:  [await Domain.get(req.params.item)]
@@ -68,7 +76,7 @@ router.get('/domain/:item', async function(req, res, next){
 	}
 });
 
-router.get('/:item', async function(req, res, next){
+router.get('/:item', authz.requireAdmin, async function(req, res, next){
 	try{
 
 		return res.json({
@@ -80,9 +88,9 @@ router.get('/:item', async function(req, res, next){
 	}
 });
 
-router.put('/:item', async function(req, res, next){
+router.put('/:item', authz.requireAdmin, async function(req, res, next){
 	try{
-		req.body.updated_by = req.user.username;
+		req.body.updated_by = authz.reqUsername(req);
 		let item = await Model.get(req.params.item);
 		item = await item.update(req.body);
 
@@ -98,7 +106,7 @@ router.put('/:item', async function(req, res, next){
 	}
 });
 
-router.delete('/:item', async function(req, res, next){
+router.delete('/:item', authz.requireAdmin, async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		let count = await item.remove();
