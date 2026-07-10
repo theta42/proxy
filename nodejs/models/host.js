@@ -50,18 +50,25 @@ class Host extends Table{
 				return;
 			}
 
+			// Give the on-demand cache entry a TTL so it auto-expires instead of
+			// living forever. Only the record hash carries the TTL (model-redis
+			// reaps the dangling index member on the next read), so OpenResty's
+			// direct HGETALL sees a miss once it expires and re-resolves through
+			// this lookup path. 0/falsy conf disables expiry.
+			let ttl = conf.cacheTTL > 0 ? {ttl: conf.cacheTTL} : undefined;
+
 			await this.create({
 				...parentOBJ,
 				host: host,
 				is_cache: true,
 				is_wildcard: false,
 				wildcard_parent: parentOBJ.host
-			}, true);
+			}, ttl);
 
 			await Cached.create({
 				host: host,
 				parent: parentOBJ.host
-			});
+			}, ttl);
 		}catch(error){
 			console.error('add cache error', {...parentOBJ, host, is_cache: true}, error);
 			throw error;
