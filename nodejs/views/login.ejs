@@ -1,15 +1,22 @@
 <%- include('top') %>
 <script type="text/javascript">
 
-	app.auth.isLoggedIn(function(error, isLoggedIn){
-		if(isLoggedIn){
-			app.auth.logInRedirect();
-		}
-	})
+	// If we arrived from the OIDC callback with a token in the URL fragment,
+	// store it and forward on before doing anything else.
+	if(!app.auth.consumeTokenFragment()){
+		app.auth.isLoggedIn(function(error, isLoggedIn){
+			if(isLoggedIn){
+				app.auth.logInRedirect();
+			}else{
+				// Reveal the login card once we know the user is not logged in.
+				document.getElementById('login-card-row').style.display = '';
+			}
+		})
+	}
 
 </script>
 
-<div class="row" style="display: none;">
+<div id="login-card-row" class="row" style="display: none;">
 	<div class="col-md-4">
 		<div class="shadow-lg card">
 
@@ -74,6 +81,13 @@
 					<hr />
 					<button type="submit" class="btn btn-outline-dark"><i class="fa-solid fa-right-to-bracket"></i> Log in</button>
 				</form>
+
+				<hr />
+				<div class="d-grid">
+					<a href="/api/auth/oidc/start" class="btn btn-outline-primary">
+						<i class="fa-solid fa-id-badge"></i> Log in with SSO
+					</a>
+				</div>
 			</div>
 		</div>
 	</div>
