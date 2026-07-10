@@ -10,3 +10,5 @@ require('./dns_provider');
 require('./host');
 require('./token');
 require('./user');
+require('./grant');
+require('./oidc_state');

@@ -13,7 +13,14 @@ print("In targetInfo module")
 
 -- Main function of the module
 function M.get(ngx, domain, targetInfo)
-    if targetInfo then
+    -- Reuse a previously-resolved target ONLY when it was resolved for this
+    -- exact host. HTTP/2 connection coalescing lets a browser serve several
+    -- hostnames that share one wildcard cert (e.g. *.718it.biz) over a single
+    -- connection; the SSL phase (request_domain) resolves and caches the
+    -- connection's first host in ngx.ctx.targetInfo. Without the domain check
+    -- below, every coalesced request on that connection would be handed the
+    -- first host's target -- e.g. hassio.718it.biz served from metrics.718it.biz.
+    if targetInfo and ngx.ctx.targetInfo_domain == domain then
         return targetInfo
     end
 
@@ -68,6 +75,10 @@ function M.get(ngx, domain, targetInfo)
     end
 
     ngx.ctx.targetInfo = res
+    -- Remember which host this target was resolved for, so the reuse guard at
+    -- the top can tell a genuine cache hit from a coalesced request for a
+    -- different host on the same connection.
+    ngx.ctx.targetInfo_domain = domain
     ngx.ctx.toAllow = true
 
     return res
