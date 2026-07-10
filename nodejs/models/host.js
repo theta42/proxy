@@ -359,9 +359,11 @@ class Host extends Table{
 			// A match in the lookup tree takes priority being a more exact match.
 			if({...last_resort, ...place}[fragment]){
 				place = {...last_resort, ...place}[fragment];
+
 			// If we have a not exact fragment match, a wild card will do.
 			}else if(place['*']){
 				place = place['*']
+
 			// If no fragment can be matched, continue with the long wild card branch.
 			}else if(last_resort){
 				place = last_resort;
@@ -372,7 +374,7 @@ class Host extends Table{
 		if(place && place['#record']) return place['#record'];
 
 		// If the parent has a wild, its the wildcard we want.
-		if(parent && parent['*']['#record']) return parent['*']['#record'];
+		if(parent && parent['*'] && parent['*']['#record']) return parent['*']['#record'];
 	}
 
 	static async lookUpReady(){
