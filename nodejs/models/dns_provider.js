@@ -149,6 +149,28 @@ class DnsProvider extends Table{
 		return out;
 	}
 
+	// Re-sync every configured provider's domain list from its API. Mirrors the
+	// manual /dns/domain/refresh/:item route (get -> updateDomains) across all
+	// providers; used by the host scheduler. Never throws — one bad provider
+	// (e.g. a revoked key) must not abort the rest.
+	static async refreshAllDomains(){
+		let ids;
+		try{
+			ids = await this.list();
+		}catch(error){
+			console.error('refreshAllDomains: could not list providers', error.message);
+			return;
+		}
+		for(let id of ids){
+			try{
+				let provider = await this.get(id);
+				await provider.updateDomains();
+			}catch(error){
+				console.error('refreshAllDomains: provider', id, error.message);
+			}
+		}
+	}
+
 	get api(){
 		return new this.constructor.Provider(this);
 	}
