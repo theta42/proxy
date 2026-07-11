@@ -3,6 +3,7 @@
 const router = require('express').Router();
 const {Host, Domain} = require('../models').models;
 const authz = require('../middleware/authz');
+const {normalizeHostFeatures} = require('../utils/host_features');
 
 const Model = Host;
 
@@ -24,6 +25,7 @@ router.get('/', async function(req, res, next){
 router.post('/', authz.requireDomainRole('manager', authz.resolve.hostBody), async function(req, res, next){
 	try{
 		req.body.created_by = authz.reqUsername(req);
+		normalizeHostFeatures(req.body);
 		let item = await Model.create(req.body);
 
 		return res.json({
@@ -87,6 +89,7 @@ router.get('/:item', authz.requireDomainRole('viewer', authz.resolve.hostParam),
 router.put('/:item', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		req.body.updated_by = authz.reqUsername(req);
+		normalizeHostFeatures(req.body);
 		let item = await Model.get(req.params.item);
 		item = await item.update(req.body);
 
