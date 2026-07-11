@@ -23,7 +23,9 @@ class Host extends Table{
 		'updated_by': {default:"__NONE__", isRequired: false, type: 'string',},
 		'updated_on': {default: function(){return (new Date).getTime()}, always: true},
 
-		'host': {isRequired: true, type: 'string', min: 3, max: 500},
+		// min 1 so wildcard patterns like "**" / "*" are allowed (see
+		// utils/hostname_validate.js; format is enforced at the route layer).
+		'host': {isRequired: true, type: 'string', min: 1, max: 500},
 		'ip': {isRequired: true, type: 'string', min: 3, max: 500},
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
