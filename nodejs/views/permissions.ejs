@@ -1,0 +1,174 @@
+<%- include('top') %>
+<script type="text/javascript">
+	// Require login to see this page. The API is admin-only; non-admins get 403s.
+	app.auth.forceLogin();
+</script>
+
+<style type="text/css">
+	label.control-label{
+		font-weight: bold;
+		margin-bottom: 1px;
+	}
+	.card-title{
+		font-weight: bold;
+	}
+	.field-hint{
+		font-size: .8rem;
+	}
+</style>
+
+<script type="text/javascript">
+
+	// Fill the username/group datalists that back the Subject autocomplete.
+	function loadSubjectSuggestions(){
+		app.permission.subjects(function(error, data){
+			if(error || !data) return;
+			let $users = $('#subjectUsers').empty();
+			for(let u of (data.users || [])) $users.append($('<option>').val(u));
+			let $groups = $('#subjectGroups').empty();
+			for(let g of (data.groups || [])) $groups.append($('<option>').val(g));
+		});
+	}
+
+	// Point the Subject input at the right suggestion list for the chosen type.
+	function subjectTypeChanged(sel){
+		let $input = $(sel).closest('form').find('input[name="subject"]');
+		if(sel.value === 'group'){
+			$input.attr('list', 'subjectGroups').attr('placeholder', 'dns-team');
+		}else{
+			$input.attr('list', 'subjectUsers').attr('placeholder', 'alice');
+		}
+	}
+
+	function removePermission(id){
+		app.permission.remove(id, function(error, data){
+			if(error) return app.util.actionMessage(error, $.scope.Permission.$this, 'danger');
+			// The websocket echo removes the row; drop it locally too for snappiness.
+			$.scope.Permission.remove(id);
+		});
+	}
+
+	$(document).ready(function(){
+		// Existing permissions.
+		app.permission.list(function(error, data){
+			if(error) return app.util.actionMessage(error, $.scope.Permission.$this, 'danger');
+			for(let p of data.results) $.scope.Permission.push(p);
+		});
+
+		loadSubjectSuggestions();
+
+		$.scope.Permission.__setTake(function($el, item, list){
+			$el.addClass('bg-danger');
+			$el.fadeOut(600, function(){ $el.remove(); });
+		});
+
+		// Live updates (model:Permission:*), so adds/removes reflect for everyone.
+		app.subscribe(/^model:Permission:create/, function(data){
+			$.scope.Permission.remove(data.id);
+			$.scope.Permission.unshift(data);
+		});
+		app.subscribe(/^model:Permission:remove/, function(data, topic){
+			$.scope.Permission.remove(topic.split(':')[3]);
+		});
+	});
+</script>
+
+<datalist id="subjectUsers"></datalist>
+<datalist id="subjectGroups"></datalist>
+
+<div class="row" style="display:none">
+	<div class="col-md-4">
+		<div class="card shadow-lg">
+
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-user-shield"></i>
+				</span>
+				<span class="card-title">Add Permission</span>
+			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+			<div class="card-body">
+				<form action="permission/" onsubmit="formAJAX(this)">
+					<div class="form-group">
+						<label class="control-label">Subject type</label>
+						<select class="form-control" name="subjectType" onchange="subjectTypeChanged(this)">
+							<option value="user">User</option>
+							<option value="group">Group</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label class="control-label">Subject (username or group)</label>
+						<input type="text" class="form-control" name="subject" list="subjectUsers" placeholder="alice" autocomplete="off" />
+					</div>
+					<div class="form-group">
+						<label class="control-label">Scope</label>
+						<select class="form-control" name="scope">
+							<option value="domain">Domain</option>
+							<option value="global">Global</option>
+						</select>
+					</div>
+					<div class="form-group">
+						<label class="control-label">Domain (for domain scope)</label>
+						<input type="text" class="form-control" name="domain" placeholder="example.com" autocomplete="off" />
+						<div class="field-hint text-muted">
+							Wildcards: <code>*.example.com</code> matches one label,
+							<code>**.example.com</code> matches any depth (incl. the apex),
+							<code>**</code> matches every domain.
+						</div>
+					</div>
+					<div class="form-group">
+						<label class="control-label">Role</label>
+						<select class="form-control" name="role">
+							<option value="viewer">Viewer (read)</option>
+							<option value="manager">Manager (full over domain)</option>
+							<option value="admin">Admin (global only)</option>
+						</select>
+					</div>
+					<hr />
+					<button type="submit" class="btn btn-info">Add Permission</button>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-md-8">
+		<div class="card shadow-lg">
+
+			<div class="card-header text-center">
+				<span class="card-icon float-start">
+					<i class="fa-solid fa-list-check"></i>
+				</span>
+				<span class="card-title">Permissions</span>
+			</div>
+
+			<div class="card-header actionMessage" style="display:none"></div>
+			<table class="card-body table table-striped" style="margin-bottom:0">
+				<thead>
+					<th>Type</th>
+					<th>Subject</th>
+					<th>Scope</th>
+					<th>Domain</th>
+					<th>Role</th>
+					<th>Delete</th>
+				</thead>
+				<tbody>
+					<tr jq-repeat="Permission" jq-repeat-index="id" style="display:none">
+						<td class="align-middle">{{ subjectType }}</td>
+						<td class="align-middle">{{ subject }}</td>
+						<td class="align-middle">{{ scope }}</td>
+						<td class="align-middle">{{ domain }}</td>
+						<td class="align-middle">{{ role }}</td>
+						<td class="align-middle">
+							<button type="button" class="btn btn-danger" onclick="removePermission('{{id}}')">
+								<i class="fa-solid fa-trash"></i>
+								Delete
+							</button>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+</div>
+<%- include('bottom') %>

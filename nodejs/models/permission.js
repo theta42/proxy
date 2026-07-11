@@ -3,9 +3,10 @@
 const Table = require('.');
 const conf = require('@simpleworkjs/conf');
 const roles = require('../utils/roles');
+const ModelPs = require('../utils/model_pubsub');
 
 /**
- * Grant
+ * Permission
  *
  * Assigns a role to a subject (a user or a group), either globally or for a
  * single domain. Per-user overrides and group defaults both live here; group
@@ -14,13 +15,17 @@ const roles = require('../utils/roles');
  *   subjectType : 'user' | 'group'
  *   subject     : username or group name
  *   scope       : 'global' | 'domain'
- *   domain      : domain name when scope==='domain' (else '*')
+ *   domain      : domain pattern when scope==='domain' (else '*'). May be a
+ *                 glob: "*" = one label, "**" = any depth (see utils/roles).
  *   role        : 'admin' | 'manager' | 'viewer'
  *
- * See Grant.effectiveFor() for how these, plus ownership (created_by) and
- * conf.auth, collapse into a request's effective rights.
+ * See Permission.effectiveFor() for how these, plus ownership (created_by),
+ * local groups, and conf.auth, collapse into a request's effective rights.
+ *
+ * (Formerly "Grant" — the redis namespace moved from proxy_Grant* to
+ * proxy_Permission* via migrations/rename_grant_to_permission.js.)
  */
-class Grant extends Table{
+class Permission extends Table{
 	static _key = 'id';
 	static _keyMap = {
 		'created_by': {isRequired: true, type: 'string', min: 3, max: 500},
@@ -42,7 +47,7 @@ class Grant extends Table{
 	static allows = roles.allows;
 	static visibleDomains = roles.visibleDomains;
 
-	// Deterministic id so the same (subject, scope, domain) grant is a single
+	// Deterministic id so the same (subject, scope, domain) permission is a single
 	// record — re-granting updates rather than duplicating.
 	static mkId({subjectType, subject, scope, domain}){
 		return `${subjectType}:${subject}:${scope || 'domain'}:${scope === 'global' ? '*' : (domain || '*')}`;
@@ -57,7 +62,7 @@ class Grant extends Table{
 		}
 		if(data.scope === 'global') data.domain = '*';
 		data.id = this.mkId(data);
-		// Upsert: replace an existing identical-scoped grant instead of 409ing.
+		// Upsert: replace an existing identical-scoped permission instead of 409ing.
 		try{
 			let existing = await this.get(data.id);
 			if(existing) await existing.remove();
@@ -67,18 +72,36 @@ class Grant extends Table{
 	}
 
 	/**
-	 * Collapse conf.auth, grant records, and resource ownership into the
-	 * effective rights for a session identity.
+	 * Collapse conf.auth, permission records, local groups, and resource
+	 * ownership into the effective rights for a session identity.
 	 *
 	 * @param {Object} identity - {username, groups: string[]}
-	 * @returns {Object} { isAdmin, global: role|null, domains: {domain: role} }
+	 * @returns {Object} { isAdmin, global: role|null, domains: {pattern: role},
+	 *                     groups: string[], localGroups: string[] }
 	 *   - isAdmin: full access to everything.
 	 *   - global: a non-admin global role (manager/viewer) applied to every
 	 *     domain the user can see.
 	 *   - domains: explicit per-domain roles (includes owned domains).
+	 *   - groups: external groups merged with local-group memberships.
+	 *   - localGroups: just the app-managed groups this user belongs to.
 	 */
 	static async effectiveFor(identity){
 		let username = identity && identity.username;
+		let groups = (identity && identity.groups) || [];
+
+		// Local groups are app-managed and behave exactly like SSO/LDAP groups:
+		// merge the user's memberships into the identity before resolving.
+		let localGroups = [];
+		try{
+			let LocalGroup = require('.').models.LocalGroup;
+			if(LocalGroup && username){
+				localGroups = (await LocalGroup.listDetail())
+					.filter(g => Array.isArray(g.members) && g.members.includes(username))
+					.map(g => g.name);
+			}
+		}catch(error){ /* local groups unavailable, skip */ }
+
+		let mergedGroups = [...new Set([...groups, ...localGroups])];
 
 		// Fetch the redis-backed inputs, then hand off to the pure resolver.
 		let grants = [];
@@ -99,14 +122,18 @@ class Grant extends Table{
 			}catch(error){ /* domains unavailable, skip ownership */ }
 		}
 
-		return roles.resolveEffective(identity, {
+		let effective = roles.resolveEffective({username, groups: mergedGroups}, {
 			grants,
 			ownedDomains,
 			authConf: conf.auth || {},
 		});
+		// Expose the group breakdown for self-service display (/me, profile).
+		effective.groups = mergedGroups;
+		effective.localGroups = localGroups;
+		return effective;
 	}
 }
 
-Grant.register();
+Permission.register(ModelPs(Permission));
 
-module.exports = {Grant};
+module.exports = {Permission};

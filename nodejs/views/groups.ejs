@@ -1,0 +1,145 @@
+<%- include('top') %>
+<script type="text/javascript">
+	// Require login to see this page. The API is admin-only; non-admins get 403s.
+	app.auth.forceLogin();
+</script>
+
+<style type="text/css">
+	label.control-label{
+		font-weight: bold;
+		margin-bottom: 1px;
+	}
+	.card-title{ font-weight: bold; }
+	.member-pill{ cursor: default; }
+	.member-pill i{ cursor: pointer; }
+</style>
+
+<script type="text/javascript">
+
+	// Usernames for the "add member" autocomplete (reuses the permission
+	// subjects endpoint, which is admin-only like this page).
+	function loadUserSuggestions(){
+		app.permission.subjects(function(error, data){
+			if(error || !data) return;
+			let $users = $('#groupUsers').empty();
+			for(let u of (data.users || [])) $users.append($('<option>').val(u));
+		});
+	}
+
+	function removeGroup(name){
+		app.group.remove(name, function(error, data){
+			if(error) return app.util.actionMessage(error, $.scope.LocalGroup.$this, 'danger');
+			$.scope.LocalGroup.remove(name);
+		});
+	}
+
+	function removeMember(group, username){
+		app.group.removeMember(group, username, function(error, data){
+			if(error) return app.util.actionMessage(error, $.scope.LocalGroup.$this, 'danger');
+			// websocket update echoes the new member list.
+		});
+	}
+
+	function addMember(btn){
+		let $wrap = $(btn).closest('.member-add');
+		let group = $wrap.data('group');
+		let $input = $wrap.find('input');
+		let username = ($input.val() || '').trim();
+		if(!username) return;
+		app.group.addMember(group, username, function(error, data){
+			if(error) return app.util.actionMessage(error, $.scope.LocalGroup.$this, 'danger');
+			$input.val('');
+		});
+	}
+
+	$(document).ready(function(){
+		app.group.list(function(error, data){
+			if(error) return app.util.actionMessage(error, $.scope.LocalGroup.$this, 'danger');
+			for(let g of data.results) $.scope.LocalGroup.push(g);
+		});
+
+		loadUserSuggestions();
+
+		$.scope.LocalGroup.__setTake(function($el){
+			$el.addClass('bg-danger');
+			$el.fadeOut(600, function(){ $el.remove(); });
+		});
+
+		app.subscribe(/^model:LocalGroup:create/, function(data){
+			$.scope.LocalGroup.remove(data.name);
+			$.scope.LocalGroup.unshift(data);
+		});
+		app.subscribe(/^model:LocalGroup:update/, function(data, topic){
+			$.scope.LocalGroup.update(topic.split(':')[3], data);
+		});
+		app.subscribe(/^model:LocalGroup:remove/, function(data, topic){
+			$.scope.LocalGroup.remove(topic.split(':')[3]);
+		});
+	});
+</script>
+
+<datalist id="groupUsers"></datalist>
+
+<div class="row" style="display:none">
+	<div class="col-md-4">
+		<div class="card shadow-lg">
+			<div class="card-header text-center">
+				<span class="card-icon float-start"><i class="fa-solid fa-users-gear"></i></span>
+				<span class="card-title">Add Group</span>
+			</div>
+			<div class="card-header actionMessage" style="display:none"></div>
+			<div class="card-body">
+				<form action="group/" onsubmit="formAJAX(this)">
+					<div class="form-group">
+						<label class="control-label">Group name</label>
+						<input type="text" class="form-control" name="name" placeholder="dns-team" autocomplete="off" />
+						<div class="text-muted" style="font-size:.8rem">
+							Lowercased to a slug. Use the name as a Subject (type "group")
+							on the Permissions page.
+						</div>
+					</div>
+					<hr />
+					<button type="submit" class="btn btn-info">Add Group</button>
+				</form>
+			</div>
+		</div>
+	</div>
+
+	<div class="col-md-8">
+		<div class="row row-cols-1 g-3">
+			<div jq-repeat="LocalGroup" jq-repeat-index="name" style="display:none" class="col">
+				<div class="card shadow-lg">
+					<div class="card-header d-flex align-items-center">
+						<span class="card-icon me-2"><i class="fa-solid fa-users"></i></span>
+						<span class="card-title">{{ name }}</span>
+						<span class="badge text-bg-secondary ms-2">{{ memberCount }} member(s)</span>
+						<button type="button" class="btn btn-sm btn-outline-danger ms-auto" onclick="removeGroup('{{name}}')">
+							<i class="fa-solid fa-trash"></i>
+						</button>
+					</div>
+					<div class="card-body">
+						<div class="mb-2">
+							{{#memberList}}
+							<span class="badge text-bg-info member-pill me-1 mb-1 fs-6">
+								{{ username }}
+								<i class="fa-solid fa-xmark ms-1" onclick="removeMember('{{group}}','{{username}}')"></i>
+							</span>
+							{{/memberList}}
+							{{^memberList}}
+							<span class="text-muted">No members yet.</span>
+							{{/memberList}}
+						</div>
+						<div class="input-group member-add" data-group="{{name}}">
+							<input type="text" class="form-control" list="groupUsers" placeholder="username" autocomplete="off"
+								onkeydown="if(event.key==='Enter'){event.preventDefault();addMember(this.nextElementSibling);}" />
+							<button type="button" class="btn btn-success" onclick="addMember(this)">
+								<i class="fa-solid fa-user-plus"></i> Add
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<%- include('bottom') %>

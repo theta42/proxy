@@ -82,10 +82,62 @@ function resolveEffective(identity, data){
 	return result;
 }
 
-// Effective role on one domain, folding in admin and any global role.
-function roleForDomain(effective, domain){
+/**
+ * Match a permission's domain pattern against a full hostname.
+ *
+ * A pattern with no wildcard matches the host exactly, or any subdomain of it
+ * (so a permission on "example.com" still covers "api.example.com", preserving
+ * the pre-wildcard behavior). Wildcards operate on dot-separated labels:
+ *   "*"  consumes exactly one label   ("*.example.com"  -> "a.example.com")
+ *   "**" consumes zero or more labels ("**.example.com" -> "example.com",
+ *                                       "a.b.example.com")
+ * The whole host must be consumed. Bare "*" matches any single-label host; bare
+ * "**" matches everything.
+ */
+function domainMatch(pattern, host){
+	if(!pattern || !host) return false;
+	pattern = String(pattern).toLowerCase().trim();
+	host = String(host).toLowerCase().trim();
+	if(!host) return false;
+
+	if(!pattern.includes('*')){
+		return host === pattern || host.endsWith('.' + pattern);
+	}
+	return globLabels(pattern.split('.'), host.split('.'));
+}
+
+// Two-pointer globstar over label arrays; backtracking handles multiple "**".
+function globLabels(p, h){
+	let pi = 0, hi = 0;
+	let star = -1, starHi = 0;
+	while(hi < h.length){
+		if(pi < p.length && p[pi] === '**'){
+			// Assume "**" matches nothing for now; remember it to backtrack.
+			star = pi; starHi = hi; pi++;
+		}else if(pi < p.length && (p[pi] === '*' || p[pi] === h[hi])){
+			pi++; hi++;
+		}else if(star !== -1){
+			// Let the most recent "**" swallow one more label.
+			pi = star + 1; starHi++; hi = starHi;
+		}else{
+			return false;
+		}
+	}
+	while(pi < p.length && p[pi] === '**') pi++;
+	return pi === p.length;
+}
+
+// Effective role on one host, folding in admin, any global role, and every
+// domain pattern (incl. wildcards) that matches the host.
+function roleForDomain(effective, host){
 	if(effective.isAdmin) return 'admin';
-	return maxRole(effective.global, effective.domains[domain]);
+	let role = effective.global;
+	for(let pattern in effective.domains){
+		if(domainMatch(pattern, host)){
+			role = maxRole(role, effective.domains[pattern]);
+		}
+	}
+	return role;
 }
 
 // Does `effective` meet or exceed `minRole` for `domain`?
@@ -104,6 +156,7 @@ module.exports = {
 	rank,
 	maxRole,
 	resolveEffective,
+	domainMatch,
 	roleForDomain,
 	allows,
 	visibleDomains,

@@ -11,5 +11,6 @@ require('./dynamic_record');
 require('./host');
 require('./token');
 require('./user');
-require('./grant');
+require('./local_group');
+require('./permission');
 require('./oidc_state');

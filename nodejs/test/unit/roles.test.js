@@ -157,6 +157,73 @@ describe('roles.resolveEffective', () => {
 	});
 });
 
+describe('roles.domainMatch', () => {
+	test('exact and subdomain coverage for a plain pattern', () => {
+		assert.ok(roles.domainMatch('example.com', 'example.com'));
+		assert.ok(roles.domainMatch('example.com', 'api.example.com'));
+		assert.ok(roles.domainMatch('example.com', 'a.b.example.com'));
+		assert.ok(!roles.domainMatch('example.com', 'notexample.com'));
+		assert.ok(!roles.domainMatch('example.com', 'example.org'));
+	});
+	test('single-label wildcard *.d matches exactly one label', () => {
+		assert.ok(roles.domainMatch('*.example.com', 'a.example.com'));
+		assert.ok(!roles.domainMatch('*.example.com', 'a.b.example.com'));
+		assert.ok(!roles.domainMatch('*.example.com', 'example.com'));
+	});
+	test('deep wildcard **.d matches apex and any depth', () => {
+		assert.ok(roles.domainMatch('**.example.com', 'example.com'));
+		assert.ok(roles.domainMatch('**.example.com', 'a.example.com'));
+		assert.ok(roles.domainMatch('**.example.com', 'a.b.c.example.com'));
+		assert.ok(!roles.domainMatch('**.example.com', 'example.org'));
+	});
+	test('bare * matches any single-label host only', () => {
+		assert.ok(roles.domainMatch('*', 'localhost'));
+		assert.ok(!roles.domainMatch('*', 'example.com'));
+	});
+	test('bare ** matches everything', () => {
+		assert.ok(roles.domainMatch('**', 'localhost'));
+		assert.ok(roles.domainMatch('**', 'a.b.example.com'));
+	});
+	test('is case-insensitive', () => {
+		assert.ok(roles.domainMatch('Example.COM', 'API.example.com'));
+		assert.ok(roles.domainMatch('*.Example.com', 'A.example.com'));
+	});
+	test('empty / missing inputs do not match', () => {
+		assert.ok(!roles.domainMatch('', 'example.com'));
+		assert.ok(!roles.domainMatch('example.com', ''));
+		assert.ok(!roles.domainMatch(null, 'example.com'));
+	});
+});
+
+describe('roles.roleForDomain with wildcard grants', () => {
+	test('a **.example.com viewer grant covers apex and subdomains', () => {
+		const e = effective({username: 'jane', groups: []}, {
+			grants: [{subjectType: 'user', subject: 'jane', scope: 'domain', domain: '**.example.com', role: 'viewer'}],
+		});
+		assert.strictEqual(roles.allows(e, 'viewer', 'example.com'), true);
+		assert.strictEqual(roles.allows(e, 'viewer', 'a.b.example.com'), true);
+		assert.strictEqual(roles.allows(e, 'viewer', 'other.com'), false);
+	});
+	test('a *.example.com grant matches one label deep only', () => {
+		const e = effective({username: 'jane', groups: []}, {
+			grants: [{subjectType: 'user', subject: 'jane', scope: 'domain', domain: '*.example.com', role: 'manager'}],
+		});
+		assert.strictEqual(roles.allows(e, 'manager', 'a.example.com'), true);
+		assert.strictEqual(roles.allows(e, 'manager', 'a.b.example.com'), false);
+		assert.strictEqual(roles.allows(e, 'manager', 'example.com'), false);
+	});
+	test('strongest matching pattern wins', () => {
+		const e = effective({username: 'jane', groups: []}, {
+			grants: [
+				{subjectType: 'user', subject: 'jane', scope: 'domain', domain: '**.example.com', role: 'viewer'},
+				{subjectType: 'user', subject: 'jane', scope: 'domain', domain: 'api.example.com', role: 'manager'},
+			],
+		});
+		assert.strictEqual(roles.roleForDomain(e, 'api.example.com'), 'manager');
+		assert.strictEqual(roles.roleForDomain(e, 'www.example.com'), 'viewer');
+	});
+});
+
 describe('roles.rank / maxRole', () => {
 	test('rank ordering', () => {
 		assert.ok(roles.rank('admin') > roles.rank('manager'));

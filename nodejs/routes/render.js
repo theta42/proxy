@@ -42,8 +42,16 @@ router.get('/users', async function(req, res, next) {
   res.render('users', {...values});
 });
 
-router.get('/grants', async function(req, res, next) {
-  res.render('grants', {...values});
+router.get('/permissions', async function(req, res, next) {
+  res.render('permissions', {...values});
+});
+
+router.get('/groups', async function(req, res, next) {
+  res.render('groups', {...values});
+});
+
+router.get('/profile', async function(req, res, next) {
+  res.render('profile', {...values});
 });
 
 // Bare /login (the OIDC callback redirect target) and /login/<path>.

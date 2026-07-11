@@ -1,13 +1,13 @@
 'use strict';
 
-const {Grant} = require('../models/grant');
+const {Permission} = require('../models/permission');
 const tldExtract = require('tld-extract').parse_host;
 
 /**
  * Authorization middleware.
  *
  * Builds on middleware/auth.js (which sets req.user + req.groups). Effective
- * rights are resolved once per request via Grant.effectiveFor and cached on
+ * rights are resolved once per request via Permission.effectiveFor and cached on
  * req._effective. Roles: admin > manager (owner/full over a domain) > viewer.
  */
 
@@ -30,7 +30,7 @@ function toDomain(value){
 // Resolve (and cache) the effective rights for this request.
 async function getEffective(req){
 	if(req._effective) return req._effective;
-	req._effective = await Grant.effectiveFor({
+	req._effective = await Permission.effectiveFor({
 		username: reqUsername(req),
 		groups: req.groups || [],
 	});
@@ -66,11 +66,14 @@ function requireDomainRole(minRole, resolveDomain){
 	return async function(req, res, next){
 		try{
 			let effective = await getEffective(req);
-			let domain = toDomain(resolveDomain(req));
-			if(!domain) return next(forbidden('Could not determine the target domain.'));
+			// Match against the full hostname so subdomain wildcards resolve;
+			// plain patterns still cover their subdomains (see roles.domainMatch).
+			let target = resolveDomain(req);
+			if(!target) return next(forbidden('Could not determine the target domain.'));
+			target = String(target).toLowerCase().trim();
 
-			if(Grant.allows(effective, minRole, domain)) return next();
-			return next(forbidden(`You need '${minRole}' rights on ${domain}.`));
+			if(Permission.allows(effective, minRole, target)) return next();
+			return next(forbidden(`You need '${minRole}' rights on ${toDomain(target)}.`));
 		}catch(error){
 			return next(error);
 		}
@@ -98,12 +101,12 @@ const resolve = {
  */
 async function filterViewable(req, records, getDomain){
 	let effective = await getEffective(req);
-	if(effective.isAdmin || Grant.rank(effective.global) >= Grant.rank('viewer')){
+	if(effective.isAdmin || Permission.rank(effective.global) >= Permission.rank('viewer')){
 		return records;
 	}
 	return records.filter(function(record){
-		let domain = toDomain(getDomain(record));
-		return Grant.allows(effective, 'viewer', domain);
+		// Full host; domainMatch handles exact, subdomain, and wildcard patterns.
+		return Permission.allows(effective, 'viewer', getDomain(record));
 	});
 }
 

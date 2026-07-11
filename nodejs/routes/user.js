@@ -45,7 +45,11 @@ router.get('/me', async function(req, res, next){
 		let effective = await authz.getEffective(req);
 		return res.json({
 			username: authz.reqUsername(req),
-			groups: req.groups || [],
+			// Merged groups (external + local); localGroups is the app-managed
+			// subset, externalGroups the ones from SSO/LDAP.
+			groups: effective.groups || req.groups || [],
+			localGroups: effective.localGroups || [],
+			externalGroups: req.groups || [],
 			isAdmin: effective.isAdmin,
 			global: effective.global,
 			domains: effective.domains,

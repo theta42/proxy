@@ -3,7 +3,7 @@
 const router = require('express').Router();
 const {DnsProvider, Domain, DynamicRecord} = require('../models').models;
 const authz = require('../middleware/authz');
-const {Grant} = require('../models/grant');
+const {Permission} = require('../models/permission');
 const {getPublicIp} = require('../utils/public_ip');
 
 const Model = DnsProvider;
@@ -123,7 +123,7 @@ router.post('/dynamic/:id/refresh', async function(req, res, next){
 	try{
 		let record = await DynamicRecord.get(req.params.id);
 		let effective = await authz.getEffective(req);
-		if(!Grant.allows(effective, 'manager', authz.toDomain(record.domain))){
+		if(!Permission.allows(effective, 'manager', authz.toDomain(record.domain))){
 			let error = new Error('Forbidden'); error.name = 'Forbidden'; error.status = 403;
 			error.message = `You need 'manager' rights on ${record.domain}.`;
 			throw error;
@@ -141,7 +141,7 @@ router.delete('/dynamic/:id', async function(req, res, next){
 	try{
 		let record = await DynamicRecord.get(req.params.id);
 		let effective = await authz.getEffective(req);
-		if(!Grant.allows(effective, 'manager', authz.toDomain(record.domain))){
+		if(!Permission.allows(effective, 'manager', authz.toDomain(record.domain))){
 			let error = new Error('Forbidden'); error.name = 'Forbidden'; error.status = 403;
 			error.message = `You need 'manager' rights on ${record.domain}.`;
 			throw error;

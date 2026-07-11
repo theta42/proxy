@@ -368,7 +368,7 @@
 							Incoming Host Name
 						</label>
 						<div>
-							<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net" validate=":3" >
+							<input type="text" name="host" class="form-control" placeholder="ex: proxy.cloud-ops.net, *.cloud-ops.net, **.cloud-ops.net, or **" validate="host" >
 							<b class="invalid-feedback"></b>
 						</div>
 					</div>
@@ -419,7 +419,7 @@
 						<label for="ip" class="form-label">
 							Target IP or Host Name
 						</label>
-						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10" validate=":3" />
+						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10 or app.internal.net" validate="target:3" />
 						<b class="invalid-feedback"></b>
 					</div>
 

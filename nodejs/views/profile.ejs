@@ -1,0 +1,102 @@
+<%- include('top') %>
+<script type="text/javascript">
+	// Any authenticated user may view their own profile.
+	app.auth.forceLogin();
+</script>
+
+<style type="text/css">
+	.card-title{ font-weight: bold; }
+	.profile-label{ font-weight: bold; }
+</style>
+
+<script type="text/javascript">
+
+	function roleBadge(role){
+		let cls = role === 'admin' ? 'text-bg-danger'
+			: role === 'manager' ? 'text-bg-primary'
+			: role === 'viewer' ? 'text-bg-secondary' : 'text-bg-light';
+		return $('<span>').addClass('badge ' + cls).text(role);
+	}
+
+	function renderProfile(me){
+		$('#profile-username').text(me.username || '(unknown)');
+
+		// Access summary badges.
+		let $access = $('#profile-access').empty();
+		if(me.isAdmin){
+			$access.append($('<span>').addClass('badge text-bg-danger fs-6 me-1').text('Global administrator'));
+		}
+		if(me.global){
+			$access.append($('<span>').addClass('badge text-bg-primary fs-6 me-1').text('Global ' + me.global));
+		}
+		if(!me.isAdmin && !me.global){
+			$access.append($('<span>').addClass('text-muted').text('No global role.'));
+		}
+
+		// Groups (mark which are app-managed local groups).
+		let local = new Set(me.localGroups || []);
+		let $groups = $('#profile-groups').empty();
+		let groups = me.groups || [];
+		if(!groups.length){
+			$groups.append($('<span>').addClass('text-muted').text('Not a member of any group.'));
+		}
+		for(let g of groups){
+			let $b = $('<span>').addClass('badge me-1 mb-1 fs-6')
+				.addClass(local.has(g) ? 'text-bg-success' : 'text-bg-info').text(g);
+			if(local.has(g)) $b.append($('<i>').addClass('fa-solid fa-house-user ms-1').attr('title', 'local group'));
+			$groups.append($b);
+		}
+
+		// Per-domain roles.
+		let $domains = $('#profile-domains').empty();
+		let domains = me.domains || {};
+		let keys = Object.keys(domains).sort();
+		if(!keys.length){
+			$domains.append($('<tr>').append($('<td colspan="2">').addClass('text-muted').text('No per-domain roles.')));
+		}
+		for(let d of keys){
+			$domains.append($('<tr>')
+				.append($('<td>').addClass('align-middle').append($('<code>').text(d)))
+				.append($('<td>').addClass('align-middle').append(roleBadge(domains[d]))));
+		}
+	}
+
+	$(document).ready(function(){
+		app.api.get('user/me', function(error, data){
+			if(error) return app.util.actionMessage(error, $('#profile-card'), 'danger');
+			renderProfile(data);
+		});
+	});
+</script>
+
+<div class="row justify-content-center">
+	<div class="col-md-8">
+		<div class="card shadow-lg" id="profile-card">
+			<div class="card-header text-center">
+				<span class="card-icon float-start"><i class="fa-solid fa-id-badge"></i></span>
+				<span class="card-title">My Profile</span>
+			</div>
+			<div class="card-header actionMessage" style="display:none"></div>
+			<div class="card-body">
+				<h3 class="mb-3"><i class="fa-solid fa-user me-2"></i><span id="profile-username">…</span></h3>
+
+				<div class="mb-3">
+					<div class="profile-label">Access</div>
+					<div id="profile-access"></div>
+				</div>
+
+				<div class="mb-3">
+					<div class="profile-label">Groups</div>
+					<div id="profile-groups"></div>
+				</div>
+
+				<div class="mb-1 profile-label">Domain permissions</div>
+				<table class="table table-striped">
+					<thead><th>Domain</th><th>Role</th></thead>
+					<tbody id="profile-domains"></tbody>
+				</table>
+			</div>
+		</div>
+	</div>
+</div>
+<%- include('bottom') %>
