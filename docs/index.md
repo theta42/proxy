@@ -19,7 +19,19 @@ A reverse proxy and HTTPS termination service using OpenResty/nginx with a manag
 
 ## Quick Start
 
-### Automated Installation
+### Docker (recommended for self-hosters)
+
+A single all-in-one image bundling OpenResty + the app + Redis:
+
+```bash
+git clone https://github.com/theta42/proxy.git
+cd proxy && docker compose up -d --build
+```
+
+See the [Docker Guide](docker.html) for configuration (OIDC/LDAP via `app_*` env)
+and fronting an SSO Manager.
+
+### Automated bare-metal installation
 
 For modern Debian-based systems (Ubuntu 20.04+, Debian 11+):
 
@@ -27,7 +39,7 @@ For modern Debian-based systems (Ubuntu 20.04+, Debian 11+):
 wget -O - https://raw.githubusercontent.com/theta42/proxy/master/ops/install.sh | sudo bash
 ```
 
-### Requirements
+### Requirements (bare metal)
 
 - Node.js 18+ (tested with 18.x, 20.x, 22.x)
 - OpenResty (nginx with Lua support)
@@ -36,7 +48,8 @@ wget -O - https://raw.githubusercontent.com/theta42/proxy/master/ops/install.sh 
 
 ## Documentation
 
-- [Installation Guide](installation.html) - Detailed setup instructions
+- [Docker Guide](docker.html) - All-in-one container deployment + configuration
+- [Installation Guide](installation.html) - Bare-metal setup instructions
 - [API Reference](api.html) - Complete API documentation
 - [Architecture](architecture.html) - System design and components
 - [Contributing](contributing.html) - Development and testing guide

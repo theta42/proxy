@@ -22,7 +22,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.0",
     "@popperjs/core": "^2.11.8",
-    "@simpleworkjs/conf": "^1.0.0",
+    "@simpleworkjs/conf": "^1.1.0",
     "acme-client": "^5.4.0",
     "axios": "^1.13.5",
     "bcrypt": "^6.0.0",

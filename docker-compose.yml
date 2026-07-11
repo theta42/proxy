@@ -1,0 +1,88 @@
+# Docker Compose for the theta42/proxy all-in-one image
+# (OpenResty + Node management app + Redis in one container).
+#
+# The proxy is an OIDC client of an SSO Manager (or any OIDC provider) AND a
+# direct LDAP client for user lookups. Supply that wiring via `app_*`
+# environment variables — the highest-precedence config layer in
+# @simpleworkjs/conf (>= 1.1.0, pinned in nodejs/package-lock.json). No
+# secrets.js is baked in; set the values here, in a .env file, or via an
+# env_file (the theta42/theta-env unified repo generates one with setup.sh).
+#
+# Requires @simpleworkjs/conf >= 1.1.0 in the image (env overrides). The lock
+# is already on ^1.1.0; rebuild with `docker compose up -d --build` after any
+# package change.
+
+services:
+  proxy:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: proxy
+    restart: unless-stopped
+    ports:
+      # Public proxy listeners (autossl.conf). 80 is used for ACME HTTP-01 +
+      # redirecting to HTTPS; 443 is the primary; 4443 is the alternate HTTPS.
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+      - "${HTTPS_ALT_PORT:-4443}:4443"
+      # Management API + web UI. Bind to localhost so it isn't exposed to the
+      # LAN — the OpenResty front proxies the UI/api under its own TLS.
+      - "127.0.0.1:${MGMT_PORT:-3000}:3000"
+    environment:
+      # ── OpenResty runtime (see docker-entrypoint.sh) ──
+      # Resolver for upstream names in Host records (default = Docker DNS).
+      - RESOLVER=${RESOLVER:-127.0.0.11}
+      # Trusted range for X-Real-IP. Empty = proxy is the front (default,
+      # removes the real_ip block). Set to an upstream proxy's CIDR if one
+      # sits in front and sets X-Real-IP.
+      - REAL_IP_FROM=${REAL_IP_FROM:-}
+
+      # ── OIDC client config (app_oidc__*) ──
+      # Point at your SSO Manager. Issuer + authorization/endSession are the
+      # browser-facing URLs; token/userinfo can be the internal URL if the SSO
+      # is on the same docker network (avoids a TLS hairpin through the proxy).
+      - app_oidc__enabled=${OIDC_ENABLED:-true}
+      - app_oidc__issuer=${OIDC_ISSUER:-https://sso.example.com}
+      - app_oidc__authorizationEndpoint=${OIDC_AUTHORIZATION_ENDPOINT:-https://sso.example.com/oauth/authorize}
+      - app_oidc__tokenEndpoint=${OIDC_TOKEN_ENDPOINT:-http://sso-manager:3001/oauth/token}
+      - app_oidc__userinfoEndpoint=${OIDC_USERINFO_ENDPOINT:-http://sso-manager:3001/oauth/userinfo}
+      - app_oidc__endSessionEndpoint=${OIDC_ENDSESSION_ENDPOINT:-https://sso.example.com/oauth/logout}
+      - app_oidc__clientId=${OIDC_CLIENT_ID:-}
+      - app_oidc__clientSecret=${OIDC_CLIENT_SECRET:-}
+      - app_oidc__redirectUri=${OIDC_REDIRECT_URI:-https://proxy.example.com/api/auth/oidc/callback}
+
+      # ── LDAP client config (app_ldap__*) ──
+      # Direct user lookups. ldaps:// + rejectUnauthorized=false for a
+      # self-signed cert, or set app_ldap__tlsOptions__ca=<path> for strict.
+      - app_ldap__url=${LDAP_URL:-ldaps://sso-manager:636}
+      - app_ldap__bindDN=${LDAP_BIND_DN:-cn=ldapclient,ou=people,dc=example,dc=com}
+      - app_ldap__bindPassword=${LDAP_BIND_PASSWORD:-}
+      - app_ldap__searchBase=${LDAP_SEARCH_BASE:-ou=people,dc=example,dc=com}
+      - app_ldap__userFilter=${LDAP_USER_FILTER:-(objectClass=inetOrgPerson)}
+      - app_ldap__tlsOptions__rejectUnauthorized=${LDAP_REJECT_UNAUTHORIZED:-false}
+
+      # ── Authorization ──
+      # Local anti-lockout admin (matches auth.adminUsers in conf/base.js).
+      - app_auth__adminUsers=${AUTH_ADMIN_USERS:-proxyadmin}
+
+      - NODE_ENV=production
+      - NODE_PORT=3000
+    volumes:
+      # Let's Encrypt cert store + auto-ssl redis data live with the bundled
+      # redis (in-container, in-memory). Mount these to persist across recreation:
+      #   proxy-cache  -> /var/cache/nginx/proxy  (response cache)
+      #   proxy-logs   -> /var/log/nginx          (access/error logs)
+      # Auto-ssl certs are in the bundled redis (in-memory, lost on recreation)
+      # unless you enable redis persistence in docker-entrypoint.sh.
+      - proxy-cache:/var/cache/nginx/proxy
+      - proxy-logs:/var/log/nginx
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  proxy-cache:
+  proxy-logs:

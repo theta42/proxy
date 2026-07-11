@@ -90,3 +90,5 @@ openresty/**
 !openresty/README.md
 
 le_key.cert
+# Jekyll build artifact (GitHub Pages builds remotely; ignore locally)
+docs/_site

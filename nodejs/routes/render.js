@@ -29,6 +29,12 @@ router.get('/', (req, res) => {
   res.redirect(301, '/hosts');
 });
 
+// Lightweight liveness probe for container healthchecks / monitoring. No auth,
+// no dependencies — just confirms the Express process is up and routing.
+router.get('/health', (req, res) => {
+  res.json({status: 'ok'});
+});
+
 router.get('/hosts', async function(req, res, next) {
   res.render('hosts', {...values});
 });
