@@ -30,7 +30,20 @@ class Host extends Table{
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
 
 		'is_cache': {default: false, isRequired: false, type: 'boolean',},
-		
+
+		// Per-host reverse-proxy controls. Enforced in OpenResty by
+		// ops/nginx_conf/hostfeatures.lua, which reads these straight off the
+		// Redis hash. Object fields are JSON-encoded by model-redis.
+		'ratelimit_enabled': {default: false, isRequired: false, type: 'boolean',},
+		'ratelimit_rate': {default: 10, isRequired: false, type: 'number', min: 1, max: 1000000},
+		'ratelimit_burst': {default: 20, isRequired: false, type: 'number', min: 0, max: 1000000},
+		'respcache_enabled': {default: false, isRequired: false, type: 'boolean',},
+		'hsts_enabled': {default: false, isRequired: false, type: 'boolean',},
+		'req_headers': {default: function(){return {}}, isRequired: false, type: 'object',},
+		'resp_headers': {default: function(){return {}}, isRequired: false, type: 'object',},
+		'ip_allow': {default: function(){return []}, isRequired: false, type: 'object',},
+		'ip_deny': {default: function(){return []}, isRequired: false, type: 'object',},
+
 		'is_wildcard': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_status': {isRequired: false, type: 'string', min: 3, max: 500},
 		'wildcard_matchAny': {default: false, isRequired: false, type: 'boolean',},

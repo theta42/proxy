@@ -89,6 +89,16 @@
 		$.scope.editHost.remove(0);
 	}
 
+	// Mirror of utils/host_features.js stringify* helpers for populating the edit
+	// form's textareas. The server re-parses the posted text authoritatively.
+	function hostFeatureHeadersToText(obj){
+		if(!obj || typeof obj != 'object') return '';
+		return Object.keys(obj).map(function(name){ return name + ': ' + obj[name]; }).join('\n');
+	}
+	function hostFeatureCidrsToText(arr){
+		return Array.isArray(arr) ? arr.join('\n') : '';
+	}
+
 	function hostEditOpen(btn, host){
 		hostEditCancle();
 		console.log('host:', host)
@@ -109,6 +119,13 @@
 				$(".hostEditPanel input[name='" + key + "']").val(value);
 			}
 		});
+
+		// Object/array proxy-control fields render into textareas as text. Server
+		// (utils/host_features.js) parses the same text/shape back on save.
+		$(".hostEditPanel textarea[name='req_headers']").val(hostFeatureHeadersToText(host.req_headers));
+		$(".hostEditPanel textarea[name='resp_headers']").val(hostFeatureHeadersToText(host.resp_headers));
+		$(".hostEditPanel textarea[name='ip_allow']").val(hostFeatureCidrsToText(host.ip_allow));
+		$(".hostEditPanel textarea[name='ip_deny']").val(hostFeatureCidrsToText(host.ip_deny));
 
 		$('.hostEditPanel').scrollTo();
 	};
@@ -432,6 +449,89 @@
 						</div>
 						<b class="invalid-feedback"></b>
 					</div>
+
+					<hr />
+					<h6 class="text-muted">Proxy controls</h6>
+
+					<div class="form-group">
+						<label class="form-label">Rate limiting</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="ratelimit_enabled" id="ratelimit_enabled-false" value="false" checked>
+								Off <b>Recommended</b>
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="ratelimit_enabled" id="ratelimit_enabled-true" value="true">
+								Limit requests per client IP
+							</label>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col form-group">
+							<label for="ratelimit_rate" class="form-label">Requests / sec</label>
+							<input type="number" name="ratelimit_rate" class="form-control" value="10" min="1" max="1000000" />
+						</div>
+						<div class="col form-group">
+							<label for="ratelimit_burst" class="form-label">Burst</label>
+							<input type="number" name="ratelimit_burst" class="form-control" value="20" min="0" max="1000000" />
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="form-label">Response caching</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="respcache_enabled" id="respcache_enabled-false" value="false" checked>
+								Off <b>Recommended</b>
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="respcache_enabled" id="respcache_enabled-true" value="true">
+								Cache cacheable responses
+							</label>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label class="form-label">HSTS</label>
+						<div class="radio">
+							<label>
+								<input type="radio" name="hsts_enabled" id="hsts_enabled-false" value="false" checked>
+								Off
+							</label>
+						</div>
+						<div class="radio">
+							<label>
+								<input type="radio" name="hsts_enabled" id="hsts_enabled-true" value="true">
+								Send Strict-Transport-Security
+							</label>
+						</div>
+					</div>
+
+					<div class="form-group">
+						<label for="ip_allow" class="form-label">Allow IPs / CIDRs</label>
+						<textarea name="ip_allow" class="form-control" rows="2" placeholder="one per line; if set, only these are allowed"></textarea>
+					</div>
+
+					<div class="form-group">
+						<label for="ip_deny" class="form-label">Deny IPs / CIDRs</label>
+						<textarea name="ip_deny" class="form-control" rows="2" placeholder="one per line; these are blocked"></textarea>
+					</div>
+
+					<div class="form-group">
+						<label for="req_headers" class="form-label">Upstream request headers</label>
+						<textarea name="req_headers" class="form-control" rows="2" placeholder="Name: value, one per line"></textarea>
+					</div>
+
+					<div class="form-group">
+						<label for="resp_headers" class="form-label">Response headers</label>
+						<textarea name="resp_headers" class="form-control" rows="2" placeholder="Name: value, one per line"></textarea>
+					</div>
+
 					<hr class="buttonBreak" />
 					<button type="submit" class="btn btn-success">
 						<i class="fa-solid fa-plus"></i>
