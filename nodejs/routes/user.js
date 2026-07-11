@@ -3,6 +3,14 @@
 const router = require('express').Router();
 const {User} = require('../models').models;
 const authz = require('../middleware/authz');
+const {passwordError} = require('../utils/password_policy');
+
+// Reject a weak password before it reaches the model. Throws 422 with a
+// per-field key the frontend surfaces inline.
+function validatePassword(password){
+	let message = passwordError(password);
+	if(message) throw User.errors.ObjectValidateError([{key: 'password', message}]);
+}
 
 // User management is global-admin-only, except the self-service routes below
 // (GET /me, PUT /password, POST /key) which any authenticated user may call for
@@ -21,8 +29,12 @@ router.get('/', authz.requireAdmin, async function(req, res, next){
 router.post('/', authz.requireAdmin, async function(req, res, next){
 	try{
 		req.body.created_by = authz.reqUsername(req)
+		validatePassword(req.body.password);
 
-		return res.json(await User.add(req.body));
+		// User.create (not the nonexistent User.add) — the drift here meant every
+		// API-created account threw, so the new credentials never existed to log
+		// in with (issue #48).
+		return res.json(await User.create(req.body));
 	}catch(error){
 		next(error);
 	}
@@ -62,6 +74,7 @@ router.get('/me', async function(req, res, next){
 // Self-service: change your own password.
 router.put('/password', async function(req, res, next){
 	try{
+		validatePassword(req.body.password);
 		return res.json({results: await req.user.setPassword(req.body)})
 	}catch(error){
 		next(error);
@@ -71,6 +84,7 @@ router.put('/password', async function(req, res, next){
 // Admin: reset another user's password.
 router.put('/password/:username', authz.requireAdmin, async function(req, res, next){
 	try{
+		validatePassword(req.body.password);
 		let user = await User.get(req.params.username);
 		return res.json({results: await user.setPassword(req.body)});
 	}catch(error){

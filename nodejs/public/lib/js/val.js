@@ -176,10 +176,22 @@
 				}
 			},
 
+			// Mirrors utils/password_policy.js: >= 8 chars, and either 12+ chars
+			// or at least 3 of {lowercase, uppercase, number, symbol}.
 			password: function( value ) {
-				var reg = /^(?=[^\d_].*?\d)\w(\w|[!@#$%]){1,48}/;
-				if ( reg.test( value ) === false ) {
-					return "Weak password, Try again";
+				if ( typeof value !== 'string' || value.length < 8 ) {
+					return "Password must be at least 8 characters";
+				}
+				if ( value.length >= 12 ) return;
+
+				var classes = 0;
+				if ( /[a-z]/.test( value ) ) classes++;
+				if ( /[A-Z]/.test( value ) ) classes++;
+				if ( /[0-9]/.test( value ) ) classes++;
+				if ( /[^A-Za-z0-9]/.test( value ) ) classes++;
+
+				if ( classes < 3 ) {
+					return "Use 3 of: lowercase, uppercase, number, symbol (or 12+ chars)";
 				}
 			}
 		}
