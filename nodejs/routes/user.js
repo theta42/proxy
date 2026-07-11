@@ -13,8 +13,8 @@ function validatePassword(password){
 }
 
 // User management is global-admin-only, except the self-service routes below
-// (GET /me, PUT /password, POST /key) which any authenticated user may call for
-// their own account.
+// (GET /me, PUT /password) which any authenticated user may call for their own
+// account.
 
 router.get('/', authz.requireAdmin, async function(req, res, next){
 	try{
@@ -90,34 +90,6 @@ router.put('/password/:username', authz.requireAdmin, async function(req, res, n
 	}catch(error){
 		next(error);
 	}
-});
-
-router.post('/invite', authz.requireAdmin, async function(req, res, next){
-	try{
-		let token = await req.user.invite();
-
-		return res.json({token: token.token});
-	}catch(error){
-		next(error);
-	}
-});
-
-// Self-service: add an SSH key to your own account.
-router.post('/key', async function(req, res, next){
-	try{
-		let added = await User.addSSHkey({
-			username: authz.reqUsername(req),
-			key: req.body.key
-		});
-
-		return res.status(added === true ? 200 : 400).json({
-			message: added
-		});
-
-	}catch(error){
-		next(error);
-	}
-
 });
 
 module.exports = router;

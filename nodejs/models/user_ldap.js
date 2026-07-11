@@ -1,7 +1,7 @@
 'use strict';
 
 const { Client, Attribute, Change } = require('ldapts');
-const {Token, InviteToken} = require('./token');
+const {Token} = require('./token');
 const conf = require('@simpleworkjs/conf').ldap;
 
 const client = new Client({
@@ -138,17 +138,6 @@ User.exists = async function(data){
 		return true
 	}catch(error){
 		return false;
-	}
-};
-
-User.invite = async function(){
-	try{
-		let token = await InviteToken.add({created_by: this.username});
-		
-		return token;
-
-	}catch(error){
-		throw error;
 	}
 };
 

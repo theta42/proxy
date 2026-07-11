@@ -2,7 +2,7 @@
 
 const linuxUser = require('linux-sys-user').promise();
 const objValidate = require('../utils/object_validate');
-const {Token, InviteToken} = require('./token');
+const {Token} = require('./token');
 const {promisify} = require('util');
 const pam = require('authenticate-pam');
 const authenticate = promisify(pam.authenticate);
@@ -90,31 +90,6 @@ User.create = async function(data) {
 	}
 };
 
-User.addByInvite = async function(data){
-	try{
-		let token = await InviteToken.get(data.token);
-
-		if(!token.is_valid){
-			let error = new Error('Token Invalid');
-			error.name = 'Token Invalid';
-			error.message = `Token is not valid or as allready been used. ${data.token}`;
-			error.status = 401;
-			throw error;
-		}
-
-		let user = await this.add(data);
-
-		if(user){
-			await token.consume({claimed_by: user.username});
-			return user;
-		}
-
-	}catch(error){
-		throw error;
-	}
-
-};
-
 User.remove = async function(data){
 	try{
 		return await linuxUser.removeUser(this.username);
@@ -128,17 +103,6 @@ User.setPassword = async function(data){
 		await linuxUser.setPassword(this.username, data.password);
 
 		return this;
-	}catch(error){
-		throw error;
-	}
-};
-
-User.invite = async function(){
-	try{
-		let token = await InviteToken.add({created_by: this.username});
-		
-		return token;
-
 	}catch(error){
 		throw error;
 	}
