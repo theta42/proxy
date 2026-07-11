@@ -98,6 +98,29 @@
 		bootstrap.Tab.getOrCreateInstance(document.getElementById(id)).show();
 	}
 
+	// Append a picked/typed value to one of the SSO allow-list textareas (deduped).
+	function allowListAdd(input, name){
+		let val = (input.value || '').trim();
+		if(!val) return;
+		let $ta = $('#hostForm textarea[name="' + name + '"]');
+		let lines = ($ta.val() || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+		if(lines.indexOf(val) === -1) lines.push(val);
+		$ta.val(lines.join('\n'));
+		input.value = '';
+		input.focus();
+	}
+
+	// Fill the user/group datalists that back the allow-list autocomplete.
+	function hostLoadAuthSuggestions(){
+		app.api.get('host/auth-suggestions', function(error, data){
+			if(error || !data) return;
+			let $u = $('#hostSsoUsers').empty();
+			for(let u of (data.users || [])) $u.append($('<option>').val(u));
+			let $g = $('#hostSsoGroups').empty();
+			for(let g of (data.groups || [])) $g.append($('<option>').val(g));
+		});
+	}
+
 	// Return the form to a clean "add" state.
 	function hostFormReset(){
 		let form = document.getElementById('hostForm');
@@ -215,6 +238,7 @@
 	$(document).ready(function(){
 		// Populate the host UI table
 		hostPopulate();
+		hostLoadAuthSuggestions();
 
 		// Determine what Let's Encrypt challenge type the given host name can use.
 		let $hostField = $('#hostForm [name=host]');
@@ -233,11 +257,13 @@
 				return;
 			}
 
-			// Check if a wildcard cert is available for the given host.
+			// Check if a wildcard cert is available for the given host. When it is,
+			// make "Parent Wildcard" the default choice (it reuses an existing cert).
 			let wildcardParent = await hostMatchWildcard(host);
 			if(wildcardParent){
 				$('#challengeType-child-container').removeClass('challengeType-container');
 				$('#challengeType-child-relatedHost').text(wildcardParent.host);
+				$('#challengeType-wildcardChild').prop('checked', true);
 				return;
 			}
 
@@ -427,6 +453,7 @@
 					<li class="nav-item"><button class="nav-link" id="hostTab-traffic-btn" data-bs-toggle="tab" data-bs-target="#hostTab-traffic" type="button" role="tab">Traffic</button></li>
 					<li class="nav-item"><button class="nav-link" id="hostTab-headers-btn" data-bs-toggle="tab" data-bs-target="#hostTab-headers" type="button" role="tab">Headers</button></li>
 					<li class="nav-item"><button class="nav-link" id="hostTab-access-btn" data-bs-toggle="tab" data-bs-target="#hostTab-access" type="button" role="tab">Access</button></li>
+					<li class="nav-item"><button class="nav-link" id="hostTab-auth-btn" data-bs-toggle="tab" data-bs-target="#hostTab-auth" type="button" role="tab">Authentication</button></li>
 				</ul>
 
 				<form class="addHost" id="hostForm" method="POST" action="host" onsubmit="formAJAX(this)" evalAJAX="hostModalClose()">
@@ -605,15 +632,18 @@
 								<textarea name="ip_deny" class="form-control" rows="2" placeholder="one per line; these are blocked"></textarea>
 								<small class="field-help text-muted d-block">These sources are always blocked (deny wins over allow).</small>
 							</div>
+						</div>
 
-							<hr>
-							<h6 class="text-muted">
-								Authentication
-								<small class="fw-normal">&mdash; basic auth and SSO are OR'd; either one grants access.</small>
-							</h6>
+						<!-- Authentication -->
+						<div class="tab-pane fade" id="hostTab-auth" role="tabpanel">
+							<p class="field-help text-muted">
+								Basic auth and SSO are OR'd &mdash; if either is enabled, a request
+								is allowed when it passes <b>either</b> one. Leave both off for a
+								public host.
+							</p>
 
+							<h6 class="text-muted">Basic authentication</h6>
 							<div class="form-group">
-								<label class="form-label">Basic authentication</label>
 								<div class="radio"><label>
 									<input type="radio" name="basicauth_enabled" id="basicauth_enabled-false" value="false" checked>
 									Off
@@ -638,9 +668,8 @@
 							</div>
 
 							<hr>
-
+							<h6 class="text-muted">Single sign-on (SSO)</h6>
 							<div class="form-group">
-								<label class="form-label">Single sign-on (SSO)</label>
 								<div class="radio"><label>
 									<input type="radio" name="sso_enabled" id="sso_enabled-false" value="false" checked>
 									Off
@@ -649,19 +678,36 @@
 									<input type="radio" name="sso_enabled" id="sso_enabled-true" value="true">
 									Require login via the configured OIDC provider
 								</label></div>
-								<small class="field-help text-muted d-block">Gates the site behind the same identity provider the admin app uses.</small>
+								<small class="field-help text-muted d-block">Gates the site behind the same identity provider the admin app uses. Empty allow-lists below mean any authenticated user is allowed.</small>
 							</div>
+
 							<div class="form-group">
 								<label for="sso_allow_users" class="form-label">Allowed users</label>
+								<div class="input-group mb-1">
+									<input type="text" class="form-control" list="hostSsoUsers" placeholder="type to search users…"
+										onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_users');}">
+									<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_users')">
+										<i class="fa-solid fa-plus"></i> Add
+									</button>
+								</div>
 								<textarea name="sso_allow_users" class="form-control" rows="2" placeholder="one email/username per line; blank = any authenticated user"></textarea>
 							</div>
 							<div class="form-group">
 								<label for="sso_allow_groups" class="form-label">Allowed groups</label>
+								<div class="input-group mb-1">
+									<input type="text" class="form-control" list="hostSsoGroups" placeholder="type to search groups…"
+										onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_groups');}">
+									<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_groups')">
+										<i class="fa-solid fa-plus"></i> Add
+									</button>
+								</div>
 								<textarea name="sso_allow_groups" class="form-control" rows="2" placeholder="one group per line; blank = any authenticated user"></textarea>
 							</div>
 						</div>
 
 					</div>
+					<datalist id="hostSsoUsers"></datalist>
+					<datalist id="hostSsoGroups"></datalist>
 				</form>
 			</div>
 
