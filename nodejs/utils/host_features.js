@@ -174,6 +174,29 @@ function sanitizeBasicAuthObject(obj){
 	return out;
 }
 
+const MAX_ALLOW_ENTRIES = 500;
+
+/**
+ * Newline/comma/whitespace-separated text -> deduped array of trimmed entries
+ * (usernames, emails, or group names for the SSO allow-lists). CR/LF stripped.
+ */
+function parseAllowList(input){
+	let items = Array.isArray(input)
+		? input
+		: String(input === undefined || input === null ? '' : input).split(/[\s,]+/);
+
+	let seen = new Set();
+	let out = [];
+	for(let raw of items){
+		let s = String(raw).replace(/[\r\n]/g, '').trim();
+		if(!s || seen.has(s)) continue;
+		seen.add(s);
+		out.push(s);
+		if(out.length >= MAX_ALLOW_ENTRIES) break;
+	}
+	return out;
+}
+
 /** Realm goes into a WWW-Authenticate header; strip CR/LF and quotes, cap len. */
 function sanitizeRealm(value){
 	return String(value === undefined || value === null ? '' : value)
@@ -226,6 +249,10 @@ function normalizeHostFeatures(body){
 		}
 	}
 
+	if('sso_enabled' in body) body.sso_enabled = toBool(body.sso_enabled);
+	if('sso_allow_users' in body)  body.sso_allow_users  = parseAllowList(body.sso_allow_users);
+	if('sso_allow_groups' in body) body.sso_allow_groups = parseAllowList(body.sso_allow_groups);
+
 	if('ratelimit_rate' in body)  body.ratelimit_rate  = clampNumber(body.ratelimit_rate, 1, 1000000, 10);
 	if('ratelimit_burst' in body) body.ratelimit_burst = clampNumber(body.ratelimit_burst, 0, 1000000, 20);
 
@@ -259,5 +286,6 @@ module.exports = {
 	parseHeaderLines, stringifyHeaders, sanitizeHeaderObject,
 	isValidCidr, parseCidrLines, sanitizeCidrArray, stringifyCidrs,
 	parseBasicAuthLines, sanitizeBasicAuthObject, sanitizeRealm,
+	parseAllowList,
 	normalizeHostFeatures,
 };

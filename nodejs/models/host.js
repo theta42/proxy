@@ -47,6 +47,12 @@ class Host extends Table{
 		'basicauth_enabled': {default: false, isRequired: false, type: 'boolean',},
 		'basicauth_realm': {default: 'Restricted', isRequired: false, type: 'string', min: 1, max: 128},
 		'basicauth_users': {default: function(){return {}}, isRequired: false, type: 'object',},
+		// Per-host SSO (OIDC via conf.oidc) — enforced by a signed session cookie
+		// checked in ops/nginx_conf/hostfeatures.lua. Empty allow-lists mean "any
+		// authenticated user". basic auth and SSO are OR'd (either satisfies).
+		'sso_enabled': {default: false, isRequired: false, type: 'boolean',},
+		'sso_allow_users': {default: function(){return []}, isRequired: false, type: 'object',},
+		'sso_allow_groups': {default: function(){return []}, isRequired: false, type: 'object',},
 		'req_headers': {default: function(){return {}}, isRequired: false, type: 'object',},
 		'resp_headers': {default: function(){return {}}, isRequired: false, type: 'object',},
 		'ip_allow': {default: function(){return []}, isRequired: false, type: 'object',},

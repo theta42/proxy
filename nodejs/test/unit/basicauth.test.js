@@ -8,6 +8,7 @@ const {
 	parseBasicAuthLines,
 	sanitizeBasicAuthObject,
 	sanitizeRealm,
+	parseAllowList,
 	normalizeHostFeatures,
 } = require('../../utils/host_features');
 
@@ -73,5 +74,27 @@ describe('normalizeHostFeatures (basic auth)', () => {
 		let body = {basicauth_users: {alice: 'secret', 'bad user': 'x', bob: ''}};
 		normalizeHostFeatures(body);
 		assert.deepStrictEqual(body.basicauth_users, {alice: 'secret'});
+	});
+});
+
+describe('SSO allow-lists (#57)', () => {
+	test('parseAllowList splits on commas/whitespace/newlines and dedupes', () => {
+		assert.deepStrictEqual(
+			parseAllowList('alice@x.com, bob@x.com\ncarol@x.com alice@x.com'),
+			['alice@x.com', 'bob@x.com', 'carol@x.com']
+		);
+		assert.deepStrictEqual(parseAllowList(['a', 'a', ' b ', '']), ['a', 'b']);
+		assert.deepStrictEqual(parseAllowList(''), []);
+	});
+	test('normalizeHostFeatures coerces sso_enabled and parses allow-lists', () => {
+		let body = {
+			sso_enabled: 'true',
+			sso_allow_users: 'alice@x.com\nbob@x.com',
+			sso_allow_groups: 'dns-team, admins',
+		};
+		normalizeHostFeatures(body);
+		assert.strictEqual(body.sso_enabled, true);
+		assert.deepStrictEqual(body.sso_allow_users, ['alice@x.com', 'bob@x.com']);
+		assert.deepStrictEqual(body.sso_allow_groups, ['dns-team', 'admins']);
 	});
 });
