@@ -60,10 +60,15 @@ app.use(express.json());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
+// Per-host SSO endpoints. nginx routes /__proxy_auth/* on every proxied host to
+// the app (see ops/nginx_conf/proxy.conf); these run the OIDC flow and set the
+// per-host session cookie. Mounted before the page router.
+app.use('/__proxy_auth', require('./routes/host_auth'));
+
 // Routes for front end content.
 app.use('/', require('./routes/render'));
 
-// Routes for API 
+// Routes for API
 app.use('/api', require('./routes/api'));
 
 // Catch 404 and forward to error handler. If none of the above routes are
