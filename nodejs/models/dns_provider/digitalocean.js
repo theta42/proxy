@@ -40,9 +40,17 @@ class DigitalOcean extends DnsApi{
 	}
 
 	async listDomains(){
-		let res = await this.axios('get', '/domains');
+		// DO returns {domains:[{name, ttl, zone_file}]} keyed by `name` and has no
+		// zone id (API paths use the domain name directly). Map name -> domain the
+		// way CloudFlare.listDomains does; do NOT run this through __parseRes, which
+		// rewrites `.name` to its subdomain and would leave no usable domain name.
+		let res = await this.axios('get', '/domains?per_page=200');
 
-		return this.__parseRes(res.data.domains);
+		for(let domain of res.data.domains){
+			domain.domain = domain.name;
+		}
+
+		return res.data.domains;
 	}
 
 	async getRecords(domain, options){
