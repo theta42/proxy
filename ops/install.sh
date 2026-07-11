@@ -60,6 +60,15 @@ apt-get install -y nodejs openresty
 echo "==> Lua modules"
 luarocks install lua-resty-auto-ssl
 luarocks install luasocket
+# CIDR matcher for the per-host IP allow/deny lists (hostfeatures.lua).
+# resty.limit.req is bundled with OpenResty, so no rock is needed for it.
+luarocks install lua-resty-ipmatcher
+
+echo "==> Proxy response-cache directory"
+# Must be writable by the OpenResty worker user. nginx.conf sets no `user`
+# directive, so workers run as the compiled-in default (nobody); own the dir to
+# match so proxy_cache_path can write to it.
+install -d -m 0755 -o nobody -g nogroup /var/cache/nginx/proxy
 
 echo "==> Fallback SSL cert"
 install -d /etc/ssl
@@ -91,6 +100,7 @@ link "$REPO_DIR/ops/nginx_conf/nginx.conf"     /etc/openresty/nginx.conf
 link "$REPO_DIR/ops/nginx_conf/autossl.conf"   /etc/openresty/autossl.conf
 link "$REPO_DIR/ops/nginx_conf/proxy.conf"     /etc/openresty/sites-enabled/000-proxy
 link "$REPO_DIR/ops/nginx_conf/targetinfo.lua" /usr/local/openresty/lualib/targetinfo.lua
+link "$REPO_DIR/ops/nginx_conf/hostfeatures.lua" /usr/local/openresty/lualib/hostfeatures.lua
 link "$REPO_DIR/ops/proxy.service"             /etc/systemd/system/proxy.service
 
 echo "==> Node dependencies"
