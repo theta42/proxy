@@ -7,6 +7,7 @@ const Table = setUpTable(conf.redis);
 module.exports = Table;
 
 require('./dns_provider');
+require('./dynamic_record');
 require('./host');
 require('./token');
 require('./user');

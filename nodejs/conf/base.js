@@ -61,6 +61,20 @@ module.exports = {
 			enabled: true,
 			initial: 30000,
 			interval: 86400000,
+		},
+		dynamicDns:{
+			enabled: true,
+			initial: 15000,      // first refresh 15s after start
+			interval: 14400000,  // then every 4 hours
 		}
+	},
+
+	// Dynamic DNS: services queried (in order) to learn this box's public IP.
+	dynamicDns:{
+		ipServices: [
+			'https://api.ipify.org',
+			'https://icanhazip.com',
+			'https://ifconfig.me/ip',
+		],
 	},
 };

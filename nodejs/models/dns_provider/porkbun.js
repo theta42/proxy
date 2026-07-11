@@ -93,10 +93,17 @@ class PorkBun extends DnsApi{
 		});
 	}
 
+	// Porkbun names an apex record with an empty name.
+	apexName(domainName){
+		return '';
+	}
+
 	async createRecord(domain, options, force = true){
 		try{
-			// Throw errors for missing keys, do this first.
-			options = this.__parseOptions(options, ['type', 'name', 'data']);
+			// Apex ('@') maps to an empty name for Porkbun; because that name is
+			// legitimately falsy, only type+data are required here (not name).
+			if(options.name === '@') options.name = this.apexName(domain.domain);
+			options = this.__parseOptions(options, ['type', 'data']);
 
 			// Delete the current records
 			if(force){

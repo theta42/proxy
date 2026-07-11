@@ -20,6 +20,11 @@ module.exports = {
 			enabled: true,
 			initial: 5000,
 			interval: 86400000,
+		},
+		dynamicDns:{
+			enabled: true,
+			initial: 8000,
+			interval: 14400000,
 		}
 	},
 };
