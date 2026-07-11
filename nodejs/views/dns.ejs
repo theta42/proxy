@@ -63,12 +63,32 @@
 		return row
 	};
 
+	$.scope.DynamicRecord.parseData = function(row){
+		row['fqdn'] = (row.name === '@' || !row.name) ? row.domain : `${row.name}.${row.domain}`;
+		row['last_updated_text'] = row.last_updated ? moment(row.last_updated, "x").fromNow() : 'never';
+		return row;
+	};
+
+	async function ddnsLoadCurrentIp(){
+		try{
+			let res = await app.api.get('dns/dynamic/ip');
+			$('#ddns-current-ip').text(res.ip);
+		}catch(error){
+			$('#ddns-current-ip').text('unavailable');
+		}
+	}
+
 	$(document).ready(async function(){
 		// Set the jq Templates
 		$.scope.providerField.put = function(){};
 		$.scope.DnsProvider.push(...(await app.api.get('dns?detail=true')).results);
 
-		// Populate 
+		// Dynamic DNS: existing records, the domain dropdown, and the current IP.
+		$.scope.DynamicRecord.push(...(await app.api.get('dns/dynamic')).results);
+		$.scope.ddnsDomain.push(...(await app.api.get('dns/domain?detail=true')).results);
+		ddnsLoadCurrentIp();
+
+		// Populate
 		providerGet();
 
 		app.subscribe(/^model:/, function(data, topic){
@@ -204,6 +224,65 @@
 			</div>
 		</div>
 
+	</div>
+</div>
+<div class="row mb-3">
+	<div class="col-12">
+		<div class="card shadow-lg">
+			<div class="card-header">
+				<span class="card-icon float-start"><i class="fa-solid fa-tower-broadcast"></i></span>
+				<span class="card-title">Dynamic A Records (WAN IP)</span>
+				<span class="float-end">Current public IP: <b id="ddns-current-ip">…</b></span>
+			</div>
+			<div class="card-header actionMessage" style="display:none"></div>
+			<div class="card-body">
+				<p class="text-muted">
+					These A records are updated to this server's current public IP every 4 hours
+					(and immediately when added). Use <b>@</b> as the subdomain for the domain apex.
+				</p>
+
+				<form action="dns/dynamic" onsubmit="formAJAX(this)" class="row g-2 align-items-end mb-3">
+					<div class="col-md-4 form-group">
+						<label for="domain" class="form-label">Domain</label>
+						<select name="domain" class="form-select" validate=":1">
+							<option value="" selected>Select a domain</option>
+							<option jq-repeat="ddnsDomain" value="{{domain}}">{{domain}}</option>
+						</select>
+					</div>
+					<div class="col-md-4 form-group">
+						<label for="name" class="form-label">Subdomain</label>
+						<input type="text" name="name" class="form-control" placeholder="ex: home  (or @ for apex)" validate=":1" />
+					</div>
+					<div class="col-md-4 form-group">
+						<button type="submit" class="btn btn-success">
+							<i class="fa-solid fa-plus"></i> Add
+						</button>
+					</div>
+				</form>
+
+				<table class="table table-sm align-middle">
+					<thead>
+						<tr><th>Host</th><th>Current IP</th><th>Last updated</th><th>Status</th><th class="text-end">Actions</th></tr>
+					</thead>
+					<tbody>
+						<tr jq-repeat="DynamicRecord" jq-repeat-index="id">
+							<td><b>{{ fqdn }}</b></td>
+							<td>{{ last_ip }}</td>
+							<td>{{ last_updated_text }}</td>
+							<td>{{ last_status }}</td>
+							<td class="text-end">
+								<button type="button" class="btn btn-sm btn-warning" method="POST" action="dns/dynamic/{{id}}/refresh" onclick="formAJAX()">
+									<i class="fa-solid fa-rotate"></i>
+								</button>
+								<button type="button" class="btn btn-sm btn-danger" method="DELETE" action="dns/dynamic/{{id}}" onclick="formAJAX()">
+									<i class="fa-solid fa-trash-can"></i>
+								</button>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
 	</div>
 </div>
 <%- include('bottom') %>

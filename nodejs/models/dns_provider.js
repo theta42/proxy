@@ -7,6 +7,7 @@ const Table = require('.');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
+const {planARecordUpdate} = require('../utils/dns_records');
 
 const providers = {
 	Cloudflare: require('./dns_provider/cloudflare'),
@@ -45,6 +46,28 @@ class Domain extends Table{
 
 	async deleteRecords(...args){
 		return await this.provider.api.deleteRecords(this, ...args);
+	}
+
+	/**
+	 * Provider-agnostic upsert of a single A record to `ip`. Providers'
+	 * createRecord is not a reliable cross-provider upsert (CloudFlare returns the
+	 * stale record on a duplicate, DigitalOcean duplicates, CloudFlare's
+	 * deleteRecords is a no-op), but all three expose getRecords + deleteRecordById,
+	 * so reconcile explicitly. `name` is a sub-label or '@' for apex.
+	 */
+	async upsertARecord(name, ip){
+		let sub = (name === '@' || name === '') ? '' : name;
+		let aRecords = await this.getRecords({type: 'A'});
+		let {deleteIds, create} = planARecordUpdate(aRecords, sub, ip);
+
+		for(let id of deleteIds){
+			await this.provider.api.deleteRecordById(this, id);
+		}
+		if(create){
+			await this.createRecord({type: 'A', name: (sub === '' ? '@' : sub), data: ip});
+		}
+
+		return {ip, changed: create || deleteIds.length > 0};
 	}
 }
 

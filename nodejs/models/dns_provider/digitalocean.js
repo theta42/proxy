@@ -70,6 +70,8 @@ class DigitalOcean extends DnsApi{
 	}
 
 	async createRecord(domain, options){
+		// DigitalOcean names an apex record '@' (the base apexName default).
+		if(options.name === '@') options.name = this.apexName(domain.domain);
 		options = this.__parseOptions(options, ['type', 'name', 'data']);
 		let res = await this.axios('post', `/domains/${domain.domain}/records`, options);
 

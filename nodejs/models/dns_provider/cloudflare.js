@@ -90,8 +90,14 @@ class CloudFlare extends DnsApi{
 		});
 	}
 
+	// CloudFlare names an apex record with the full domain (e.g. example.com).
+	apexName(domainName){
+		return domainName;
+	}
+
 	async createRecord(domain, options){
 		try{
+			if(options.name === '@') options.name = this.apexName(domain.domain);
 			let res = await this.axios('post',
 				`${domain.zoneId}/dns_records`,
 				this.__parseOptions(options, ['type', 'name', 'data'])

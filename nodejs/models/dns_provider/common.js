@@ -61,6 +61,14 @@ class DnsApi{
 		if(!['A', 'MX', 'CNAME', 'ALIAS', 'TXT', 'NS', 'AAAA', 'SRV', 'TLSA', 'CAA', 'HTTPS', 'SVCB'].includes(type)) throw new Error('PorkBun API: Invalid type passed')
 	}
 
+	// How this provider names an apex (root-of-domain) record. Callers pass the
+	// sentinel '@' for apex; each provider maps it to its own convention. Default
+	// is '@' (DigitalOcean). CloudFlare uses the full domain name; Porkbun uses
+	// an empty name. Sub-domain records are passed through unchanged.
+	apexName(domainName){
+		return '@';
+	}
+
 
 	/*
 	The API and the generic class interface have different opinions of what keys
