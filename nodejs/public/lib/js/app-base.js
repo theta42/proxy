@@ -372,8 +372,11 @@ app.util = (function(app){
 		for (let {name, value} of $(this).serializeArray()) {
 			console.log(name, value)
 			if (obj[name] === undefined) {
-				if (!value 
+				if (!value
 					&& !$(this).parent().find(`[name="${name}"]`).attr('value')
+					// Keep empty <textarea>s so a cleared field is submitted (and
+					// can reset a list, e.g. the per-host IP/header controls).
+					&& !$(this).filter(`textarea[name="${name}"]`).length
 				){
 					continue;
 				}
