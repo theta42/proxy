@@ -63,12 +63,6 @@
 		return row
 	};
 
-	$.scope.DynamicRecord.parseData = function(row){
-		row['fqdn'] = (row.name === '@' || !row.name) ? row.domain : `${row.name}.${row.domain}`;
-		row['last_updated_text'] = row.last_updated ? moment(row.last_updated, "x").fromNow() : 'never';
-		return row;
-	};
-
 	async function ddnsLoadCurrentIp(){
 		try{
 			let res = await app.api.get('dns/dynamic/ip');
@@ -229,58 +223,76 @@
 <div class="row mb-3">
 	<div class="col-12">
 		<div class="card shadow-lg">
-			<div class="card-header">
-				<span class="card-icon float-start"><i class="fa-solid fa-tower-broadcast"></i></span>
-				<span class="card-title">Dynamic A Records (WAN IP)</span>
-				<span class="float-end">Current public IP: <b id="ddns-current-ip">…</b></span>
+			<div class="card-header d-flex align-items-center">
+				<span class="card-icon me-2"><i class="fa-solid fa-tower-broadcast"></i></span>
+				<span class="card-title">Dynamic A Records</span>
+				<span class="ms-auto text-muted small">
+					This server's public IP:
+					<span class="badge text-bg-primary fs-6"><i class="fa-solid fa-globe me-1"></i><span id="ddns-current-ip">…</span></span>
+				</span>
 			</div>
 			<div class="card-header actionMessage" style="display:none"></div>
+
 			<div class="card-body">
-				<p class="text-muted">
-					These A records are updated to this server's current public IP every 4 hours
-					(and immediately when added). Use <b>@</b> as the subdomain for the domain apex.
+				<p class="text-muted mb-3">
+					These A records are pointed at this server's public IP automatically —
+					every 4 hours and immediately when added. Enter <code>@</code> as the host
+					for the domain apex.
 				</p>
 
-				<form action="dns/dynamic" onsubmit="formAJAX(this)" class="row g-2 align-items-end mb-3">
-					<div class="col-md-4 form-group">
-						<label for="domain" class="form-label">Domain</label>
+				<!-- Add form -->
+				<form action="dns/dynamic" onsubmit="formAJAX(this)" class="row g-2 align-items-end mb-4">
+					<div class="col-12 col-md-5">
+						<label class="form-label">Domain</label>
 						<select name="domain" class="form-select" validate=":1">
-							<option value="" selected>Select a domain</option>
+							<option value="" selected>Select a domain…</option>
 							<option jq-repeat="ddnsDomain" value="{{domain}}">{{domain}}</option>
 						</select>
 					</div>
-					<div class="col-md-4 form-group">
-						<label for="name" class="form-label">Subdomain</label>
-						<input type="text" name="name" class="form-control" placeholder="ex: home  (or @ for apex)" validate=":1" />
+					<div class="col-8 col-md-5">
+						<label class="form-label">Host</label>
+						<input type="text" name="name" class="form-control" placeholder="home   ·   @ for apex" validate=":1" />
+						<b class="invalid-feedback"></b>
 					</div>
-					<div class="col-md-4 form-group">
-						<button type="submit" class="btn btn-success">
-							<i class="fa-solid fa-plus"></i> Add
-						</button>
+					<div class="col-4 col-md-2 d-grid">
+						<button type="submit" class="btn btn-success"><i class="fa-solid fa-plus me-1"></i>Add</button>
 					</div>
 				</form>
 
-				<table class="table table-sm align-middle">
-					<thead>
-						<tr><th>Host</th><th>Current IP</th><th>Last updated</th><th>Status</th><th class="text-end">Actions</th></tr>
-					</thead>
-					<tbody>
-						<tr jq-repeat="DynamicRecord" jq-repeat-index="id">
-							<td><b>{{ fqdn }}</b></td>
-							<td>{{ last_ip }}</td>
-							<td>{{ last_updated_text }}</td>
-							<td>{{ last_status }}</td>
-							<td class="text-end">
-								<button type="button" class="btn btn-sm btn-warning" method="POST" action="dns/dynamic/{{id}}/refresh" onclick="formAJAX()">
-									<i class="fa-solid fa-rotate"></i>
-								</button>
-								<button type="button" class="btn btn-sm btn-danger" method="DELETE" action="dns/dynamic/{{id}}" onclick="formAJAX()">
-									<i class="fa-solid fa-trash-can"></i>
-								</button>
-							</td>
-						</tr>
-					</tbody>
-				</table>
+				<!-- Record list -->
+				<div class="list-group">
+					<div jq-repeat="DynamicRecord" jq-repeat-index="id"
+						class="list-group-item d-flex align-items-center flex-wrap gap-2">
+
+						<div class="me-auto">
+							<div class="fw-bold fs-5">
+								<i class="fa-solid fa-circle-nodes text-secondary me-1"></i>{{ fqdn }}
+							</div>
+							<div class="small text-muted">
+								{{#last_ip}}
+									<i class="fa-solid fa-arrow-right-long"></i>
+									<span class="badge text-bg-success">{{ last_ip }}</span>
+									updated <span class="momentFromNow" data-date="{{ last_updated }}">recently</span>
+								{{/last_ip}}
+								{{^last_ip}}
+									<span class="badge text-bg-secondary">awaiting first update…</span>
+								{{/last_ip}}
+								{{#last_status}}
+									<span class="text-danger ms-2"><i class="fa-solid fa-triangle-exclamation me-1"></i>{{ last_status }}</span>
+								{{/last_status}}
+							</div>
+						</div>
+
+						<button type="button" class="btn btn-sm btn-outline-secondary" title="Update now"
+							method="POST" action="dns/dynamic/{{id}}/refresh" onclick="formAJAX()">
+							<i class="fa-solid fa-rotate"></i>
+						</button>
+						<button type="button" class="btn btn-sm btn-outline-danger" title="Remove"
+							method="DELETE" action="dns/dynamic/{{id}}" onclick="formAJAX()">
+							<i class="fa-solid fa-trash-can"></i>
+						</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

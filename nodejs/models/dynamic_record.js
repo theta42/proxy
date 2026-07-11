@@ -51,6 +51,12 @@ class DynamicRecord extends Table{
 		return (this.name === '@' || !this.name) ? this.domain : `${this.name}.${this.domain}`;
 	}
 
+	// Expose a derived fqdn to the client (REST list + websocket payloads both
+	// serialize via toJSON), so the UI doesn't depend on client-side parsing.
+	toJSON(){
+		return {...super.toJSON(), fqdn: this.fqdn()};
+	}
+
 	// Point this record at `ip` and record the outcome. Never throws — a single
 	// bad record must not abort a whole refresh cycle.
 	async apply(ip){
@@ -58,7 +64,8 @@ class DynamicRecord extends Table{
 			let Domain = require('.').models.Domain;
 			let domain = await Domain.get(this.domain);
 			let res = await domain.upsertARecord(this.name, ip);
-			await this.update({last_ip: ip, last_status: 'ok', last_updated: Date.now()});
+			// Empty status on success so the UI only surfaces actual errors.
+			await this.update({last_ip: ip, last_status: '', last_updated: Date.now()});
 			return res;
 		}catch(error){
 			console.error('DynamicRecord.apply', this.id, error.message);
