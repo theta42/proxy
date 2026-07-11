@@ -189,7 +189,7 @@
 					<div class="card-footer">
 						Added <b class="momentFromNow" data-date="{{ updated_on }}">{{ created_on_text }}</b> by <b>{{ created_by }}</b>
 						<span class="float-end text-end">
-							<button type="button" class="btn btn-warning" method="POST" action="/dns/domain/refresh/{{id}}" onclick="formAJAX()">
+							<button type="button" class="btn btn-warning" method="POST" action="dns/domain/refresh/{{id}}" onclick="formAJAX()">
 								<i class="fa-solid fa-rotate"></i>
 							</button>
 							<button type="button" class="btn btn-danger" method="DELETE" action="dns/{{id}}" onclick="formAJAX()">
