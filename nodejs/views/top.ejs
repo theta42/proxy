@@ -57,8 +57,18 @@
 						</a>
 					</li>
 					<li class="nav-item nav-admin" style="display: none;">
-						<a class="nav-link" href="/grants"><i class="fa-solid fa-user-shield"></i>
-							Grants
+						<a class="nav-link" href="/permissions"><i class="fa-solid fa-user-shield"></i>
+							Permissions
+						</a>
+					</li>
+					<li class="nav-item nav-admin" style="display: none;">
+						<a class="nav-link" href="/groups"><i class="fa-solid fa-users-gear"></i>
+							Groups
+						</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" href="/profile"><i class="fa-solid fa-id-badge"></i>
+							Profile
 						</a>
 					</li>
 					<li class="nav-item">
@@ -68,6 +78,9 @@
 					</li>
 				</ul>
 				<div class="form-inline mt-2 mt-md-0">
+					<a id="cl-username" class="navbar-text text-light me-3" href="/profile" style="display: none;">
+						<i class="fa-solid fa-user me-1"></i><span id="cl-username-text"></span>
+					</a>
 					<a id="cl-login-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.forceLogin()" style="display: none;">
 						<i class="fas fa-sign-out"></i>
 						Login
@@ -95,8 +108,15 @@
 				// Set the correct login/logout button, and reveal admin-only nav
 				// items for global admins.
 				app.auth.isLoggedIn(function(error, data){
-					if(data) $('#cl-logout-button').show();
-					else $('#cl-login-button').show();
+					if(data){
+						$('#cl-logout-button').show();
+						if(data.username){
+							$('#cl-username-text').text(data.username);
+							$('#cl-username').css('display', '');
+						}
+					}else{
+						$('#cl-login-button').show();
+					}
 
 					if(data && data.isAdmin) $('.nav-admin').css('display', '');
 				});

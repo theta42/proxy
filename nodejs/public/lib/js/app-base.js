@@ -308,26 +308,67 @@ app.user = (function(app){
 
 })(app);
 
-app.grant = (function(app){
+app.permission = (function(app){
 	function list(callback){
-		app.api.get('grant/', function(error, data){
+		app.api.get('permission/', function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function subjects(callback){
+		app.api.get('permission/subjects', function(error, data){
 			callback(error, data);
 		});
 	}
 
 	function add(args, callback){
-		app.api.post('grant/', args, function(error, data){
+		app.api.post('permission/', args, function(error, data){
 			callback(error, data);
 		});
 	}
 
 	function remove(id, callback){
-		app.api.delete('grant/' + encodeURIComponent(id), function(error, data){
+		app.api.delete('permission/' + encodeURIComponent(id), function(error, data){
 			callback(error, data);
 		});
 	}
 
-	return {list, add, remove};
+	return {list, subjects, add, remove};
+
+})(app);
+
+app.group = (function(app){
+	function list(callback){
+		app.api.get('group/', function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function add(args, callback){
+		app.api.post('group/', args, function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function remove(name, callback){
+		app.api.delete('group/' + encodeURIComponent(name), function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function addMember(name, username, callback){
+		app.api.post('group/' + encodeURIComponent(name) + '/members', {username}, function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function removeMember(name, username, callback){
+		app.api.delete('group/' + encodeURIComponent(name) + '/members/' + encodeURIComponent(username), function(error, data){
+			callback(error, data);
+		});
+	}
+
+	return {list, add, remove, addMember, removeMember};
 
 })(app);
 

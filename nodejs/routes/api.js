@@ -22,7 +22,10 @@ router.use('/dns', middleware.auth, require('./dns'));
 // API routes for working with hosts. All endpoints need to be have valid user.
 router.use('/cert', middleware.auth, require('./cert'));
 
-// Grant management (who can manage which domains) is global-admin-only.
-router.use('/grant', middleware.auth, authz.requireAdmin, require('./grant'));
+// Permission management (who can manage which domains) is global-admin-only.
+router.use('/permission', middleware.auth, authz.requireAdmin, require('./permission'));
+
+// Local group management is global-admin-only.
+router.use('/group', middleware.auth, authz.requireAdmin, require('./group'));
 
 module.exports = router;
