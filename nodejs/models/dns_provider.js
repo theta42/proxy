@@ -96,12 +96,15 @@ class DnsProvider extends Table{
 		}catch(error){
 			if(error.name === 'UnauthorizedDnsApi'){
 				let keys = [];
-				console.log('Provider', Provider)
 				for(let key in Provider._keyMap){
 					keys.push({'key': key, message: 'Invalid Key'})
 				}
 				throw this.errors.ObjectValidateError(keys, "API rejected key");
 			}
+			// Don't swallow other failures (e.g. a domain-sync validation error):
+			// returning undefined here made the route crash on `item.id` with an
+			// opaque message. Surface the real error to the caller instead.
+			throw error;
 		}
 	}
 
@@ -145,7 +148,11 @@ class DnsProvider extends Table{
 				created_by: this.created_by,
 				domain: domain.domain,
 				dnsProvider_id: this.id,
-				zoneId: domain.zoneId,
+				// Only providers with a zone concept (e.g. Cloudflare) return a
+				// zoneId. Porkbun/DigitalOcean don't, and passing an explicit
+				// `undefined` trips model-redis' type check ("zoneId is not string
+				// type") and aborts the whole sync — so omit it when absent.
+				...(domain.zoneId !== undefined ? {zoneId: domain.zoneId} : {}),
 			});
 		}
 		console.log('currentDomains:', currentDomains)
