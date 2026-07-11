@@ -5,6 +5,7 @@ const {Host, Domain} = require('../models').models;
 const authz = require('../middleware/authz');
 const {normalizeHostFeatures} = require('../utils/host_features');
 const {collectHostFieldErrors} = require('../utils/hostname_validate');
+const {hashBasicAuthUsers} = require('../utils/basicauth');
 
 const Model = Host;
 
@@ -13,6 +14,15 @@ const Model = Host;
 function validateHostFields(body){
 	let errors = collectHostFieldErrors(body);
 	if(errors.length) throw Model.errors.ObjectValidateError(errors);
+}
+
+// After normalizeHostFeatures has parsed basic-auth creds to {user: plaintext},
+// hash them so plaintext never reaches Redis. Runs at the route layer only, so
+// internally-copied records (cache/wildcard children) keep their existing hashes.
+function hashHostSecrets(body){
+	if(body.basicauth_users && typeof body.basicauth_users === 'object'){
+		body.basicauth_users = hashBasicAuthUsers(body.basicauth_users);
+	}
 }
 
 router.get('/', async function(req, res, next){
@@ -35,6 +45,7 @@ router.post('/', authz.requireDomainRole('manager', authz.resolve.hostBody), asy
 		req.body.created_by = authz.reqUsername(req);
 		validateHostFields(req.body);
 		normalizeHostFeatures(req.body);
+		hashHostSecrets(req.body);
 		let item = await Model.create(req.body);
 
 		return res.json({
@@ -100,6 +111,7 @@ router.put('/:item', authz.requireDomainRole('manager', authz.resolve.hostParam)
 		req.body.updated_by = authz.reqUsername(req);
 		validateHostFields(req.body);
 		normalizeHostFeatures(req.body);
+		hashHostSecrets(req.body);
 		let item = await Model.get(req.params.item);
 		item = await item.update(req.body);
 

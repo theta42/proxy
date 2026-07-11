@@ -11,6 +11,13 @@
 const MAX_HEADERS = 50;          // per direction (req/resp)
 const MAX_HEADER_VALUE = 2048;   // chars
 const MAX_CIDRS = 200;           // per list (allow/deny)
+const MAX_BASICAUTH_USERS = 100;
+const MAX_PASSWORD = 256;
+const MAX_REALM = 128;
+
+// Basic-auth username: printable ASCII, no space or control chars. ':' can't
+// appear (we split on the first ':'), but the class excludes it anyway.
+const BASICAUTH_USER_RE = /^[\x21-\x39\x3B-\x7e]+$/;
 
 // RFC 7230 header field-name token characters.
 const HEADER_NAME_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
@@ -125,6 +132,56 @@ function stringifyCidrs(arr){
 	return arr.join('\n');
 }
 
+/**
+ * "username:password" lines -> { username: password } (plaintext). The first
+ * ':' splits; usernames are validated and CR/LF is stripped from passwords.
+ * Lines without a password are dropped. Hashing happens server-side
+ * (utils/basicauth.js) — this stays pure so the browser can share it.
+ */
+function parseBasicAuthLines(text){
+	let out = {};
+	if(text === undefined || text === null) return out;
+
+	for(let line of String(text).split(/\r?\n/)){
+		line = line.replace(/[\r\n]/g, '');
+		if(!line.trim()) continue;
+		let idx = line.indexOf(':');
+		if(idx === -1) continue;
+
+		let user = line.slice(0, idx).trim();
+		let pass = line.slice(idx + 1).slice(0, MAX_PASSWORD);
+		if(!user || !pass) continue;
+		if(!BASICAUTH_USER_RE.test(user)) continue;
+
+		out[user] = pass;
+		if(Object.keys(out).length >= MAX_BASICAUTH_USERS) break;
+	}
+	return out;
+}
+
+/** Sanitize an already-object credential map ({user: password}) the same way. */
+function sanitizeBasicAuthObject(obj){
+	let out = {};
+	if(!obj || typeof obj !== 'object') return out;
+
+	for(let user of Object.keys(obj)){
+		if(!BASICAUTH_USER_RE.test(user)) continue;
+		let pass = String(obj[user]).replace(/[\r\n]/g, '').slice(0, MAX_PASSWORD);
+		if(!pass) continue;
+		out[user] = pass;
+		if(Object.keys(out).length >= MAX_BASICAUTH_USERS) break;
+	}
+	return out;
+}
+
+/** Realm goes into a WWW-Authenticate header; strip CR/LF and quotes, cap len. */
+function sanitizeRealm(value){
+	return String(value === undefined || value === null ? '' : value)
+		.replace(/[\r\n"]/g, '')
+		.trim()
+		.slice(0, MAX_REALM);
+}
+
 function toBool(v){
 	return v === true || v === 'true';
 }
@@ -151,6 +208,23 @@ function normalizeHostFeatures(body){
 	if('ratelimit_enabled' in body) body.ratelimit_enabled = toBool(body.ratelimit_enabled);
 	if('respcache_enabled' in body)  body.respcache_enabled  = toBool(body.respcache_enabled);
 	if('hsts_enabled' in body)       body.hsts_enabled       = toBool(body.hsts_enabled);
+	if('basicauth_enabled' in body)  body.basicauth_enabled  = toBool(body.basicauth_enabled);
+
+	if('basicauth_realm' in body) body.basicauth_realm = sanitizeRealm(body.basicauth_realm);
+
+	if('basicauth_users' in body){
+		let users = typeof body.basicauth_users === 'string'
+			? parseBasicAuthLines(body.basicauth_users)
+			: sanitizeBasicAuthObject(body.basicauth_users);
+		// Empty input means "leave the existing users untouched" (passwords are
+		// never echoed to the form, so a blank textarea must not wipe them). Drop
+		// the key so the partial update skips it. Disable basic auth to clear.
+		if(Object.keys(users).length === 0){
+			delete body.basicauth_users;
+		}else{
+			body.basicauth_users = users;
+		}
+	}
 
 	if('ratelimit_rate' in body)  body.ratelimit_rate  = clampNumber(body.ratelimit_rate, 1, 1000000, 10);
 	if('ratelimit_burst' in body) body.ratelimit_burst = clampNumber(body.ratelimit_burst, 0, 1000000, 20);
@@ -181,8 +255,9 @@ function normalizeHostFeatures(body){
 }
 
 module.exports = {
-	MAX_HEADERS, MAX_HEADER_VALUE, MAX_CIDRS,
+	MAX_HEADERS, MAX_HEADER_VALUE, MAX_CIDRS, MAX_BASICAUTH_USERS,
 	parseHeaderLines, stringifyHeaders, sanitizeHeaderObject,
 	isValidCidr, parseCidrLines, sanitizeCidrArray, stringifyCidrs,
+	parseBasicAuthLines, sanitizeBasicAuthObject, sanitizeRealm,
 	normalizeHostFeatures,
 };

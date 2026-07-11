@@ -41,6 +41,12 @@ class Host extends Table{
 		'ratelimit_burst': {default: 20, isRequired: false, type: 'number', min: 0, max: 1000000},
 		'respcache_enabled': {default: false, isRequired: false, type: 'boolean',},
 		'hsts_enabled': {default: false, isRequired: false, type: 'boolean',},
+		// Per-host HTTP basic auth. basicauth_users is {username: base64(sha1(pw))}
+		// (hashed at the route layer, see utils/basicauth.js); enforced in
+		// ops/nginx_conf/hostfeatures.lua.
+		'basicauth_enabled': {default: false, isRequired: false, type: 'boolean',},
+		'basicauth_realm': {default: 'Restricted', isRequired: false, type: 'string', min: 1, max: 128},
+		'basicauth_users': {default: function(){return {}}, isRequired: false, type: 'object',},
 		'req_headers': {default: function(){return {}}, isRequired: false, type: 'object',},
 		'resp_headers': {default: function(){return {}}, isRequired: false, type: 'object',},
 		'ip_allow': {default: function(){return []}, isRequired: false, type: 'object',},

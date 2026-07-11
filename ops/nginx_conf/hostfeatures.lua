@@ -10,6 +10,8 @@
 --   req_headers  (JSON object)  -- added to the upstream request
 --   resp_headers (JSON object)  -- added to the client response
 --   ip_allow / ip_deny (JSON arrays of CIDRs)
+--   basicauth_enabled / basicauth_realm
+--   basicauth_users (JSON object {username: base64(sha1(password))})
 
 local cjson = require "cjson.safe"
 
@@ -80,6 +82,47 @@ local function apply_ratelimit(res, host, ip)
     end
 end
 
+-- Per-host HTTP basic auth. Credentials are stored as {user: base64(sha1(pw))}
+-- (htpasswd "{SHA}" scheme; hashed server-side in nodejs). Fails closed: any
+-- misconfig or bad credential returns 401 with a WWW-Authenticate challenge.
+local function apply_basicauth(res)
+    if res["basicauth_enabled"] ~= "true" then return end
+
+    local realm = res["basicauth_realm"]
+    if not realm or realm == "" then realm = "Restricted" end
+    realm = realm:gsub('[\r\n"]', "")   -- defense in depth for the header
+
+    local function deny()
+        ngx.header["WWW-Authenticate"] = 'Basic realm="' .. realm .. '"'
+        return ngx.exit(401)
+    end
+
+    local users = decode_table(res["basicauth_users"])
+    if not users then return deny() end   -- enabled but no users -> deny all
+
+    local header = ngx.var.http_authorization
+    if not header then return deny() end
+    local b64 = header:match("^%s*[Bb]asic%s+(%S+)%s*$")
+    if not b64 then return deny() end
+
+    local decoded = ngx.decode_base64(b64)
+    if not decoded then return deny() end
+    local user, pass = decoded:match("^([^:]*):(.*)$")
+    if not user or user == "" then return deny() end
+
+    local stored = users[user]
+    if not stored then return deny() end
+
+    local sha1 = require "resty.sha1"
+    local hasher = sha1:new()
+    if not hasher then return deny() end
+    hasher:update(pass or "")
+    local computed = ngx.encode_base64(hasher:final())
+
+    if computed ~= stored then return deny() end
+    -- authenticated: fall through to the rest of the request
+end
+
 -- Extra request headers sent to the upstream.
 local function apply_req_headers(res)
     local headers = decode_table(res["req_headers"])
@@ -97,6 +140,7 @@ function M.access(ngx_, res)
 
     apply_ip_access(res, ip)
     apply_ratelimit(res, host, ip)
+    apply_basicauth(res)
     apply_req_headers(res)
 
     -- Cache gate for proxy_no_cache / proxy_cache_bypass. Opt-in per host.
