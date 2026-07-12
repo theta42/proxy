@@ -43,6 +43,27 @@ This installer will:
 - Configure systemd service
 - Start the proxy service
 
+## Logs (Docker)
+
+The all-in-one image runs OpenResty in the foreground and the Node app in the
+background, both writing to the container's stdout/stderr. The proxy's nginx
+access/error logs go to files (`/var/log/nginx`, on the `proxy-logs` volume),
+so they do **not** show up in `docker logs`.
+
+```bash
+# App + OpenResty (stdout/stderr)
+docker compose logs -f proxy
+# or, by container name:
+docker logs -f proxy
+
+# nginx access / error logs (in-container files, not in docker logs)
+docker compose exec proxy tail -f /var/log/nginx/access.log
+docker compose exec proxy tail -f /var/log/nginx/error.log
+
+# Recent context
+docker compose logs --tail=200 --since=10m proxy
+```
+
 ## Manual Installation
 
 For manual installation or other distributions, see the detailed steps below.

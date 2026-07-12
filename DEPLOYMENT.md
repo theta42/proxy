@@ -89,6 +89,20 @@ lost on container recreation). For cert persistence, enable Redis persistence
 in `docker-entrypoint.sh` or mount a redis AOF/RDB volume. Port 80 is required
 for HTTP-01 challenges (mapped in the compose).
 
+### Logs
+
+OpenResty runs in the foreground and the Node app in the background, both
+writing to the container's stdout/stderr. nginx access/error logs go to files
+(`/var/log/nginx`, on the `proxy-logs` volume), so they do **not** appear in
+`docker logs`.
+
+```bash
+docker compose logs -f proxy                       # app + OpenResty (stdout/stderr)
+docker compose exec proxy tail -f /var/log/nginx/error.log   # nginx errors
+docker compose exec proxy tail -f /var/log/nginx/access.log  # nginx access
+docker compose logs --tail=200 --since=10m proxy    # recent context
+```
+
 ---
 
 ## Method 2: Bare metal (Debian/Ubuntu)
