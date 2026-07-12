@@ -18,7 +18,9 @@ unified [theta-env](https://github.com/theta42/theta-env) stack.
 ```bash
 git clone https://github.com/theta42/proxy.git
 cd proxy
-cp .env.example .env   # optional: set OIDC/LDAP wiring + ports
+mkdir -p config && chmod 700 config
+cp secrets.js.example config/proxy-secrets.js   # set OIDC/LDAP wiring
+$EDITOR config/proxy-secrets.js
 docker compose up -d --build
 ```
 
@@ -36,9 +38,17 @@ which deep-merges, in order:
 3. `conf/secrets.js` (gitignored)
 4. **`app_*` environment variables** — the highest-precedence layer
 
+The bundled `docker-compose.yml` mount `./config/proxy-secrets.js` at `/config`,
+and `docker-entrypoint.sh` symlinks it into `/app/conf/secrets.js` so the app
+reads the OIDC + LDAP + auth wiring from the file. **No `app_*` env is passed** —
+`app_*` env beats `secrets.js`, so the file is authoritative only if the matching
+`app_*` env is absent. See `secrets.js.example` for the shape.
+
 Any env var starting with `app_` overrides the merged config; the rest of the
 name splits on **double-underscore** (`__`) into a nested path. Values are
-`JSON.parse`-coerced when possible, kept as strings otherwise.
+`JSON.parse`-coerced when possible, kept as strings otherwise. `app_*` env is
+still supported for advanced/standalone use — add the vars to the compose
+`environment:` block yourself (the bundled compose no longer sets them).
 
 > **Requires `@simpleworkjs/conf` >= 1.1.0.** The `app_*` env layer is not
 > honored on 1.0.0. The lock is already on `^1.1.0`.
@@ -76,9 +86,11 @@ for the complete reference.
 
 ## Auto-SSL / Let's Encrypt
 
-`lua-resty-auto-ssl` stores certs in the bundled Redis (in-memory by default —
-lost on container recreation). For cert persistence, mount a Redis AOF/RDB
-volume. Port 80 is required for HTTP-01 challenges (mapped in the compose).
+`lua-resty-auto-ssl` stores certs in the bundled Redis. Redis is now AOF+RDB
+persisted to the `proxy-data` volume (not in-memory), so **Let's Encrypt certs
+survive container recreation** — no re-issue / rate-limit on rebuild. Port 80 is
+required for HTTP-01 challenges (mapped in the compose). Back up + restore Redis
+to back up + restore cert state (see *Backups and restore* in `DEPLOYMENT.md`).
 
 ## Fronting an SSO Manager
 

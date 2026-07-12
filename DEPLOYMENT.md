@@ -59,14 +59,26 @@ in the foreground under `dumb-init`.
 
 ### Setup
 
+The bundled `docker-compose.yml` reads the OIDC + LDAP + auth wiring from a
+bind-mounted `./config/proxy-secrets.js` (not from `app_*` env). Copy the
+example, fill in your secrets, then build + start:
+
 ```bash
-# Minimal: set the OIDC + LDAP wiring, then build + start.
-OIDC_CLIENT_ID=... OIDC_CLIENT_SECRET=... LDAP_BIND_PASSWORD=... \
+mkdir -p config && chmod 700 config
+cp secrets.js.example config/proxy-secrets.js
+$EDITOR config/proxy-secrets.js     # set oidc.clientId/clientSecret, ldap.bindPassword, ...
 docker compose up -d --build
 ```
 
-For a real deployment, put the overrides in a `.env` (or `environment:` in the
-compose). See `docker-compose.yml` for the full set.
+`docker-entrypoint.sh` symlinks `/config/proxy-secrets.js` → `/app/conf/secrets.js`
+so `@simpleworkjs/conf` reads it. No `app_*` env is passed — `app_*` env would
+override the file (env beats secrets.js in `@simpleworkjs/conf`), so the file is
+kept authoritative. `RESOLVER` / `REAL_IP_FROM` / `NODE_ENV` / `NODE_PORT` are
+OpenResty-runtime / process env, not `app_*` config, so they stay in the compose.
+
+> Running the unified `theta-env` stack? Its `setup.sh` generates
+> `./config/proxy-secrets.js` (+ `./config/sso-secrets.js`) for you and
+> registers the OAuth client with the SSO — see the theta-env README.
 
 ### Access
 
@@ -84,10 +96,72 @@ compose). See `docker-compose.yml` for the full set.
 
 ### Auto-SSL / Let's Encrypt
 
-`lua-resty-auto-ssl` stores certs in the bundled Redis (in-memory by default —
-lost on container recreation). For cert persistence, enable Redis persistence
-in `docker-entrypoint.sh` or mount a redis AOF/RDB volume. Port 80 is required
-for HTTP-01 challenges (mapped in the compose).
+`lua-resty-auto-ssl` stores certs in the bundled Redis. Redis is now AOF+RDB
+persisted to the `proxy-data` volume (not in-memory), so **Let's Encrypt certs
+survive container recreation** — no re-issue / rate-limit on rebuild. Port 80 is
+required for HTTP-01 challenges (mapped in the compose).
+
+### Backups and restore
+
+**What lives where**
+
+| State | Location | Persisted? |
+|-------|----------|------------|
+| Host records, permissions, DNS creds, local users | `proxy-data` volume (`/data`, Redis) | yes (AOF + RDB) |
+| Let's Encrypt certs (auto-ssl) | `proxy-data` volume (`/data`, Redis) | yes — same Redis |
+| nginx response cache / logs | `proxy-cache` / `proxy-logs` volumes | yes (volume) |
+| Secrets (OIDC client secret, LDAP bind password) | `./config/proxy-secrets.js` (bind mount) | your responsibility — back up off-host |
+
+**Automatic snapshots** — when run as part of the unified `theta-env` stack,
+`setup.sh` snapshots Redis + `./config/` to `./backups/<timestamp>/` before every
+rebuild and keeps the last `BACKUP_KEEP` (default 5). Standalone deployments use
+the manual steps below.
+
+**Manual backup**
+
+```bash
+# Redis — hot snapshot: trigger a save, then copy the RDB out
+docker compose exec proxy redis-cli BGSAVE
+docker compose cp proxy:/data/dump.rdb proxy-redis-$(date +%F).rdb
+
+# Secrets — copy the config dir (holds OIDC client secret, LDAP bind password)
+cp -a ./config config-backup-$(date +%F) && chmod 700 config-backup-$(date +%F)
+```
+Store the `.rdb` and config copy **off the host** — they contain secrets and
+the whole Host/permission/user dataset.
+
+**Restore — Redis (full proxy state + certs)**
+
+```bash
+cp -a config-backup-<date> ./config && chmod 700 ./config
+docker compose up -d
+docker compose stop proxy
+# AOF wins on startup — delete it so the RDB is loaded instead (see note).
+docker compose run --rm --no-deps --entrypoint sh proxy -c \
+  'rm -f /data/appendonly.aof /data/appendonly.aof.*'
+docker compose cp proxy-redis-<date>.rdb proxy:/data/dump.rdb
+docker compose start proxy
+```
+
+> **AOF vs RDB (important):** with `--appendonly yes`, Redis loads
+> `appendonly.aof` on startup and **ignores** `dump.rdb` if the AOF exists. To
+> restore from an RDB snapshot you **must delete the AOF first** (the runbook
+> does this); Redis then loads the RDB and writes a fresh AOF. Verify:
+> `docker compose exec proxy redis-cli DBSIZE`.
+>
+> Restoring Redis restores cert state **at the snapshot time** — certs issued
+> after the snapshot are lost and will be re-issued on next request.
+
+**Upgrades**
+
+```bash
+./setup.sh          # backs up, then rebuilds — proxy-data keeps Redis state
+# (standalone) docker compose pull && docker compose up -d
+```
+Host records, permissions, DNS creds, local users, and Let's Encrypt certs all
+survive the rebuild because they live on the `proxy-data` volume, not in the
+image. **Migrations note:** if a release ships a `nodejs/migrations/` script,
+run it after upgrading (it transforms in-Redis records); see the release notes.
 
 ### Logs
 

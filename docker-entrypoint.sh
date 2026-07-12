@@ -9,10 +9,13 @@
 #   3. OpenResty        (80/443/4443) — exec'd in the foreground as PID 2 (under
 #                      dumb-init, PID 1) so it receives SIGTERM from `docker stop`.
 #
-# The app reads its config from conf/base.js deep-merged with `app_*` env vars
-# (requires @simpleworkjs/conf >= 1.1.0, pinned in nodejs/package-lock.json). No
-# secrets.js is baked into the image — supply oidc/ldap/auth config via `app_*`
-# env (compose `environment:` / `env_file:`), or mount a conf/secrets.js.
+# The app reads its config from conf/base.js deep-merged with conf/secrets.js
+# and `app_*` env vars (requires @simpleworkjs/conf >= 1.1.0, pinned in
+# nodejs/package-lock.json). No secrets.js is baked into the image. The unified
+# theta-env stack mounts ./config/proxy-secrets.js at /config; this entrypoint
+# symlinks it into /app/conf/secrets.js so the app reads oidc/ldap/auth config
+# from the file (no app_* env needed). Without the mount, supply the same config
+# via `app_*` env (compose `environment:` / `env_file:`).
 #
 # OpenResty config: the committed ops/nginx_conf/*.conf carry the bare-metal
 # home-LAN values (set_real_ip_from 192.168.1.0/24; resolver 192.168.1.1). They
@@ -24,6 +27,19 @@ set -e
 
 info()  { echo "[INFO] $*"; }
 error() { echo "[ERROR] $*" >&2; }
+
+# ── Optional: mount proxy secrets.js ─────────────────────────────────────────
+# When /config/proxy-secrets.js is present (unified theta-env stack, or any
+# deployment that bind-mounts ./config), symlink it into /app/conf/secrets.js so
+# @simpleworkjs/conf reads the oidc/ldap/auth config from the file. No app_* env
+# should then be passed — app_* env beats secrets.js in @simpleworkjs/conf
+# (precedence: base.js < <env>.js < secrets.js < app_* env), so the file is
+# authoritative only if the matching app_* env is absent. When the file is
+# absent the app falls back to app_* env (compose environment / env_file).
+if [[ -f /config/proxy-secrets.js ]]; then
+    ln -sf /config/proxy-secrets.js /app/conf/secrets.js
+    info "Loaded config from /config/proxy-secrets.js (secrets.js authoritative)"
+fi
 
 # ── Fallback SSL cert for lua-resty-auto-ssl ─────────────────────────────────
 # autossl.conf references /etc/ssl/resty-auto-ssl-fallback.{crt,key} — auto-ssl
@@ -77,14 +93,21 @@ if ! openresty -t >/dev/null 2>&1; then
 fi
 
 # ── Redis ───────────────────────────────────────────────────────────────────
-# In-memory, no persistence (cache/session/cert data only). The app,
-# auto-ssl, and targetinfo.lua all reach it at 127.0.0.1:6379 (the redis client
-# default + the one literal in targetinfo.lua). Run in the background
-# (--daemonize no, backgrounded by the shell); the container's lifecycle is
-# owned by OpenResty (exec'd below), and `restart: unless-stopped` in compose
-# handles full restarts.
-info "Starting Redis..."
-redis-server --save "" --appendonly no --daemonize no &
+# Persisted to /data (AOF + RDB) so Host records, permissions, DNS creds, local
+# users, AND the lua-resty-auto-ssl Let's Encrypt certs all survive container
+# recreation (persisting Redis persists the cert store — avoids LE re-issue /
+# rate limits on rebuild). The app, auto-ssl, and targetinfo.lua all reach it at
+# 127.0.0.1:6379 (the redis client default + the one literal in targetinfo.lua).
+# Run in the background (--daemonize no, backgrounded by the shell); the
+# container's lifecycle is owned by OpenResty (exec'd below), and
+# `restart: unless-stopped` in compose handles full restarts.
+REDIS_DATA_DIR="${REDIS_DATA_DIR:-/data}"
+mkdir -p "$REDIS_DATA_DIR"
+chmod 700 "$REDIS_DATA_DIR"
+info "Starting Redis (AOF persisted to $REDIS_DATA_DIR)..."
+redis-server --daemonize no --dir "$REDIS_DATA_DIR" --appendonly yes \
+    --appendfilename appendonly.aof --save 900 1 --save 300 10 --save 60 10000 \
+    --dbfilename dump.rdb &
 REDIS_PID=$!
 for i in $(seq 1 15); do
     if redis-cli ping >/dev/null 2>&1; then info "Redis is ready"; break; fi

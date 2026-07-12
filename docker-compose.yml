@@ -2,15 +2,19 @@
 # (OpenResty + Node management app + Redis in one container).
 #
 # The proxy is an OIDC client of an SSO Manager (or any OIDC provider) AND a
-# direct LDAP client for user lookups. Supply that wiring via `app_*`
-# environment variables — the highest-precedence config layer in
-# @simpleworkjs/conf (>= 1.1.0, pinned in nodejs/package-lock.json). No
-# secrets.js is baked in; set the values here, in a .env file, or via an
-# env_file (the theta42/theta-env unified repo generates one with setup.sh).
+# direct LDAP client for user lookups. That wiring (oidc/ldap/auth) is read from
+# a bind-mounted ./config/proxy-secrets.js — docker-entrypoint.sh symlinks it
+# into /app/conf/secrets.js so @simpleworkjs/conf reads it. No app_* env is
+# passed here: app_* env beats secrets.js in @simpleworkjs/conf (precedence:
+# base.js < <env>.js < secrets.js < app_* env), so the file must be the only
+# source. See secrets.js.example for the shape.
 #
-# Requires @simpleworkjs/conf >= 1.1.0 in the image (env overrides). The lock
-# is already on ^1.1.0; rebuild with `docker compose up -d --build` after any
-# package change.
+# Compose only interpolates the port + OpenResty-runtime defaults below — there
+# is no .env file. Override on the command line if needed:
+#   HTTP_PORT=8080 HTTPS_PORT=8443 docker compose up -d
+#
+# Requires @simpleworkjs/conf >= 1.1.0 in the image. The lock is already on
+# ^1.1.0; rebuild with `docker compose up -d --build` after any package change.
 
 services:
   proxy:
@@ -29,51 +33,26 @@ services:
       # LAN — the OpenResty front proxies the UI/api under its own TLS.
       - "127.0.0.1:${MGMT_PORT:-3000}:3000"
     environment:
-      # ── OpenResty runtime (see docker-entrypoint.sh) ──
+      # OpenResty runtime (see docker-entrypoint.sh). These are NOT app_* config
+      # keys, so they don't conflict with secrets.js. oidc/ldap/auth config comes
+      # from ./config/proxy-secrets.js, not from env.
       # Resolver for upstream names in Host records (default = Docker DNS).
       - RESOLVER=${RESOLVER:-127.0.0.11}
       # Trusted range for X-Real-IP. Empty = proxy is the front (default,
       # removes the real_ip block). Set to an upstream proxy's CIDR if one
       # sits in front and sets X-Real-IP.
       - REAL_IP_FROM=${REAL_IP_FROM:-}
-
-      # ── OIDC client config (app_oidc__*) ──
-      # Point at your SSO Manager. Issuer + authorization/endSession are the
-      # browser-facing URLs; token/userinfo can be the internal URL if the SSO
-      # is on the same docker network (avoids a TLS hairpin through the proxy).
-      - app_oidc__enabled=${OIDC_ENABLED:-true}
-      - app_oidc__issuer=${OIDC_ISSUER:-https://sso.example.com}
-      - app_oidc__authorizationEndpoint=${OIDC_AUTHORIZATION_ENDPOINT:-https://sso.example.com/oauth/authorize}
-      - app_oidc__tokenEndpoint=${OIDC_TOKEN_ENDPOINT:-http://sso-manager:3001/oauth/token}
-      - app_oidc__userinfoEndpoint=${OIDC_USERINFO_ENDPOINT:-http://sso-manager:3001/oauth/userinfo}
-      - app_oidc__endSessionEndpoint=${OIDC_ENDSESSION_ENDPOINT:-https://sso.example.com/oauth/logout}
-      - app_oidc__clientId=${OIDC_CLIENT_ID:-}
-      - app_oidc__clientSecret=${OIDC_CLIENT_SECRET:-}
-      - app_oidc__redirectUri=${OIDC_REDIRECT_URI:-https://proxy.example.com/api/auth/oidc/callback}
-
-      # ── LDAP client config (app_ldap__*) ──
-      # Direct user lookups. ldaps:// + rejectUnauthorized=false for a
-      # self-signed cert, or set app_ldap__tlsOptions__ca=<path> for strict.
-      - app_ldap__url=${LDAP_URL:-ldaps://sso-manager:636}
-      - app_ldap__bindDN=${LDAP_BIND_DN:-cn=ldapclient,ou=people,dc=example,dc=com}
-      - app_ldap__bindPassword=${LDAP_BIND_PASSWORD:-}
-      - app_ldap__searchBase=${LDAP_SEARCH_BASE:-ou=people,dc=example,dc=com}
-      - app_ldap__userFilter=${LDAP_USER_FILTER:-(objectClass=inetOrgPerson)}
-      - app_ldap__tlsOptions__rejectUnauthorized=${LDAP_REJECT_UNAUTHORIZED:-false}
-
-      # ── Authorization ──
-      # Local anti-lockout admin (matches auth.adminUsers in conf/base.js).
-      - app_auth__adminUsers=${AUTH_ADMIN_USERS:-proxyadmin}
-
       - NODE_ENV=production
       - NODE_PORT=3000
     volumes:
-      # Let's Encrypt cert store + auto-ssl redis data live with the bundled
-      # redis (in-container, in-memory). Mount these to persist across recreation:
-      #   proxy-cache  -> /var/cache/nginx/proxy  (response cache)
-      #   proxy-logs   -> /var/log/nginx          (access/error logs)
-      # Auto-ssl certs are in the bundled redis (in-memory, lost on recreation)
-      # unless you enable redis persistence in docker-entrypoint.sh.
+      # Operator-edited secrets (proxy-secrets.js). The entrypoint symlinks
+      # /config/proxy-secrets.js -> /app/conf/secrets.js so @simpleworkjs/conf
+      # reads the oidc/ldap/auth config. See secrets.js.example for the shape.
+      - ./config:/config:ro
+      # Persist Redis (AOF + RDB) so Host records, permissions, DNS creds, local
+      # users, AND the lua-resty-auto-ssl Let's Encrypt certs survive container
+      # recreation. Restoring Redis also restores cert state at snapshot time.
+      - proxy-data:/data
       - proxy-cache:/var/cache/nginx/proxy
       - proxy-logs:/var/log/nginx
     healthcheck:
@@ -86,3 +65,4 @@ services:
 volumes:
   proxy-cache:
   proxy-logs:
+  proxy-data:
