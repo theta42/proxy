@@ -200,7 +200,6 @@ class DnsProvider extends Table{
 				...(domain.zoneId !== undefined ? {zoneId: domain.zoneId} : {}),
 			});
 		}
-		console.log('currentDomains:', currentDomains)
 
 		for(let domain of currentDomains){
 			if(!domain) continue

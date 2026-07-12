@@ -37,7 +37,12 @@ async function auth(req, res, next){
 
 async function authIO(socket, next){
 	try{
-		let token = await Auth.checkToken(socket.handshake.auth.token || 0);
+		// No token in the handshake (e.g. a page hit before login, or a socket
+		// opened while logged out) → reject the socket cleanly without doing an
+		// AuthToken.get(0) lookup that throws a noisy EntryNotFound trace.
+		let tok = socket.handshake.auth && socket.handshake.auth.token;
+		if(!tok) return next(Auth.errors.login());
+		let token = await Auth.checkToken(tok);
 		socket.user = token.user;
 		next();
 	}catch(error){

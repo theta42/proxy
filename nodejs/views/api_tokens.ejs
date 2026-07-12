@@ -43,13 +43,21 @@
 	}
 
 	function fmtTime(ms){
-		if(!ms) return '—';
-		return moment(new Date(ms)).fromNow() + ' <span class="text-muted">(' + moment(new Date(ms)).format('YYYY-MM-DD HH:mm') + ')</span>';
+		// created_on/last_used_on come back from Redis as strings (model-redis
+		// only coerces fields with an explicit `type`); moment(value, "x") parses
+		// a numeric string-or-number as a Unix-ms timestamp, unlike new Date(str).
+		if(!ms || Number(ms) === 0) return '—';
+		var t = moment(ms, "x");
+		if(!t.isValid()) return '—';
+		return t.fromNow() + ' <span class="text-muted">(' + t.format('YYYY-MM-DD HH:mm') + ')</span>';
 	}
 	function fmtExpiry(token){
-		if(!token.expires_at) return '<span class="badge text-bg-secondary">never</span>';
-		if(token.isExpired) return '<span class="badge text-bg-danger">expired</span>';
-		return '<span class="badge text-bg-warning text-dark">' + moment(new Date(token.expires_at)).fromNow() + '</span>';
+		// expires_at is type:number (a real number); isExpired is a class getter
+		// that is NOT serialized to the client, so compute expiry here.
+		var exp = Number(token.expires_at);
+		if(!exp) return '<span class="badge text-bg-secondary">never</span>';
+		if(Date.now() > exp) return '<span class="badge text-bg-danger">expired</span>';
+		return '<span class="badge text-bg-warning text-dark">' + moment(exp, "x").fromNow() + '</span>';
 	}
 
 	function processToken(token){
