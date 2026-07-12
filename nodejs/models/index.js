@@ -15,3 +15,4 @@ require('./local_group');
 require('./permission');
 require('./oidc_state');
 require('./sso_session');
+require('./api_token');

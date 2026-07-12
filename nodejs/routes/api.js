@@ -28,4 +28,7 @@ router.use('/permission', middleware.auth, authz.requireAdmin, require('./permis
 // Local group management is global-admin-only.
 router.use('/group', middleware.auth, authz.requireAdmin, require('./group'));
 
+// Self-service API tokens (PATs) — owner-scoped, no admin gate required.
+router.use('/api-token', middleware.auth, require('./api_token'));
+
 module.exports = router;

@@ -87,6 +87,34 @@ OpenResty-runtime / process env, not `app_*` config, so they stay in the compose
   proxies the UI under its own TLS)
 - Health: `http://127.0.0.1:3000/health` → `{"status":"ok"}`
 
+### API tokens (personal access tokens)
+
+Any logged-in user can mint a long-lived bearer token to call the management
+API from scripts/CI/other services, without an OIDC browser session. Tokens are
+self-service and authenticate **as their creator**: the creator's groups are
+snapshotted at mint time (mirroring how the proxy's browser session captures
+groups at login — the proxy never re-queries the IdP), and the existing authz
+layer (`Permission.effectiveFor` / `roles.resolveEffective`) applies unchanged.
+Local groups and owned-domain rights are recomputed live each request; only the
+SSO/LDAP group membership is the mint-time snapshot.
+
+Create one in the UI under **API Tokens** (the token string is shown **once**),
+then use it as a bearer token:
+
+```bash
+curl -H "Authorization: Bearer prx_<id>_<secret>" https://proxy.example.com/api/host
+```
+
+Format: `prx_<id>_<secret>` — the `id` is the lookup key, the `secret` is
+bcrypt-hashed and never stored in plaintext. Rotate or revoke from the same page
+(immediate effect). Optional expiry (in days) at creation. Tokens persist in the
+bundled Redis (AOF — see *Backups and restore*), so they survive rebuilds.
+
+The token carries the creator's effective rights: a global admin's token can
+manage Hosts/Users/Groups; a domain manager's token can manage their own
+domains but `requireAdmin` routes return 403. To tighten permissions after group
+changes, revoke and re-mint the token.
+
 ### OpenResty runtime env
 
 | Variable | Default | Description |

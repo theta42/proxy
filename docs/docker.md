@@ -114,6 +114,24 @@ The [`theta42/theta-env`](https://github.com/theta42/theta-env) unified repo
 automates all four steps with `./setup.sh` — see
 [theta-env docs](https://theta42.github.io/theta-env/).
 
+## API tokens (personal access tokens)
+
+Any logged-in user can mint a long-lived bearer token to call the management API
+from scripts/CI without an OIDC browser session. Self-service; authenticates as
+the creator (groups snapshotted at mint; authz layer unchanged).
+
+Create one under **API Tokens** in the UI (shown once), then:
+
+```bash
+curl -H "Authorization: Bearer prx_<id>_<secret>" https://proxy.example.com/api/host
+```
+
+Rotate/revoke from the same page (immediate effect). Optional expiry at
+creation. The token carries the creator's rights (admin → full mgmt API;
+domain manager → those domains; `requireAdmin` routes 403). To tighten after
+group changes, revoke + re-mint. Tokens persist in Redis (AOF) and survive
+rebuilds.
+
 ## Bare metal
 
 Prefer a systemd install? See the [Installation Guide](installation.html) for

@@ -51,3 +51,43 @@ app.host = (function(app){
 		clearCache: clearCache,
 	}
 })(app);
+
+app.apiToken = (function(app){
+	function list(callback){
+		app.api.get('api-token/', function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function get(id, callback){
+		app.api.get('api-token/' + id, function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function add(args, callback){
+		app.api.post('api-token/', args, function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function update(args, callback){
+		app.api.put('api-token/' + args.id, args, function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function remove(args, callback){
+		app.api.delete('api-token/' + args.id, function(error, data){
+			callback(error, data);
+		});
+	}
+
+	function rotate(args, callback){
+		app.api.post('api-token/' + args.id + '/rotate', {}, function(error, data){
+			callback(error, data);
+		});
+	}
+
+	return {list, get, add, update, remove, rotate};
+})(app);
