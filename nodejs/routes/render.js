@@ -60,6 +60,10 @@ router.get('/profile', async function(req, res, next) {
   res.render('profile', {...values});
 });
 
+router.get('/api-tokens', async function(req, res, next) {
+  res.render('api_tokens', {...values});
+});
+
 // Bare /login (the OIDC callback redirect target) and /login/<path>.
 router.get('/login', async function(req, res, next) {
   res.render('login', {...values, redirect: req.query.redirect});

@@ -2,6 +2,7 @@
 
 const Table = require('../models');
 const {User, AuthToken} = Table.models;
+const {ApiToken} = require('./api_token');
 
 /**
  * Auth Model
@@ -97,6 +98,23 @@ class Auth{
 			throw this.errors.login();
 		}catch(error){
 			console.log('check error', error);
+			throw this.errors.login();
+		}
+	}
+
+	/**
+	 * Validate an `Authorization: Bearer prx_<id>_<secret>` API token.
+	 *
+	 * Returns the authenticated ApiToken record (with created_by + the
+	 * mint-time groups snapshot); middleware/auth.js wraps it into the
+	 * req.token shape the authz layer expects. Every failure collapses to the
+	 * same generic login 401 — no leak of existence / wrong secret / expired.
+	 */
+	static async checkApiToken(raw){
+		try{
+			return await ApiToken.authenticate(raw);
+		}catch(error){
+			console.log('api-token check error', error);
 			throw this.errors.login();
 		}
 	}
