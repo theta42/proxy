@@ -61,27 +61,4 @@ class AuthToken extends Token{
 }
 AuthToken.register();
 
-class InviteToken extends Token{
-	static _keyMap = {
-		...super._keyMap,
-		claimed_by: {default:"__NONE__", isRequired: false, type: 'string',},
-	}
-
-	async consume(data){
-		try{
-			if(this.is_valid){
-				data['is_valid'] = false;
-
-				await this.update(data);
-				return true;
-			}
-			return false;
-
-		}catch(error){
-			throw error;
-		}
-	}
-}
-InviteToken.register();
-
-module.exports = {Token, InviteToken, AuthToken};
+module.exports = {Token, AuthToken};

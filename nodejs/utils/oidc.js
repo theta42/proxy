@@ -36,13 +36,14 @@ function createAuthRequest(){
 	return {state, codeVerifier, codeChallenge};
 }
 
-// Build the SSO authorize URL the browser is redirected to.
-function buildAuthUrl(state, codeChallenge){
+// Build the SSO authorize URL the browser is redirected to. `redirectUri`
+// overrides conf.oidc.redirectUri (per-host SSO uses a per-host callback).
+function buildAuthUrl(state, codeChallenge, redirectUri){
 	let o = conf.oidc;
 	let params = new URLSearchParams({
 		response_type: 'code',
 		client_id: o.clientId,
-		redirect_uri: o.redirectUri,
+		redirect_uri: redirectUri || o.redirectUri,
 		scope: (o.scopes || ['openid', 'profile', 'email', 'groups']).join(' '),
 		state,
 		code_challenge: codeChallenge,
@@ -51,13 +52,14 @@ function buildAuthUrl(state, codeChallenge){
 	return `${o.authorizationEndpoint}?${params.toString()}`;
 }
 
-// Exchange an authorization code for tokens at the token endpoint.
-async function exchangeCode(code, codeVerifier){
+// Exchange an authorization code for tokens at the token endpoint. `redirectUri`
+// must match the one used in buildAuthUrl (per-host for per-host SSO).
+async function exchangeCode(code, codeVerifier, redirectUri){
 	let o = conf.oidc;
 	let body = new URLSearchParams({
 		grant_type: 'authorization_code',
 		code,
-		redirect_uri: o.redirectUri,
+		redirect_uri: redirectUri || o.redirectUri,
 		client_id: o.clientId,
 		client_secret: o.clientSecret,
 		code_verifier: codeVerifier,

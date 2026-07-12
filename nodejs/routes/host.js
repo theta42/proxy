@@ -1,10 +1,14 @@
 'use strict';
 
 const router = require('express').Router();
-const {Host, Domain} = require('../models').models;
+const conf = require('@simpleworkjs/conf');
+const {Host, Domain, User} = require('../models').models;
+const {LocalGroup} = require('../models/local_group');
+const {Permission} = require('../models/permission');
 const authz = require('../middleware/authz');
 const {normalizeHostFeatures} = require('../utils/host_features');
 const {collectHostFieldErrors} = require('../utils/hostname_validate');
+const {hashBasicAuthUsers} = require('../utils/basicauth');
 
 const Model = Host;
 
@@ -14,6 +18,40 @@ function validateHostFields(body){
 	let errors = collectHostFieldErrors(body);
 	if(errors.length) throw Model.errors.ObjectValidateError(errors);
 }
+
+// After normalizeHostFeatures has parsed basic-auth creds to {user: plaintext},
+// hash them so plaintext never reaches Redis. Runs at the route layer only, so
+// internally-copied records (cache/wildcard children) keep their existing hashes.
+function hashHostSecrets(body){
+	if(body.basicauth_users && typeof body.basicauth_users === 'object'){
+		body.basicauth_users = hashBasicAuthUsers(body.basicauth_users);
+	}
+}
+
+// Autocomplete source for the per-host auth allow-lists (SSO users/groups).
+// Available to any authenticated host editor (not just global admins). Groups
+// are derived from local groups, existing permission group-subjects, and the
+// conf.auth admin/role-map groups.
+router.get('/auth-suggestions', async function(req, res, next){
+	try{
+		let users = [];
+		try{ users = (await User.list()) || []; }catch(error){ /* none */ }
+
+		let groups = new Set();
+		try{ for(let g of await LocalGroup.list()) groups.add(g); }catch(error){ /* none */ }
+		try{
+			for(let p of await Permission.listDetail()){
+				if(p.subjectType === 'group' && p.subject) groups.add(p.subject);
+			}
+		}catch(error){ /* none */ }
+		for(let g of (conf.auth && conf.auth.adminGroups) || []) groups.add(g);
+		for(let g of Object.keys((conf.auth && conf.auth.groupRoleMap) || {})) groups.add(g);
+
+		return res.json({users, groups: [...groups].sort()});
+	}catch(error){
+		return next(error);
+	}
+});
 
 router.get('/', async function(req, res, next){
 	try{
@@ -35,6 +73,7 @@ router.post('/', authz.requireDomainRole('manager', authz.resolve.hostBody), asy
 		req.body.created_by = authz.reqUsername(req);
 		validateHostFields(req.body);
 		normalizeHostFeatures(req.body);
+		hashHostSecrets(req.body);
 		let item = await Model.create(req.body);
 
 		return res.json({
@@ -100,6 +139,7 @@ router.put('/:item', authz.requireDomainRole('manager', authz.resolve.hostParam)
 		req.body.updated_by = authz.reqUsername(req);
 		validateHostFields(req.body);
 		normalizeHostFeatures(req.body);
+		hashHostSecrets(req.body);
 		let item = await Model.get(req.params.item);
 		item = await item.update(req.body);
 

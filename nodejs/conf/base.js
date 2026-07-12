@@ -77,4 +77,13 @@ module.exports = {
 			'https://ifconfig.me/ip',
 		],
 	},
+
+	// Per-host SSO (#57). Reuses conf.oidc for the identity provider. Sessions
+	// are Redis-backed and read directly by OpenResty; the cookie only carries a
+	// random session id.
+	hostSso:{
+		enabled: true,
+		sessionTtl: 28800,          // 8 hours, in seconds
+		cookieName: '__proxy_sso',
+	},
 };
