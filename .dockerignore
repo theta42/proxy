@@ -1,0 +1,32 @@
+# Exclude everything not needed in the all-in-one image. The build context is
+# the repo root; the Dockerfile COPYs nodejs/* (app) + ops/nginx_conf/* (OpenResty
+# config). Keep those, drop the rest.
+
+# Node deps are rebuilt in the image from the lockfile (clean tree).
+nodejs/node_modules/
+nodejs/test/
+nodejs/npm-debug.log*
+
+# Bare-metal installer + chef/vagrant ops not needed in the image.
+ops/install.sh
+ops/cert.sh
+ops/cookbooks/
+ops/roles/
+ops/proxy.service
+Vagrantfile
+
+# Docs site (served via GitHub Pages, not from the image).
+docs/
+.github/
+
+# Git + editor + secrets.
+.git/
+.gitignore
+*.md
+!README.md
+secrets.js
+secrets.json
+*.env
+.env
+.DS_Store
+*.swp

@@ -4,8 +4,13 @@ const { Client, Attribute, Change } = require('ldapts');
 const {Token} = require('./token');
 const conf = require('@simpleworkjs/conf').ldap;
 
+// tlsOptions is optional and forwarded to ldapts so the proxy can bind to
+// ldaps:// with a self-signed or internal-CA cert. Set via conf/secrets.js or
+// app_* env, e.g. app_ldap__tlsOptions__rejectUnauthorized=false, or
+// app_ldap__tlsOptions__ca=/etc/ssl/sso-ldap.crt for strict trust.
 const client = new Client({
   url: conf.url,
+  tlsOptions: conf.tlsOptions || {},
 });
 
 
