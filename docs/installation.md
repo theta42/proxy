@@ -62,13 +62,34 @@ npm --version
 
 ### Step 3: Install OpenResty
 
+openresty.org ships distinct trees for Debian and Ubuntu — use `/package/debian`
+on Debian and `/package/ubuntu` on Ubuntu (using the Ubuntu tree with a Debian
+codename worked on older Debian by coincidence; trixie lives under `/debian`).
+
 ```bash
+# Debian:  OR_PATH=package/debian    Ubuntu/Mint:  OR_PATH=package/ubuntu
+. /etc/os-release
+case "$ID" in debian) OR_PATH=package/debian;; *) OR_PATH=package/ubuntu;; esac
+
 wget -O - https://openresty.org/package/pubkey.gpg | \
   sudo gpg --dearmor -o /usr/share/keyrings/openresty.gpg
 
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | \
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/${OR_PATH} $(lsb_release -sc) main" | \
   sudo tee /etc/apt/sources.list.d/openresty.list
+```
 
+> **Debian 13 (trixie):** apt's sequoia GPG backend rejects SHA-1 signatures by
+> default, and the OpenResty signing key is still SHA-1, so `apt update` will
+> refuse the repo. Extend the SHA-1 acceptance window before updating:
+> ```bash
+> sudo mkdir -p /etc/crypto-policies/back-ends
+> sudo cp /usr/share/apt/default-sequoia.config /etc/crypto-policies/back-ends/apt-sequoia.config
+> sudo sed -i 's/2026-02-01/2028-02-01/' /etc/crypto-policies/back-ends/apt-sequoia.config
+> ```
+> (The `default-sequoia.config` file only ships on Debian 13+, so this is a no-op
+> on older releases. `ops/install.sh` applies this automatically.)
+
+```bash
 apt update && apt install openresty -y
 ```
 

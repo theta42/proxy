@@ -48,10 +48,36 @@ echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.co
 	> /etc/apt/sources.list.d/nodesource.list
 
 echo "==> OpenResty apt source"
+# openresty.org ships distinct trees for Debian vs Ubuntu; pick by distro ID.
+# (Using the ubuntu tree with a Debian codename worked on older Debian by
+# coincidence — trixie lives under /debian, so be explicit.)
+. /etc/os-release 2>/dev/null || true
+case "${ID:-}" in
+	debian) OR_REPO_PATH="package/debian" ;;
+	*)      OR_REPO_PATH="package/ubuntu" ;;   # ubuntu, mint, etc.
+esac
+install -d -m 0755 /usr/share/keyrings
 wget -qO- https://openresty.org/package/pubkey.gpg \
 	| gpg --dearmor --yes -o /usr/share/keyrings/openresty.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" \
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/${OR_REPO_PATH} $(lsb_release -sc) main" \
 	> /etc/apt/sources.list.d/openresty.list
+
+# Debian 13 (trixie) tightened apt's sequoia GPG backend to reject SHA-1
+# signatures, but the OpenResty repo signing key is still SHA-1 — so the next
+# apt-get update would refuse the repo ("unsignable" / weak digest). Extend
+# the SHA-1 acceptance window via a back-end override. The source config only
+# ships on Debian 13+, so this is a no-op on older Debian / Ubuntu. Idempotent:
+# re-runs re-copy the default and re-extend it.
+if [ -f /usr/share/apt/default-sequoia.config ]; then
+	install -d -m 0755 /etc/crypto-policies/back-ends
+	cp -f /usr/share/apt/default-sequoia.config /etc/crypto-policies/back-ends/apt-sequoia.config
+	sed -i 's/2026-02-01/2028-02-01/' /etc/crypto-policies/back-ends/apt-sequoia.config
+	if grep -q '2028-02-01' /etc/crypto-policies/back-ends/apt-sequoia.config; then
+		echo "    extended apt sequoia SHA-1 acceptance to 2028 (OpenResty key is SHA-1)"
+	else
+		echo "    WARNING: sequoia override did not apply (config date string changed?) — apt update may reject the OpenResty repo" >&2
+	fi
+fi
 
 echo "==> Install Node.js + OpenResty"
 apt-get update
