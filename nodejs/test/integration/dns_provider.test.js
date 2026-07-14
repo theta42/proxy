@@ -158,7 +158,7 @@ describe('DNS Provider Contract Compliance', () => {
 		const DuckDns = require('../../models/dns_provider/duckdns');
 
 		test('should meet DNS provider contract', () => {
-			const mockCredentials = {token: 'mock-token', domains: 'mockhost'};
+			const mockCredentials = {token: 'mock-token', subdomains: 'mockhost'};
 			const instance = validateDnsProviderContract(DuckDns, mockCredentials);
 
 			assert.ok(instance, 'DuckDNS provider should be instantiated');
@@ -169,27 +169,27 @@ describe('DNS Provider Contract Compliance', () => {
 			assert.strictEqual(DuckDns._keyMap.token.type, 'string');
 			assert.strictEqual(DuckDns._keyMap.token.isRequired, true);
 			assert.strictEqual(DuckDns._keyMap.token.isPrivate, true);
-			assert.ok(DuckDns._keyMap.domains, 'Should require domains');
-			assert.strictEqual(DuckDns._keyMap.domains.isRequired, true);
+			assert.ok(DuckDns._keyMap.subdomains, 'Should require subdomains');
+			assert.strictEqual(DuckDns._keyMap.subdomains.isRequired, true);
 		});
 
 		test('should have valid method signatures', () => {
-			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			const instance = new DuckDns({token: 'mock-token', subdomains: 'mockhost'});
 			validateMethodSignatures(instance);
 		});
 
 		test('should validate key mapping', () => {
-			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			const instance = new DuckDns({token: 'mock-token', subdomains: 'mockhost'});
 			validateKeyMapping(instance);
 		});
 
 		test('should validate type checking', () => {
-			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			const instance = new DuckDns({token: 'mock-token', subdomains: 'mockhost'});
 			validateTypeChecking(instance);
 		});
 
 		test('rejects non A/AAAA/TXT record creation with a clear error', async () => {
-			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			const instance = new DuckDns({token: 'mock-token', subdomains: 'mockhost'});
 			await assert.rejects(
 				() => instance.createRecord({domain: 'mockhost.duckdns.org'}, {type: 'CNAME', data: 'example.com'}),
 				/DuckDNS only supports A, AAAA and TXT records/
@@ -197,10 +197,41 @@ describe('DNS Provider Contract Compliance', () => {
 		});
 
 		test('__label strips the .duckdns.org suffix', () => {
-			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			const instance = new DuckDns({token: 'mock-token', subdomains: 'mockhost'});
 			assert.strictEqual(instance.__label({domain: 'mockhost.duckdns.org'}), 'mockhost');
 		});
 	});
+});
+
+describe('DNS Provider _keyMap field names', () => {
+	// Regression test for the DuckDNS `domains` field bug: DnsProvider merges
+	// `{...DnsProvider._keyMap, ...Provider._keyMap}` (see __intraModel in
+	// ../../models/dns_provider.js), so a provider field with the same name as
+	// one of DnsProvider's own (created_by, updated_by, name, dnsProvider,
+	// domains, id — see DnsProvider._keyMap) silently overwrites it. That
+	// happened with a DuckDNS field named `domains`, which replaced the
+	// `domains` relation (rel: 'many' to Domain) and broke updateDomains()
+	// with "this.domains.map is not a function". Every registered provider's
+	// _keyMap must avoid these names.
+	//
+	// This checks each provider class directly rather than going through
+	// ../../models/dns_provider.js, which pulls in the Redis-backed Table
+	// base class (model-redis) — not needed for a static field-name check,
+	// and not guaranteed to have a reachable Redis in every test environment.
+	const RESERVED = ['created_by', 'updated_by', 'name', 'dnsProvider', 'domains', 'id'];
+	const providerClasses = {
+		Cloudflare: require('../../models/dns_provider/cloudflare'),
+		DigitalOcean: require('../../models/dns_provider/digitalocean'),
+		PorkBun: require('../../models/dns_provider/porkbun'),
+		DuckDns: require('../../models/dns_provider/duckdns'),
+	};
+
+	for(const [name, ProviderClass] of Object.entries(providerClasses)){
+		test(`${name} does not define a reserved DnsProvider field`, () => {
+			const collisions = Object.keys(ProviderClass._keyMap).filter(key => RESERVED.includes(key));
+			assert.deepStrictEqual(collisions, [], `${name} redefines reserved field(s): ${collisions.join(', ')}`);
+		});
+	}
 });
 
 /**
