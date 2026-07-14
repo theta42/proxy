@@ -13,8 +13,11 @@
  *                      e.g. "*.example.com", "**.mysite.com", "payments.**", and
  *                      a bare "**" as a global catch-all. (Matched by
  *                      Host.lookUp in models/host.js.)
- *   ip (target)      — a concrete destination: an IPv4 address or a strict
- *                      hostname (dotted, alphabetic TLD). No wildcards.
+ *   ip (target)      — a concrete destination: an IPv4 address, a single
+ *                      unqualified label (e.g. "sso-manager" — a Docker
+ *                      Compose service name, or any other host resolvable
+ *                      via /etc/hosts or a search domain), or a dotted
+ *                      hostname with an alphabetic TLD. No wildcards.
  *
  * Pure (no I/O) so it can be unit tested and reused. Enforced at the route layer
  * (routes/host.js) so internally-created entries (wildcard children, on-demand
@@ -23,8 +26,9 @@
 
 // A single DNS label.
 const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
-// A strict hostname: dotted labels + alphabetic TLD (for the target).
-const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+// A strict hostname: either one bare label (Docker service names, /etc/hosts
+// entries, search-domain-relative names) or dotted labels + alphabetic TLD.
+const HOSTNAME = /^(?=.{1,253}$)(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
 // Scheme, path, port, or whitespace — anything that means it isn't a bare host.
 const FORBIDDEN = /[\s/:]/;
 
