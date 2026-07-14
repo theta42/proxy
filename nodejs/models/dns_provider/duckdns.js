@@ -13,7 +13,7 @@ account-wide token. Its API is much smaller than a full DNS provider's:
 - There is no read or list API. `getRecords` here resolves the domain via
   public DNS instead, since that's the only source of truth available.
 - There's no API to enumerate which subdomains a token owns either, so the
-  operator supplies them directly (the `domains` field below) rather than
+  operator supplies them directly (the `subdomains` field below) rather than
   them being discovered like the other providers.
 - Only one A record, one AAAA record, and one TXT record exist per domain,
   always at the domain's own apex — DuckDNS has no concept of sub-records
@@ -23,7 +23,7 @@ account-wide token. Its API is much smaller than a full DNS provider's:
 class DuckDns extends DnsApi{
 	static _keyMap = {
 		token: {isRequired: true, type: 'string', isPrivate: true, displayName: 'Token'},
-		domains: {isRequired: true, type: 'string', displayName: 'Domains (comma-separated, e.g. "myhost,myhost2")'},
+		subdomains: {isRequired: true, type: 'string', displayName: 'Subdomains (comma-separated, e.g. "myhost,myhost2")'},
 	}
 
 	static displayName = 'DuckDNS';
@@ -38,7 +38,7 @@ class DuckDns extends DnsApi{
 	constructor(args){
 		super()
 		this.token = args.token;
-		this.domains = args.domains;
+		this.subdomains = args.subdomains;
 	}
 
 	// DuckDNS has one endpoint for everything: setting ip/ipv6 updates the
@@ -61,7 +61,7 @@ class DuckDns extends DnsApi{
 	// — the same thing an operator would need to do anyway when pointing a
 	// fresh DuckDNS domain at this proxy.
 	async listDomains(){
-		let labels = this.domains.split(',').map(d => d.trim()).filter(Boolean);
+		let labels = this.subdomains.split(',').map(d => d.trim()).filter(Boolean);
 		await this.update(labels.join(','), {});
 
 		return labels.map(label => ({domain: `${label}.duckdns.org`}));

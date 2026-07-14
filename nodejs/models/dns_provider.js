@@ -93,6 +93,13 @@ class DnsProvider extends Table{
 		}
 
 		let Provider = providers[provider];
+		// Provider._keyMap is spread last, so a provider-defined field with the
+		// same name as one of ours (created_by, updated_by, name, dnsProvider,
+		// domains, id — see this._keyMap above) silently overwrites it. This bit
+		// a DuckDNS field named `domains`: it replaced the `domains` relation
+		// (rel: 'many' to Domain), so `this.domains` stopped being an array and
+		// `updateDomains()` broke with "this.domains.map is not a function".
+		// New providers must avoid these names.
 		let _keyMap = {...this._keyMap, ...Provider._keyMap};
 
 		return ({

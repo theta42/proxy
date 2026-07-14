@@ -720,11 +720,11 @@ curl -H "Content-Type: application/json" \
 curl -H "Content-Type: application/json" \
   -H "auth-token: your-token-here" \
   -X POST \
-  -d '{"name": "My DuckDNS", "dnsProvider": "DuckDns", "token": "your-duckdns-token", "domains": "myhost,myhost2"}' \
+  -d '{"name": "My DuckDNS", "dnsProvider": "DuckDns", "token": "your-duckdns-token", "subdomains": "myhost,myhost2"}' \
   https://proxy-host.com/api/dns
 ```
 
-`domains` is a comma-separated list of the subdomains you've registered at
+`subdomains` is a comma-separated list of the subdomains you've registered at
 [duckdns.org](https://www.duckdns.org) (e.g. `myhost` for
 `myhost.duckdns.org`), since DuckDNS has no API to list them for you.
 DuckDNS only supports one A/AAAA record and one TXT record per domain (no
