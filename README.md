@@ -1,8 +1,35 @@
 # Proxy
 
-A reverse proxy and HTTPS termination service using OpenResty/nginx with a management API and web GUI.
+A reverse proxy and HTTPS termination service built on OpenResty/nginx, with a
+management API and web GUI. It puts any of your apps behind single sign-on (OIDC)
+and can also look users up directly in LDAP — so the same people who log in to
+your SSO are the people allowed to reach your proxied apps.
+
+It handles the parts that are tedious to do by hand: automatic HTTPS certificates
+from Let's Encrypt (including wildcards via DNS-01), routing by hostname with
+wildcard matching, and per-host access control tied to your identity provider.
+You manage hosts, DNS providers, and permissions from a web UI or a REST API; the
+proxy serves them over TLS with auto-renewing certs and no downtime on changes.
+
+> Running it together with the [theta42 SSO Manager](https://github.com/theta42/sso-manager-node)?
+> [theta-env](https://github.com/theta42/theta-env) composes the two with one
+> `setup.sh` — it generates the OIDC + LDAP wiring from a single `setup.env` so
+> the proxy and the SSO find each other without manual config.
 
 **Documentation:** [https://theta42.github.io/proxy/](https://theta42.github.io/proxy/)
+
+## Why this over the alternatives
+
+Nginx Proxy Manager, Traefik, and Caddy are all good reverse proxies with
+auto-HTTPS. This one is built around identity: it is both an **OIDC client** of
+an SSO provider (for browser login) **and** a direct **LDAP client** (for user
+lookups and per-host access control), so access decisions come from your real
+user directory, not a static allow-list or a separate auth proxy bolted on top.
+The trade-off is that it expects an OIDC/LDAP identity source to point at — it
+is not a standalone auth server. Pair it with the
+[theta42 SSO Manager](https://github.com/theta42/sso-manager-node) (bundled
+OpenLDAP + OIDC) for a self-hosted SSO + proxy stack, or point it at any OIDC
+provider + LDAP directory you already run.
 
 ## Features
 
@@ -25,9 +52,52 @@ A reverse proxy and HTTPS termination service using OpenResty/nginx with a manag
 - Inbound internet access for Let's Encrypt validation
 - Root access (required for user management features)
 
-## Quick Install
+## Quick start
 
-An automated installer is available for modern Debian-based systems:
+Three ways to run it, in order of how much it sets up for you:
+
+### 1. As part of the unified stack (recommended)
+
+[theta-env](https://github.com/theta42/theta-env) composes this proxy with the
+[theta42 SSO Manager](https://github.com/theta42/sso-manager-node) and generates
+all the wiring (OIDC endpoints, LDAP bind, hostnames) from a single `setup.env`.
+You enter your domain once and the proxy is registered as an OIDC client of the
+SSO automatically:
+
+```bash
+git clone --recursive https://github.com/theta42/theta-env.git
+cd theta-env
+cp setup.env.example setup.env   # set CFG_DOMAIN to your domain
+./setup.sh                       # generates ./config/, builds + bootstraps + starts both
+```
+
+See the [theta-env README](https://github.com/theta42/theta-env) for the full
+first-run flow, DNS/port requirements, and backups.
+
+### 2. Standalone, in Docker
+
+The all-in-one image bundles OpenResty, the Node management app, and Redis. The
+OIDC/LDAP/auth config is read from a bind-mounted `./config/proxy-secrets.js`
+(the OAuth client id/secret are filled in by your SSO's bootstrap, or you set
+them yourself):
+
+```bash
+git clone https://github.com/theta42/proxy.git
+cd proxy
+mkdir -p config && chmod 700 config
+cp secrets.js.example config/proxy-secrets.js
+$EDITOR config/proxy-secrets.js   # point oidc/ldap at your SSO + directory
+docker compose up -d --build
+```
+
+The management UI comes up at `http://127.0.0.1:3000` (bound to localhost; the
+OpenResty front proxies it under TLS on 443). See [DEPLOYMENT.md](DEPLOYMENT.md)
+and `secrets.js.example` for the full config shape.
+
+### 3. Bare metal (Debian/Ubuntu)
+
+An automated installer installs Node.js, OpenResty, Redis, the Lua modules, and
+the app, then symlinks the nginx config and starts a systemd service:
 
 ```bash
 wget -O - https://raw.githubusercontent.com/theta42/proxy/master/ops/install.sh | sudo bash
