@@ -48,18 +48,32 @@ echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.co
 	> /etc/apt/sources.list.d/nodesource.list
 
 echo "==> OpenResty apt source"
-# openresty.org ships distinct trees for Debian vs Ubuntu; pick by distro ID.
-# (Using the ubuntu tree with a Debian codename worked on older Debian by
-# coincidence — trixie lives under /debian, so be explicit.)
+# openresty.org ships distinct trees (and components) for Debian vs Ubuntu.
+# Debian tree: component "openresty", published only up to "bookworm" (no
+# trixie block) — so on a newer Debian host use the host codename when it's
+# published, else fall back to bookworm (binary-compatible with trixie, same
+# OpenSSL 3 era). Ubuntu tree: component "main", use the host codename.
 . /etc/os-release 2>/dev/null || true
+CODENAME="$(lsb_release -sc 2>/dev/null || echo "")"
 case "${ID:-}" in
-	debian) OR_REPO_PATH="package/debian" ;;
-	*)      OR_REPO_PATH="package/ubuntu" ;;   # ubuntu, mint, etc.
+	debian)
+		OR_REPO_PATH="package/debian"
+		OR_COMPONENT="openresty"
+		case "$CODENAME" in
+			jessie|stretch|buster|bullseye|bookworm) OR_DISTRO="$CODENAME" ;;
+			*)                                        OR_DISTRO="bookworm" ;;
+		esac
+		;;
+	*)
+		OR_REPO_PATH="package/ubuntu"
+		OR_DISTRO="$CODENAME"
+		OR_COMPONENT="main"
+		;;
 esac
 install -d -m 0755 /usr/share/keyrings
 wget -qO- https://openresty.org/package/pubkey.gpg \
 	| gpg --dearmor --yes -o /usr/share/keyrings/openresty.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/${OR_REPO_PATH} $(lsb_release -sc) main" \
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/${OR_REPO_PATH} ${OR_DISTRO} ${OR_COMPONENT}" \
 	> /etc/apt/sources.list.d/openresty.list
 
 # Debian 13 (trixie) tightened apt's sequoia GPG backend to reject SHA-1
