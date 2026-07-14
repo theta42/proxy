@@ -200,6 +200,25 @@ describe('DNS Provider Contract Compliance', () => {
 			const instance = new DuckDns({token: 'mock-token', subdomains: 'mockhost'});
 			assert.strictEqual(instance.__label({domain: 'mockhost.duckdns.org'}), 'mockhost');
 		});
+
+		test('__normalizeLabel accepts both the bare label and the full duckdns.org name', () => {
+			const instance = new DuckDns({token: 'mock-token', subdomains: 'mockhost'});
+			assert.strictEqual(instance.__normalizeLabel('mockhost'), 'mockhost');
+			assert.strictEqual(instance.__normalizeLabel('mockhost.duckdns.org'), 'mockhost');
+			assert.strictEqual(instance.__normalizeLabel('MockHost.DuckDNS.org'), 'mockhost');
+		});
+
+		test('listDomains does not double-suffix a subdomains value that already includes .duckdns.org', async () => {
+			const instance = new DuckDns({token: 'mock-token', subdomains: 'nl-theta42.duckdns.org,other'});
+			// Stub out the network call — this test is only about what domain
+			// name(s) listDomains() builds from `subdomains`, not the live API.
+			instance.update = async () => {};
+			const domains = await instance.listDomains();
+			assert.deepStrictEqual(domains, [
+				{domain: 'nl-theta42.duckdns.org'},
+				{domain: 'other.duckdns.org'},
+			]);
+		});
 	});
 });
 

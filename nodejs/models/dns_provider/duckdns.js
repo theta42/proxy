@@ -54,6 +54,18 @@ class DuckDns extends DnsApi{
 		if(status !== 'OK') throw this.errors.unauthorized();
 	}
 
+	// Accepts either the bare label ("myhost") or the full duckdns.org name
+	// ("myhost.duckdns.org", how DuckDNS's own site displays it, and what
+	// operators naturally paste in) — strip a trailing ".duckdns.org" so
+	// both forms end up as the same label. Without this, "myhost.duckdns.org"
+	// would get double-suffixed to "myhost.duckdns.org.duckdns.org", which
+	// tld-extract (not aware duckdns.org is a shared suffix) then misparses
+	// as domain "duckdns.org" — surfacing as a confusing "Domain:duckdns.org
+	// does not exists" error two layers away from the actual cause.
+	__normalizeLabel(value){
+		return value.replace(/\.duckdns\.org$/i, '').toLowerCase();
+	}
+
 	// No API to enumerate owned subdomains, so the operator supplies them.
 	// This call both validates the token and, as a side effect, syncs each
 	// domain's A/AAAA record to this host's current public IP if the token
@@ -61,14 +73,14 @@ class DuckDns extends DnsApi{
 	// — the same thing an operator would need to do anyway when pointing a
 	// fresh DuckDNS domain at this proxy.
 	async listDomains(){
-		let labels = this.subdomains.split(',').map(d => d.trim()).filter(Boolean);
+		let labels = this.subdomains.split(',').map(d => this.__normalizeLabel(d.trim())).filter(Boolean);
 		await this.update(labels.join(','), {});
 
 		return labels.map(label => ({domain: `${label}.duckdns.org`}));
 	}
 
 	__label(domain){
-		return domain.domain.replace(/\.duckdns\.org$/, '');
+		return domain.domain.replace(/\.duckdns\.org$/i, '');
 	}
 
 	// No read API exists; public DNS is the only source of truth available.
