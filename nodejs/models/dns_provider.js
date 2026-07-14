@@ -13,6 +13,7 @@ const providers = {
 	Cloudflare: require('./dns_provider/cloudflare'),
 	DigitalOcean: require('./dns_provider/digitalocean'),
 	PorkBun: require('./dns_provider/porkbun'),
+	DuckDns: require('./dns_provider/duckdns'),
 };
 
 class Domain extends Table{

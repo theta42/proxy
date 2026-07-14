@@ -68,7 +68,7 @@ test/
 
 **dns_provider.test.js**
 - DNS provider contract compliance
-- All existing providers (Cloudflare, DigitalOcean, PorkBun)
+- All existing providers (Cloudflare, DigitalOcean, PorkBun, DuckDNS)
 - Method signatures
 - Key mapping
 - Type validation
