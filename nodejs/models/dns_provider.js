@@ -29,12 +29,35 @@ class Domain extends Table{
 		'zoneId': {isRequired: false, type: 'string'},
 	}
 
+	// Try the exact string first — Domain.create() stores records under the
+	// literal domain it's given (see model-redis' Table.create, which HSETs
+	// under data[this._key] verbatim), and its own final `this.get(...)` to
+	// return the created instance must find that same literal key. Falling
+	// straight to tldExtract normalization here breaks that for any domain
+	// tldExtract doesn't recognize as a shared/public suffix — e.g. a DuckDNS
+	// name like "myhost.duckdns.org" normalizes to "duckdns.org" (tldExtract
+	// has no idea duckdns.org is shared across many independent registrants),
+	// so create() would always throw EntryNotFound on its own read-back
+	// despite the record having just been written successfully.
+	// Only fall back to the normalized parent domain if no exact record
+	// exists — that's what lets callers look up an arbitrary hostname (e.g.
+	// "www.example.com") and find the Domain that governs it (example.com).
 	static async get(domain, ...args){
 		try{
-			domain = tldExtract(domain).domain;
-		}catch{}
+			return await super.get(domain, ...args);
+		}catch(error){
+			if(error.name !== 'EntryNotFound') throw error;
 
-		return await super.get(domain, ...args);
+			let normalized;
+			try{
+				normalized = tldExtract(domain).domain;
+			}catch{
+				throw error;
+			}
+			if(normalized === domain) throw error;
+
+			return await super.get(normalized, ...args);
+		}
 	}
 
 	async getRecords(...args){
@@ -121,9 +144,32 @@ class DnsProvider extends Table{
 			let domains = await provider.listDomains();
 
 			let instance = await super.create.call(__intraModel, data, ...args);
-			await instance.updateDomains(domains);
+			try{
+				await instance.updateDomains(domains);
+			}catch(updateError){
+				// Don't leave a half-created provider behind (e.g. a Domain that
+				// collided with a stale/orphaned record from a previous failed
+				// attempt — see updateDomains' own comment on zoneId omission for
+				// another case this can throw). Re-fetch before removing: `instance`
+				// had its `domains` relation resolved by super.create()'s own
+				// internal get() BEFORE updateDomains() created any Domain rows, so
+				// it's permanently stale (always empty) — removing `instance`
+				// directly would delete the provider but silently leave behind
+				// whatever domains updateDomains() managed to create before failing,
+				// which is exactly the kind of orphan this is meant to prevent.
+				try{
+					await (await this.get(instance.id)).remove();
+				}catch(removeError){
+					console.error('DnsProvider create: failed to roll back', instance.id, 'after updateDomains error:', removeError.message);
+				}
+				throw updateError;
+			}
 
-			return instance;
+			// Same staleness issue as above: re-fetch so the returned instance
+			// (and the API response built from it) reflects the domains
+			// updateDomains() actually just created, not the empty snapshot from
+			// before it ran.
+			return await this.get(instance.id);
 		}catch(error){
 			if(error.name === 'UnauthorizedDnsApi'){
 				let keys = [];
