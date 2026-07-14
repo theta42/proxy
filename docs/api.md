@@ -687,7 +687,7 @@ curl -H "auth-token: your-token-here" \
 ```
 
 **Responses:**
-- `200` `{"results": [{"name": "Cloudflare", "fields": {...}}, {"name": "DigitalOcean", ...}, ...]}`
+- `200` `{"results": [{"name": "Cloudflare", "fields": {...}}, {"name": "DigitalOcean", ...}, {"name": "PorkBun", ...}, {"name": "DuckDns", ...}]}`
 
 ### Create DNS Provider
 
@@ -721,6 +721,21 @@ curl -H "Content-Type: application/json" \
   -d '{"name": "My PorkBun", "dnsProvider": "PorkBun", "apiKey": "pk_xxx", "secretApiKey": "sk_xxx"}' \
   https://proxy-host.com/api/dns
 ```
+
+**DuckDNS (free):**
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"name": "My DuckDNS", "dnsProvider": "DuckDns", "token": "your-duckdns-token", "domains": "myhost,myhost2"}' \
+  https://proxy-host.com/api/dns
+```
+
+`domains` is a comma-separated list of the subdomains you've registered at
+[duckdns.org](https://www.duckdns.org) (e.g. `myhost` for
+`myhost.duckdns.org`), since DuckDNS has no API to list them for you.
+DuckDNS only supports one A/AAAA record and one TXT record per domain (no
+arbitrary sub-records) — enough for dynamic DNS and DNS-01 wildcard certs.
 
 **Responses:**
 - `200` `{"message": "\"provider-id\" added.", ...}`

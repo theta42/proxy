@@ -8,7 +8,7 @@ A reverse proxy and HTTPS termination service using OpenResty/nginx with a manag
 
 - Automated HTTPS/SSL certificate management via Let's Encrypt
 - Support for HTTP-01 (auto-ssl) and DNS-01 (wildcard) ACME challenges
-- Multiple DNS provider integrations (Cloudflare, DigitalOcean, PorkBun)
+- Multiple DNS provider integrations (Cloudflare, DigitalOcean, PorkBun, DuckDNS — DuckDNS is free)
 - Wildcard SSL certificate support with automatic renewal
 - Dynamic host routing with wildcard domain matching (*, **)
 - Web-based management interface
@@ -163,6 +163,13 @@ For wildcard SSL certificates, configure a DNS provider via the web UI or API:
 - **Cloudflare** - Requires API token
 - **DigitalOcean** - Requires API token
 - **PorkBun** - Requires API key and secret API key
+- **DuckDNS** - Free. Requires your account token and the list of subdomains
+  you've registered at [duckdns.org](https://www.duckdns.org) (e.g.
+  `myhost` for `myhost.duckdns.org`). Good option if you don't own a
+  domain — DuckDNS gives you one for free. Note DuckDNS only supports a
+  single A/AAAA record and a single TXT record per domain (no arbitrary
+  subdomains), which is enough for both dynamic DNS and DNS-01 wildcard
+  certs but not for hosting other DNS records.
 
 Once configured, create a wildcard host (e.g., `*.example.com`) and the system will automatically request and manage the DNS-01 challenge certificate.
 

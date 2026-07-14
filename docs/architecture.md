@@ -45,6 +45,7 @@ The proxy system consists of three main components working together to provide h
                           │  - Cloudflare        │
                           │  - DigitalOcean      │
                           │  - PorkBun           │
+                          │  - DuckDNS (free)    │
                           │  (DNS-01 challenges) │
                           └──────────────────────┘
 ```

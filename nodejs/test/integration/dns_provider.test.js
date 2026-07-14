@@ -153,6 +153,54 @@ describe('DNS Provider Contract Compliance', () => {
 			validateTypeChecking(instance);
 		});
 	});
+
+	describe('DuckDNS Provider', () => {
+		const DuckDns = require('../../models/dns_provider/duckdns');
+
+		test('should meet DNS provider contract', () => {
+			const mockCredentials = {token: 'mock-token', domains: 'mockhost'};
+			const instance = validateDnsProviderContract(DuckDns, mockCredentials);
+
+			assert.ok(instance, 'DuckDNS provider should be instantiated');
+		});
+
+		test('should have correct _keyMap structure', () => {
+			assert.ok(DuckDns._keyMap.token, 'Should require token');
+			assert.strictEqual(DuckDns._keyMap.token.type, 'string');
+			assert.strictEqual(DuckDns._keyMap.token.isRequired, true);
+			assert.strictEqual(DuckDns._keyMap.token.isPrivate, true);
+			assert.ok(DuckDns._keyMap.domains, 'Should require domains');
+			assert.strictEqual(DuckDns._keyMap.domains.isRequired, true);
+		});
+
+		test('should have valid method signatures', () => {
+			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			validateMethodSignatures(instance);
+		});
+
+		test('should validate key mapping', () => {
+			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			validateKeyMapping(instance);
+		});
+
+		test('should validate type checking', () => {
+			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			validateTypeChecking(instance);
+		});
+
+		test('rejects non A/AAAA/TXT record creation with a clear error', async () => {
+			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			await assert.rejects(
+				() => instance.createRecord({domain: 'mockhost.duckdns.org'}, {type: 'CNAME', data: 'example.com'}),
+				/DuckDNS only supports A, AAAA and TXT records/
+			);
+		});
+
+		test('__label strips the .duckdns.org suffix', () => {
+			const instance = new DuckDns({token: 'mock-token', domains: 'mockhost'});
+			assert.strictEqual(instance.__label({domain: 'mockhost.duckdns.org'}), 'mockhost');
+		});
+	});
 });
 
 /**
