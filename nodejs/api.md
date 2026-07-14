@@ -1,6 +1,25 @@
 # API Documentation
 
-All API endpoints require authentication via the `auth-token` header unless otherwise noted.
+All API endpoints require authentication unless otherwise noted. Three
+authentication methods are supported:
+
+- **`auth-token` header** — a browser-session token from `POST /api/auth/login`
+  or the OIDC flow (below).
+- **`Authorization: Bearer <token>` header** — a self-service API token (PAT,
+  see [API Tokens](#api-tokens)), for scripts/CI without a browser session.
+- **OIDC (browser)** — if the proxy is configured as an OIDC client of an SSO
+  (`app_oidc__*` / `conf.oidc`, see [DEPLOYMENT.md](../DEPLOYMENT.md)),
+  users can log in via `GET /api/auth/oidc/start` instead of posting a
+  username/password.
+
+The proxy can also be configured as a **direct LDAP client** (`app_ldap__*` /
+`conf.ldap`) for looking up/validating users, independent of the OIDC flow —
+see DEPLOYMENT.md for the full configuration reference.
+
+Authenticated requests also carry **RBAC** (role-based access control):
+global admins can manage everything; other users are scoped to `viewer` or
+`manager` rights on specific domains via [Permissions](#permissions) and
+[Groups](#groups).
 
 Base URL: `https://your-proxy-host.com/api`
 
@@ -40,17 +59,167 @@ curl -H "auth-token: your-token-here" \
 **Responses:**
 - `200` `{"message": "Bye"}`
 
+### OIDC Login (start)
+
+**GET** `/api/auth/oidc/start`
+
+Begin the OIDC authorization-code flow: creates a PKCE + state challenge and
+redirects the browser to the configured SSO's authorize endpoint. Only
+available when `conf.oidc.enabled` is true.
+
+**Query Parameters:**
+- `redirect` - Internal path to return to after login (optional; sanitized to same-origin)
+
+```bash
+curl -i "https://proxy-host.com/api/auth/oidc/start?redirect=/hosts"
+```
+
+**Responses:**
+- `302` Redirect to the SSO's authorization endpoint
+- `404` `{"name": "OidcDisabled", "message": "OIDC login is not enabled."}`
+
+### OIDC Callback
+
+**GET** `/api/auth/oidc/callback`
+
+Redirect target for the SSO after login. Validates the one-time `state`,
+exchanges the authorization `code` for tokens, reads identity from the
+userinfo endpoint, establishes a session, and redirects the browser back to
+the login page with the app's own `auth-token` in a URL fragment.
+
+**Query Parameters:**
+- `code` (required) - Authorization code from the SSO
+- `state` (required) - State value from the `start` step
+
+```bash
+# Not called directly — the SSO redirects the browser here after login.
+```
+
+**Responses:**
+- `302` Redirect to `/login#token=...&redirect=...`
+- `400` `{"name": "OidcCallbackInvalid", "message": "Missing code or state."}` or expired/unknown state
+
+---
+
+## API Tokens
+
+Self-service personal access tokens (PATs) for scripting/CI without a browser
+session. Every endpoint is owner-scoped: a user only sees/manages tokens they
+created. Mounted at `/api/api-token`.
+
+### List API Tokens
+
+**GET** `/api/api-token`
+
+List the current user's API tokens.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/api-token
+```
+
+**Responses:**
+- `200` `{"results": [{"id": "...", "name": "ci", ...}, ...]}`
+
+### Create API Token
+
+**POST** `/api/api-token`
+
+Create a new API token. The raw token string is only returned once, at
+creation.
+
+**Parameters:**
+- `name` (required) - Display name
+- `description` (optional)
+- `expires_in_days` (optional) - `0` or omitted means no expiry
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"name": "ci", "expires_in_days": 90}' \
+  https://proxy-host.com/api/api-token
+```
+
+**Responses:**
+- `200` `{"results": {...}, "token": "prx_<id>_<secret>", "message": "API token 'ci' created. Save it now — it will not be shown again."}`
+
+### Get API Token
+
+**GET** `/api/api-token/:id`
+
+Get a token's metadata (not the raw secret, which is never stored/returned again).
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/api-token/<id>
+```
+
+**Responses:**
+- `200` `{"results": {...}}`
+- `403` Not your token
+
+### Update API Token
+
+**PUT** `/api/api-token/:id`
+
+Update a token's name/description/expiry.
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X PUT \
+  -d '{"name": "ci-updated"}' \
+  https://proxy-host.com/api/api-token/<id>
+```
+
+**Responses:**
+- `200` `{"results": {...}, "message": "API token 'ci-updated' updated."}`
+
+### Delete (Revoke) API Token
+
+**DELETE** `/api/api-token/:id`
+
+Revoke a token immediately.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/api-token/<id>
+```
+
+**Responses:**
+- `200` `{"id": "<id>", "message": "API token 'ci' revoked."}`
+
+### Rotate API Token
+
+**POST** `/api/api-token/:id/rotate`
+
+Issue a new secret for an existing token (same id, new raw value shown once).
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X POST \
+  https://proxy-host.com/api/api-token/<id>/rotate
+```
+
+**Responses:**
+- `200` `{"token": "prx_<id>_<new-secret>", "message": "API token 'ci' rotated. Save it — it will not be shown again."}`
+
 ---
 
 ## Users
 
-All user endpoints require authentication.
+All user endpoints require authentication. `GET /me` and `PUT /password`
+(self-service) work for any authenticated user; everything else (listing,
+creating, deleting users, resetting another user's password) requires global
+admin.
 
 ### List Users
 
 **GET** `/api/user`
 
-Get list of all users.
+Get list of all users. Admin only.
 
 ```bash
 curl -H "auth-token: your-token-here" \
@@ -63,12 +232,14 @@ curl -H "auth-token: your-token-here" \
 **Responses:**
 - `200` `{"results": ["user1", "user2"]}`
 - `200` `{"results": [{"username": "user1", ...}, ...]}` (with `?detail=true`)
+- `403` Not an admin
 
 ### Get Current User
 
 **GET** `/api/user/me`
 
-Get information about the currently authenticated user.
+Get the currently authenticated user's identity and effective RBAC rights
+(drives the web UI's nav/button gating).
 
 ```bash
 curl -H "auth-token: your-token-here" \
@@ -76,13 +247,13 @@ curl -H "auth-token: your-token-here" \
 ```
 
 **Responses:**
-- `200` `{"username": "myuser"}`
+- `200` `{"username": "myuser", "groups": [...], "localGroups": [...], "externalGroups": [...], "isAdmin": false, "global": null, "domains": {...}}`
 
 ### Create User
 
 **POST** `/api/user`
 
-Create a new user.
+Create a new local user. Admin only.
 
 ```bash
 curl -H "Content-Type: application/json" \
@@ -94,14 +265,15 @@ curl -H "Content-Type: application/json" \
 
 **Responses:**
 - `200` User created successfully
+- `403` Not an admin
 - `409` Username already exists
-- `422` `{"name": "ObjectValidateError", "message": ...}` Validation error
+- `422` `{"name": "ObjectValidateError", "message": ...}` Validation error (also returned for weak passwords)
 
 ### Delete User
 
 **DELETE** `/api/user/:username`
 
-Delete a user account.
+Delete a user account. Admin only.
 
 ```bash
 curl -H "auth-token: your-token-here" \
@@ -111,6 +283,7 @@ curl -H "auth-token: your-token-here" \
 
 **Responses:**
 - `200` `{"username": "olduser", "results": ...}`
+- `403` Not an admin
 - `404` User not found
 
 ### Change Password (Self)
@@ -129,12 +302,13 @@ curl -H "Content-Type: application/json" \
 
 **Responses:**
 - `200` `{"results": ...}` Password changed successfully
+- `422` Weak password rejected by the password policy
 
 ### Change Password (Other User)
 
 **PUT** `/api/user/password/:username`
 
-Change the password for another user (admin function).
+Change the password for another user. Admin only.
 
 ```bash
 curl -H "Content-Type: application/json" \
@@ -146,40 +320,163 @@ curl -H "Content-Type: application/json" \
 
 **Responses:**
 - `200` `{"results": ...}` Password changed successfully
+- `403` Not an admin
 - `404` User not found
 
-### Create Invite Token
+---
 
-**POST** `/api/user/invite`
+## Permissions
 
-Create an invitation token for new user registration.
+RBAC: grants a `viewer` or `manager` role to a user or group, either globally
+or scoped to one domain. Global-admin-only. Mounted at `/api/permission`.
+
+### List Permissions
+
+**GET** `/api/permission`
 
 ```bash
 curl -H "auth-token: your-token-here" \
-  -X POST \
-  https://proxy-host.com/api/user/invite
+  https://proxy-host.com/api/permission
 ```
 
 **Responses:**
-- `200` `{"token": "5caf94d2-2c91-4010-8df7-968d10802b9d"}`
+- `200` `{"results": [{"id": "...", "subjectType": "user", "subject": "alice", "role": "manager", "scope": "domain", "domain": "example.com", ...}, ...]}`
 
-### Add SSH Key
+### List Permission Subjects
 
-**POST** `/api/user/key`
+**GET** `/api/permission/subjects`
 
-Add an SSH public key to the current user's account.
+Autocomplete source for the "Subject" field: known usernames plus known group
+names (local groups, groups already used in permissions, and groups from
+`conf.auth.adminGroups` / `conf.auth.groupRoleMap`).
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/permission/subjects
+```
+
+**Responses:**
+- `200` `{"users": ["alice", "bob"], "groups": ["ops", "sre"]}`
+
+### Create Permission
+
+**POST** `/api/permission`
+
+Grant a role to a subject.
+
+**Parameters:**
+- `subjectType` (required) - `user` or `group`
+- `subject` (required) - username or group name
+- `role` (required) - `viewer` or `manager`
+- `scope` (required) - `global` or `domain`
+- `domain` (required if `scope` is `domain`)
 
 ```bash
 curl -H "Content-Type: application/json" \
   -H "auth-token: your-token-here" \
   -X POST \
-  -d '{"key": "ssh-rsa AAAAB3..."}' \
-  https://proxy-host.com/api/user/key
+  -d '{"subjectType": "user", "subject": "alice", "role": "manager", "scope": "domain", "domain": "example.com"}' \
+  https://proxy-host.com/api/permission
 ```
 
 **Responses:**
-- `200` `{"message": true}` Key added successfully
-- `400` `{"message": "Bad SSH key"}` Invalid key format
+- `200` `{"message": "Granted manager to user \"alice\" on example.com.", ...}`
+- `422` Validation error
+
+### Delete Permission
+
+**DELETE** `/api/permission/:id`
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/permission/<id>
+```
+
+**Responses:**
+- `200` `{"message": "Permission <id> removed."}`
+
+---
+
+## Groups
+
+Local groups (independent of any SSO/LDAP groups) used as subjects for
+permission grants. Global-admin-only. Mounted at `/api/group`.
+
+### List Groups
+
+**GET** `/api/group`
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/group
+```
+
+**Responses:**
+- `200` `{"results": [{"name": "ops", "members": ["alice", "bob"], ...}, ...]}`
+
+### Create Group
+
+**POST** `/api/group`
+
+**Parameters:**
+- `name` (required)
+- `members` (optional) - array of usernames
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"name": "ops", "members": ["alice"]}' \
+  https://proxy-host.com/api/group
+```
+
+**Responses:**
+- `200` `{"message": "Group \"ops\" created.", ...}`
+
+### Delete Group
+
+**DELETE** `/api/group/:name`
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/group/ops
+```
+
+**Responses:**
+- `200` `{"message": "Group \"ops\" removed."}`
+
+### Add Group Member
+
+**POST** `/api/group/:name/members`
+
+**Parameters:**
+- `username` (required)
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"username": "bob"}' \
+  https://proxy-host.com/api/group/ops/members
+```
+
+**Responses:**
+- `200` `{"message": "Added \"bob\" to \"ops\".", ...}`
+
+### Remove Group Member
+
+**DELETE** `/api/group/:name/members/:username`
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/group/ops/members/bob
+```
+
+**Responses:**
+- `200` `{"message": "Removed \"bob\" from \"ops\".", ...}`
 
 ---
 
@@ -320,6 +617,7 @@ curl -H "auth-token: your-token-here" \
 Remove all cached wildcard-subdomain host lookups. Cache entries are created on
 demand when a wildcard host serves a subdomain; clearing them forces the next
 request for each subdomain to be resolved fresh through the lookup tree.
+Admin only.
 
 ```bash
 curl -H "auth-token: your-token-here" \
@@ -382,7 +680,7 @@ curl -H "auth-token: your-token-here" \
 ```
 
 **Responses:**
-- `200` `{"results": [{"name": "CloudFlare", "fields": {...}}, {"name": "DigitalOcean", ...}, ...]}`
+- `200` `{"results": [{"name": "Cloudflare", "fields": {...}}, {"name": "DigitalOcean", ...}, ...]}`
 
 ### Create DNS Provider
 
@@ -390,12 +688,12 @@ curl -H "auth-token: your-token-here" \
 
 Configure a new DNS provider.
 
-**CloudFlare:**
+**Cloudflare:**
 ```bash
 curl -H "Content-Type: application/json" \
   -H "auth-token: your-token-here" \
   -X POST \
-  -d '{"name": "My CloudFlare", "dnsProvider": "Cloudflare", "token": "your-api-token"}' \
+  -d '{"name": "My Cloudflare", "dnsProvider": "Cloudflare", "token": "your-api-token"}' \
   https://proxy-host.com/api/dns
 ```
 
@@ -518,6 +816,97 @@ curl -H "auth-token: your-token-here" \
 - `200` `{"results": ...}` Updated domain list
 - `404` Provider not found
 
+### Dynamic DNS
+
+A-records kept automatically pointed at this box's public (WAN) IP. All
+`/api/dns/dynamic*` routes are viewer/manager scoped to the record's domain
+(via [Permissions](#permissions)), not admin-only like the rest of `/api/dns`.
+
+#### Get Current Public IP
+
+**GET** `/api/dns/dynamic/ip`
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/dns/dynamic/ip
+```
+
+**Responses:**
+- `200` `{"ip": "203.0.113.5"}`
+
+#### List Dynamic Records
+
+**GET** `/api/dns/dynamic`
+
+Lists records the caller may view (their own/granted domains, or all for admins).
+
+```bash
+curl -H "auth-token: your-token-here" \
+  https://proxy-host.com/api/dns/dynamic
+```
+
+**Responses:**
+- `200` `{"results": [{"id": "...", "domain": "example.com", "name": "home", "last_status": "ok", ...}, ...]}`
+
+#### Create Dynamic Record
+
+**POST** `/api/dns/dynamic`
+
+Requires `manager` rights on the target domain. Applies the record immediately
+against the current public IP (best-effort — failures are recorded in
+`last_status` and retried by the scheduler).
+
+**Parameters:**
+- `domain` (required)
+- `name` (required) - sub-label, or `@` for the apex
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X POST \
+  -d '{"domain": "example.com", "name": "home"}' \
+  https://proxy-host.com/api/dns/dynamic
+```
+
+**Responses:**
+- `200` `{"message": "\"home.example.com\" added.", ...}`
+- `403` Missing `manager` rights on the domain
+- `422` Validation error
+
+#### Refresh Dynamic Record
+
+**POST** `/api/dns/dynamic/:id/refresh`
+
+Force an immediate refresh of one record against the current public IP.
+Requires `manager` rights on the record's domain.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X POST \
+  https://proxy-host.com/api/dns/dynamic/<id>/refresh
+```
+
+**Responses:**
+- `200` `{"message": "Refreshed \"home.example.com\".", "result": {...}}`
+- `403` Missing `manager` rights on the domain
+
+#### Delete Dynamic Record
+
+**DELETE** `/api/dns/dynamic/:id`
+
+Stop managing a record. Requires `manager` rights on the record's domain.
+Leaves the provider's A record in place at its last value.
+
+```bash
+curl -H "auth-token: your-token-here" \
+  -X DELETE \
+  https://proxy-host.com/api/dns/dynamic/<id>
+```
+
+**Responses:**
+- `200` `{"message": "home.example.com removed.", ...}`
+- `403` Missing `manager` rights on the domain
+
 ---
 
 ## Certificates
@@ -553,7 +942,8 @@ All endpoints may return the following error responses:
 ## Notes
 
 - All timestamps are in milliseconds since epoch
-- The `auth-token` header is required for all authenticated endpoints
+- Authenticated endpoints accept either the `auth-token` header (browser
+  session / OIDC login) or an `Authorization: Bearer <token>` API token
 - Host names support wildcards: `*` (single level) and `**` (multi-level)
 - DNS providers are validated on creation - invalid API credentials will be rejected
 - Wildcard certificates are automatically renewed 30 days before expiration

@@ -37,8 +37,3 @@ The site uses the Cayman theme (`jekyll-theme-cayman`). Configuration is in `_co
 2. Commit and push to master branch
 3. GitHub Pages automatically rebuilds (may take 1-2 minutes)
 4. Changes visible at https://theta42.github.io/proxy/
-
-## Legacy Documentation
-
-- `dev_setup.md` - Old development setup notes (kept for reference)
-- `Update 4.11.md` - Old update notes (kept for reference)

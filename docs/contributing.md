@@ -71,9 +71,19 @@ npm run test:watch
 ```
 test/
 ├── unit/                       # Unit tests for isolated components
+│   ├── basicauth.test.js
 │   ├── callback_queue.test.js
+│   ├── dynamic_record.test.js
+│   ├── host_features.test.js
 │   ├── host_lookup.test.js
-│   └── unix_socket.test.js
+│   ├── hostname_validate.test.js
+│   ├── host_sso.test.js
+│   ├── oidc.test.js
+│   ├── password_policy.test.js
+│   ├── roles.test.js
+│   ├── safe_redirect.test.js
+│   ├── unix_socket.test.js
+│   └── wildcard_matchany.test.js
 ├── integration/                # Integration tests
 │   └── dns_provider.test.js
 └── helpers/                    # Test utilities
@@ -171,6 +181,9 @@ Understanding the codebase:
 
 ```
 nodejs/
+├── conf/                # Configuration (base.js, environment overlays, secrets.js)
+├── controller/          # App-level wiring (pubsub, startup)
+├── migrations/          # One-off Redis data migration scripts
 ├── models/              # Data models (Host, User, DNS providers)
 ├── routes/              # API route handlers
 ├── services/            # Background services (lookup, scheduler)
@@ -232,12 +245,12 @@ nodejs/
 
 ### PR Requirements
 
-- ✅ All tests must pass (CI/CD runs automatically)
-- ✅ Tests run on Node.js 18.x, 20.x, and 22.x
-- ✅ No merge conflicts with `master`
-- ✅ Code follows project conventions
-- ✅ New features include tests
-- ✅ Documentation updated if needed
+- All tests must pass (CI/CD runs automatically)
+- Tests run on Node.js 18.x, 20.x, and 22.x
+- No merge conflicts with `master`
+- Code follows project conventions
+- New features include tests
+- Documentation updated if needed
 
 ### CI/CD Process
 
@@ -305,7 +318,7 @@ class Host extends Table {
 ### Adding API Endpoints
 
 1. **Add route** in appropriate file (`routes/`)
-2. **Update API documentation** (`nodejs/api.md`)
+2. **Update API documentation** (`nodejs/api.md` and `docs/api.md` — keep them in sync)
 3. **Test the endpoint** manually and add integration tests if needed
 
 ## Getting Help

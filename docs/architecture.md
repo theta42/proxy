@@ -42,7 +42,7 @@ The proxy system consists of three main components working together to provide h
                                     ▼
                           ┌──────────────────────┐
                           │    DNS Providers     │
-                          │  - CloudFlare        │
+                          │  - Cloudflare        │
                           │  - DigitalOcean      │
                           │  - PorkBun           │
                           │  (DNS-01 challenges) │
@@ -84,6 +84,9 @@ The proxy system consists of three main components working together to provide h
 ```
 nodejs/
 ├── bin/www              # Application entry point
+├── conf/                # Configuration (base.js, environment overlays, secrets.js)
+├── controller/          # App-level wiring (pubsub, startup)
+├── migrations/          # One-off Redis data migration scripts
 ├── models/              # Data models
 │   ├── host.js          # Host configuration and lookup
 │   ├── auth.js          # Authentication logic
@@ -93,7 +96,10 @@ nodejs/
 │   ├── host.js          # Host CRUD operations
 │   ├── dns.js           # DNS provider management
 │   ├── user.js          # User management
-│   └── auth.js          # Authentication
+│   ├── auth.js          # Authentication (login + OIDC)
+│   ├── permission.js    # RBAC permission management
+│   ├── group.js         # Local group management
+│   └── api_token.js     # Self-service API (PAT) tokens
 ├── services/            # Background services
 │   ├── host_lookup.js   # Unix socket server
 │   └── host_scheduler.js # Cert renewal scheduler

@@ -23,9 +23,19 @@ npm run test:watch
 ```
 test/
 ├── unit/              # Unit tests for isolated components
+│   ├── basicauth.test.js
 │   ├── callback_queue.test.js
+│   ├── dynamic_record.test.js
+│   ├── host_features.test.js
 │   ├── host_lookup.test.js
-│   └── unix_socket.test.js
+│   ├── hostname_validate.test.js
+│   ├── host_sso.test.js
+│   ├── oidc.test.js
+│   ├── password_policy.test.js
+│   ├── roles.test.js
+│   ├── safe_redirect.test.js
+│   ├── unix_socket.test.js
+│   └── wildcard_matchany.test.js
 ├── integration/       # Integration tests for complex interactions
 │   └── dns_provider.test.js
 └── helpers/           # Test utilities and contracts
@@ -58,7 +68,7 @@ test/
 
 **dns_provider.test.js**
 - DNS provider contract compliance
-- All existing providers (CloudFlare, DigitalOcean, PorkBun)
+- All existing providers (Cloudflare, DigitalOcean, PorkBun)
 - Method signatures
 - Key mapping
 - Type validation

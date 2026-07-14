@@ -7,13 +7,12 @@ nodejs/node_modules/
 nodejs/test/
 nodejs/npm-debug.log*
 
-# Bare-metal installer + chef/vagrant ops not needed in the image.
+# Bare-metal installer + chef ops not needed in the image.
 ops/install.sh
 ops/cert.sh
 ops/cookbooks/
 ops/roles/
 ops/proxy.service
-Vagrantfile
 
 # Docs site (served via GitHub Pages, not from the image).
 docs/

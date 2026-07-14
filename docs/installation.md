@@ -16,7 +16,7 @@ wget -O - https://raw.githubusercontent.com/theta42/proxy/master/ops/install.sh 
 ```
 
 This automated installer will:
-- Install Node.js 20.x
+- Install Node.js 22.x
 - Install OpenResty and required dependencies
 - Install and configure Redis
 - Set up SSL fallback certificates
@@ -26,6 +26,15 @@ This automated installer will:
 - Start the proxy service
 
 ## Manual Installation
+
+> **Recommended path:** `ops/install.sh` (above) is idempotent and safe to
+> re-run — it symlinks the OpenResty/systemd config from the repo checkout,
+> so future updates stay in sync automatically (`git pull` + re-run). The
+> manual steps below *copy* those same files instead of symlinking them, so
+> they will **not** auto-track later changes to `ops/nginx_conf/` or
+> `ops/proxy.service` — you'd need to re-copy them by hand after every
+> update. Prefer the manual path only if `install.sh` doesn't fit your
+> distribution.
 
 ### System Requirements
 
@@ -41,13 +50,13 @@ This automated installer will:
 apt install libpam0g-dev build-essential redis-server luarocks -y
 ```
 
-### Step 2: Install Node.js 20.x
+### Step 2: Install Node.js 22.x
 
 ```bash
 curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | \
   sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
 
-NODE_MAJOR=20
+NODE_MAJOR=22
 echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | \
   sudo tee /etc/apt/sources.list.d/nodesource.list
 
@@ -56,7 +65,7 @@ apt update && apt install nodejs -y
 
 Verify installation:
 ```bash
-node --version  # Should show v20.x.x
+node --version  # Should show v22.x.x
 npm --version
 ```
 
