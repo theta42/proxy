@@ -39,7 +39,11 @@ are `JSON.parse`-coerced when possible and kept as raw strings otherwise.
 | `app_ldap__tlsOptions__rejectUnauthorized` | `conf.ldap.tlsOptions.rejectUnauthorized` | `false` for self-signed LDAPS |
 | `app_ldap__tlsOptions__ca` | `conf.ldap.tlsOptions.ca` | path to a CA cert for strict trust |
 | `app_auth__adminUsers` | `conf.auth.adminUsers` | local anti-lockout admin (uid) |
+| `app_auth__adminGroups` | `conf.auth.adminGroups` | SSO/LDAP groups that are global admin (JSON array) |
 | `app_redis__prefix` | `conf.redis.prefix` | default `proxy_` |
+
+See [`docs/docker.md`](docs/docker.md) for a shorter, container-focused version
+of this reference.
 
 > **Requires `@simpleworkjs/conf` >= 1.1.0.** The Docker image will not honor
 > `app_*` env vars on 1.0.0. The lock is already on `^1.1.0`; if you regenerate it:

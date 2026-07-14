@@ -8,12 +8,17 @@ A reverse proxy and HTTPS termination service using OpenResty/nginx with a manag
 
 - Automated HTTPS/SSL certificate management via Let's Encrypt
 - Support for HTTP-01 (auto-ssl) and DNS-01 (wildcard) ACME challenges
-- Multiple DNS provider integrations (CloudFlare, DigitalOcean, PorkBun)
+- Multiple DNS provider integrations (Cloudflare, DigitalOcean, PorkBun)
 - Wildcard SSL certificate support with automatic renewal
 - Dynamic host routing with wildcard domain matching (*, **)
 - Web-based management interface
 - RESTful API for automation
-- User authentication and management
+- **OIDC login** — the proxy is an OpenID Connect client of an external SSO
+  (e.g. [`theta42/sso-manager-node`](https://github.com/theta42/sso-manager-node))
+- **Direct LDAP lookups**, independent of the OIDC flow
+- **Role-based access control (RBAC)** — global admins, local groups, and
+  per-domain permissions (viewer/manager) via `/api/permission` and `/api/group`
+- Self-service API tokens (PATs) for scripting/CI without a browser session
 - Unix socket-based host lookup for high-performance routing
 
 ## Requirements
@@ -34,7 +39,7 @@ wget -O - https://raw.githubusercontent.com/theta42/proxy/master/ops/install.sh 
 ```
 
 This installer will:
-- Install Node.js 20.x
+- Install Node.js 22.x
 - Install OpenResty and required dependencies
 - Install and configure Redis
 - Set up SSL fallback certificates
@@ -68,6 +73,14 @@ docker compose logs --tail=200 --since=10m proxy
 
 For manual installation or other distributions, see the detailed steps below.
 
+> **Recommended path:** `ops/install.sh` is idempotent and safe to re-run — it
+> symlinks the OpenResty/systemd config from the repo checkout, so updates
+> stay in sync automatically. The manual steps below copy those same files
+> instead of symlinking them, so they will **not** auto-track future changes
+> to `ops/nginx_conf/` or `ops/proxy.service` — you'd need to re-copy them
+> yourself after every update. Use the manual path only if `install.sh`
+> doesn't fit your distribution.
+
 ### System Dependencies
 
 **Ubuntu/Debian:**
@@ -75,10 +88,10 @@ For manual installation or other distributions, see the detailed steps below.
 apt install libpam0g-dev build-essential redis-server luarocks -y
 ```
 
-**Node.js 20.x:**
+**Node.js 22.x:**
 ```bash
 curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-NODE_MAJOR=20
+NODE_MAJOR=22
 echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
 apt update && apt install nodejs -y
 ```
@@ -147,7 +160,7 @@ systemctl start proxy.service
 For wildcard SSL certificates, configure a DNS provider via the web UI or API:
 
 **Supported providers:**
-- **CloudFlare** - Requires API token
+- **Cloudflare** - Requires API token
 - **DigitalOcean** - Requires API token
 - **PorkBun** - Requires API key and secret API key
 
@@ -195,9 +208,10 @@ npm run dev  # Runs with nodemon for auto-reload
 
 **Running tests:**
 ```bash
-npm test              # Run all tests
-npm run test:unit     # Run unit tests only
-npm run test:watch    # Watch mode for development
+npm test                  # Run all tests
+npm run test:unit         # Run unit tests only
+npm run test:integration  # Run integration tests only
+npm run test:watch        # Watch mode for development
 ```
 
 Tests use Node.js built-in test runner (requires Node 18+).
@@ -223,6 +237,9 @@ MIT - See LICENSE file for details.
 proxy/
 ├── nodejs/              # Node.js backend application
 │   ├── bin/            # Entry point (www)
+│   ├── conf/           # Configuration (base.js, environment overlays, secrets.js)
+│   ├── controller/      # App-level wiring (pubsub, startup)
+│   ├── migrations/      # One-off Redis data migration scripts
 │   ├── models/         # Data models (Host, User, DNS providers)
 │   ├── routes/         # API routes
 │   ├── services/       # Background services (host lookup, scheduler)

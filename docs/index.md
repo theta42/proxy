@@ -11,7 +11,7 @@ A reverse proxy and HTTPS termination service using OpenResty/nginx with a manag
 
 - **Automated HTTPS/SSL** - Let's Encrypt integration with HTTP-01 and DNS-01 challenges
 - **Wildcard SSL Certificates** - Support for wildcard domains with automatic renewal
-- **Multiple DNS Providers** - CloudFlare, DigitalOcean, PorkBun integrations
+- **Multiple DNS Providers** - Cloudflare, DigitalOcean, PorkBun integrations
 - **Advanced Routing** - Sophisticated wildcard domain matching (*, **)
 - **RESTful API** - Full programmatic control
 - **Web Interface** - User-friendly management GUI
