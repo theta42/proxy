@@ -62,19 +62,33 @@ npm --version
 
 ### Step 3: Install OpenResty
 
-openresty.org ships distinct trees for Debian and Ubuntu — use `/package/debian`
-on Debian and `/package/ubuntu` on Ubuntu (using the Ubuntu tree with a Debian
-codename worked on older Debian by coincidence; trixie lives under `/debian`).
+openresty.org ships distinct trees (and components) for Debian and Ubuntu. The
+Debian tree is published only up to **bookworm** (there is no trixie block) and
+uses the **`openresty`** component; Ubuntu uses the host codename and **`main`**.
+So on a Debian 13 (trixie) host, point at the `bookworm` distribution (binary-
+compatible, same OpenSSL 3 era).
 
 ```bash
-# Debian:  OR_PATH=package/debian    Ubuntu/Mint:  OR_PATH=package/ubuntu
 . /etc/os-release
-case "$ID" in debian) OR_PATH=package/debian;; *) OR_PATH=package/ubuntu;; esac
+CODENAME="$(lsb_release -sc)"
+case "$ID" in
+  debian)
+    OR_PATH=package/debian
+    OR_COMPONENT=openresty
+    # Debian tree only publishes up to bookworm; fall back to it for trixie+.
+    case "$CODENAME" in jessie|stretch|buster|bullseye|bookworm) OR_DISTRO="$CODENAME";; *) OR_DISTRO=bookworm;; esac
+    ;;
+  *)
+    OR_PATH=package/ubuntu
+    OR_DISTRO="$CODENAME"
+    OR_COMPONENT=main
+    ;;
+esac
 
 wget -O - https://openresty.org/package/pubkey.gpg | \
   sudo gpg --dearmor -o /usr/share/keyrings/openresty.gpg
 
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/${OR_PATH} $(lsb_release -sc) main" | \
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/${OR_PATH} ${OR_DISTRO} ${OR_COMPONENT}" | \
   sudo tee /etc/apt/sources.list.d/openresty.list
 ```
 
