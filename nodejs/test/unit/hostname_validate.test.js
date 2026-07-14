@@ -32,8 +32,12 @@ describe('isValidHostname (strict, for target)', () => {
 		assert.ok(isValidHostname('example.com'));
 		assert.ok(isValidHostname('app.internal.net'));
 	});
-	test('rejects bare labels, numeric TLDs, wildcards', () => {
-		assert.ok(!isValidHostname('localhost'));
+	test('accepts a bare single-label hostname (Docker service names, /etc/hosts)', () => {
+		assert.ok(isValidHostname('localhost'));
+		assert.ok(isValidHostname('sso-manager'));
+		assert.ok(isValidHostname('redis'));
+	});
+	test('rejects numeric-looking targets, wildcards', () => {
 		assert.ok(!isValidHostname('10.10.10.10'));
 		assert.ok(!isValidHostname('*.example.com'));
 		assert.ok(!isValidHostname(''));
@@ -80,6 +84,9 @@ describe('isValidTargetField (target: hostname or IP, no wildcard)', () => {
 	test('accepts hostnames and IPv4', () => {
 		assert.ok(isValidTargetField('app.internal.net'));
 		assert.ok(isValidTargetField('10.0.0.5'));
+	});
+	test('accepts a bare single-label hostname (e.g. a Docker Compose service name)', () => {
+		assert.ok(isValidTargetField('sso-manager'));
 	});
 	test('rejects wildcards, protocol, port, path', () => {
 		assert.ok(!isValidTargetField('*.example.com'));

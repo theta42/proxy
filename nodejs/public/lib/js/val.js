@@ -98,7 +98,9 @@
 // incoming host may be a wildcard ("*.example.com"); the target may not.
 (function(){
 	var LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
-	var HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i;
+	// Either one bare label (Docker service names, /etc/hosts entries) or a
+	// dotted hostname with an alphabetic TLD.
+	var HOSTNAME = /^(?=.{1,253}$)(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
 	var FORBIDDEN = /[\s/:]/;
 
 	function isIPv4( value ) {
