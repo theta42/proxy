@@ -27,6 +27,7 @@
     "axios": "^1.13.5",
     "bcrypt": "^6.0.0",
     "bootstrap": "^5.3.8",
+    "compression": "^1.8.1",
     "ejs": "^6.0.1",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
