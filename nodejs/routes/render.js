@@ -62,8 +62,9 @@ router.get('/profile', async function(req, res, next) {
   res.render('profile', {...values});
 });
 
-router.get('/api-tokens', async function(req, res, next) {
-  res.render('api_tokens', {...values});
+// API Tokens is now a section on the Profile page.
+router.get('/api-tokens', (req, res) => {
+  res.redirect(301, '/profile');
 });
 
 // Bare /login (the OIDC callback redirect target) and /login/<path>.
