@@ -18,6 +18,17 @@ proxy serves them over TLS with auto-renewing certs and no downtime on changes.
 
 **Documentation:** [https://theta42.github.io/proxy/](https://theta42.github.io/proxy/)
 
+## Screenshots
+
+| Hosts | Authentication |
+| --- | --- |
+| ![Host list](docs/images/hosts.png) | ![Per-host SSO auth](docs/images/host-auth-sso.png) |
+
+Basic auth and SSO are mutually exclusive per host, with per-user password
+management once basic auth is enabled:
+
+![Per-host basic auth](docs/images/host-auth-basic.png)
+
 ## Why this over the alternatives
 
 Nginx Proxy Manager, Traefik, and Caddy are all good reverse proxies with

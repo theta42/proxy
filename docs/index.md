@@ -7,6 +7,17 @@ title: Home
 
 A reverse proxy and HTTPS termination service using OpenResty/nginx with a management API and web GUI.
 
+## Screenshots
+
+| Hosts | Authentication |
+| --- | --- |
+| ![Host list](images/hosts.png) | ![Per-host SSO auth](images/host-auth-sso.png) |
+
+Basic auth and SSO are mutually exclusive per host, with per-user password
+management once basic auth is enabled:
+
+![Per-host basic auth](images/host-auth-basic.png)
+
 ## Features
 
 - **Automated HTTPS/SSL** - Let's Encrypt integration with HTTP-01 and DNS-01 challenges
