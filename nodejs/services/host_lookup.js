@@ -33,7 +33,7 @@ const socket = new SocketServerJson({
 			let parentHost = Host.lookUp(data['domain']);
 
 			// If we don't have a match, return empty object
-			if(!parentHost) return clientSocket.write(JSON.stringify({}));
+			if(!parentHost) return clientSocket.write(JSON.stringify({}) + '\n');
 
 			// lookUp returns the live #record object stored inside the shared
 			// lookup tree. Everything below mutates parentHost (sets
@@ -50,7 +50,7 @@ const socket = new SocketServerJson({
 			// subdomain and must not be routed to the wildcard parent.
 			if(parentHost.is_wildcard && !parentHost.wildcard_matchAny
 					&& parentHost.host !== data['domain']){
-				return clientSocket.write(JSON.stringify({}));
+				return clientSocket.write(JSON.stringify({}) + '\n');
 			}
 
 			// If the matched host belongs to a wildcard domain, set wildcard_parent
@@ -66,7 +66,13 @@ const socket = new SocketServerJson({
 				parentHost[key] = String(value);
 			}
 
-			clientSocket.write(JSON.stringify(parentHost));
+			// Terminate with a newline: the Lua client (ops/nginx_conf/targetinfo.lua)
+			// reads a single line per lookup via a cosocket receive() -- without a
+			// delimiter it would block for the full read timeout on every request
+			// waiting for a newline that never arrives (this was masked before by
+			// blocking LuaSocket's timeout+partial-read behavior, which silently
+			// paid that same timeout on every single lookup).
+			clientSocket.write(JSON.stringify(parentHost) + '\n');
 		}catch(error){
 			console.error('services/host_lookup onData error', error);
 		}

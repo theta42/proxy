@@ -19,13 +19,17 @@ const frontEndModules = ['bootstrap', 'mustache', 'jquery', '@fortawesome',
 
 // Server front end modules
 // https://stackoverflow.com/a/55700773/3140931
+// Vendor libraries only change when package versions are bumped (a rebuild),
+// so they're safe to cache aggressively; ETag/Last-Modified (on by default)
+// still cover that rare case with a cheap 304 instead of a stale asset.
 frontEndModules.forEach(dep => {
-  router.use(`/static-modules/${dep}`, express.static(path.join(__dirname, `../node_modules/${dep}`)))
+  router.use(`/static-modules/${dep}`, express.static(path.join(__dirname, `../node_modules/${dep}`), {maxAge: '7d'}))
 });
 
 // Have express server static content( images, CSS, browser JS) from the public
-// local folder.
-router.use('/static', express.static(path.join(__dirname, '../public')))
+// local folder. Shorter maxAge than /static-modules since this is the app's
+// own JS/CSS, which changes on every deploy and isn't cache-busted/fingerprinted.
+router.use('/static', express.static(path.join(__dirname, '../public'), {maxAge: '1h'}))
 
 router.get('/', (req, res) => {
   res.redirect(301, '/hosts');

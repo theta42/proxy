@@ -55,10 +55,10 @@ class Permission extends Table{
 
 	static async create(data){
 		if(!this.roles.includes(data.role)){
-			throw this.errors.ObjectValidateError([{key: 'role', message: `role must be one of ${this.roles.join(', ')}`}]);
+			throw new this.errors.ObjectValidateError([{key: 'role', message: `role must be one of ${this.roles.join(', ')}`}]);
 		}
 		if(!['user', 'group'].includes(data.subjectType)){
-			throw this.errors.ObjectValidateError([{key: 'subjectType', message: `subjectType must be 'user' or 'group'`}]);
+			throw new this.errors.ObjectValidateError([{key: 'subjectType', message: `subjectType must be 'user' or 'group'`}]);
 		}
 		if(data.scope === 'global') data.domain = '*';
 		data.id = this.mkId(data);

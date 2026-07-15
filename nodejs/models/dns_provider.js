@@ -176,7 +176,7 @@ class DnsProvider extends Table{
 				for(let key in Provider._keyMap){
 					keys.push({'key': key, message: 'Invalid Key'})
 				}
-				throw this.errors.ObjectValidateError(keys, "API rejected key");
+				throw new this.errors.ObjectValidateError(keys, "API rejected key");
 			}
 			// Don't swallow other failures (e.g. a domain-sync validation error):
 			// returning undefined here made the route crash on `item.id` with an

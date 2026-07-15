@@ -1,12 +1,39 @@
 local M = {}
 
--- Function to connect to a Unix socket
-local function connect(path)
-    local socket = require("socket.unix")()
-    assert(socket:settimeout(.1))
-    local status, err = pcall(function() assert(socket:connect(path)) end)
-    if status then return true end
-    return false
+-- Query the Node app's host-lookup service for a domain that missed the
+-- Redis fast path (wildcard subdomains not yet cached, see Host.addCache).
+-- Uses an OpenResty cosocket rather than the classic LuaSocket socket.unix()
+-- the previous version of this file used: LuaSocket's API is blocking and,
+-- called from an nginx worker, stalls the ENTIRE worker (every other
+-- in-flight connection on it) for the round-trip -- a real source of
+-- intermittent request latency for any wildcard host whose on-demand cache
+-- entry (1h TTL, conf.cacheTTL) had expired. resty.redis (used just above)
+-- is cosocket-based already and works fine from both the phases this module
+-- is called from (access_by_lua_block and the SSL request_domain callback),
+-- so a unix-domain cosocket is safe here too.
+local function unixLookup(json, domain)
+    -- The ngx_lua cosocket API has no separate ngx.socket.unix -- a plain
+    -- ngx.socket.tcp() connects to a unix domain socket when given a
+    -- "unix:/path" address instead of a host/port pair.
+    local sock = ngx.socket.tcp()
+    sock:settimeouts(100, 100, 100) -- connect, send, read (ms)
+
+    local ok = sock:connect("unix:/var/run/proxy_lookup.socket")
+    if not ok then return nil end
+
+    local ok = sock:send(json.encode({domain = domain}))
+    if not ok then
+        sock:close()
+        return nil
+    end
+
+    local line = sock:receive()
+    sock:close()
+    if not line then return nil end
+
+    local decodeOk, decoded = pcall(json.decode, line)
+    if not decodeOk then return nil end
+    return decoded
 end
 
 print("In targetInfo module")
@@ -61,20 +88,7 @@ function M.get(ngx, domain, targetInfo)
     end
 
     if not res["ip"] then
-        if connect("/var/run/proxy_lookup.socket") then
-            local socket = require("socket.unix")()
-            assert(socket:settimeout(.1))
-            assert(socket:connect("/var/run/proxy_lookup.socket"))
-            assert(socket:send(json.encode({domain = domain})))
-            while true do
-                local s, status, partial = socket:receive()
-                if partial then
-                    res = json.decode(partial)
-                    socket:close()
-                    break
-                end
-            end
-        end
+        res = unixLookup(json, domain) or res
     end
 
     if not res["ip"] then

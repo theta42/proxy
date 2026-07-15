@@ -110,6 +110,66 @@
 		input.focus();
 	}
 
+	// Host name of the record currently open in the edit modal, or null when
+	// adding a new host (basic-auth user management needs a saved host to
+	// attach users to).
+	let hostFormCurrentHost = null;
+
+	// The auth_mode radios aren't real form fields (no [name]); this keeps the
+	// two hidden basicauth_enabled/sso_enabled inputs — the ones actually
+	// submitted — in sync so only one can ever be true, and shows/hides the
+	// matching field group.
+	function hostAuthModeChanged(mode){
+		$('#basicauth_enabled-hidden').val(mode === 'basic' ? 'true' : 'false');
+		$('#sso_enabled-hidden').val(mode === 'sso' ? 'true' : 'false');
+		$('#hostTab-auth-basicFields').toggle(mode === 'basic');
+		$('#hostTab-auth-ssoFields').toggle(mode === 'sso');
+		$('#hostTab-auth-basicUsersMgmt').toggle(mode === 'basic' && !!hostFormCurrentHost);
+	}
+
+	// Per-user basic-auth management (delete / change password) for the host
+	// currently open in the edit modal. Only shown once a host exists to attach
+	// users to (not on "Add host", before it's been saved).
+	function hostRenderBasicAuthUsers(host, users){
+		let $rows = $('#basicAuthUserRows').empty();
+		let usernames = Object.keys(users || {});
+		if(!usernames.length){
+			$rows.append('<tr><td colspan="3" class="text-muted">No basic-auth users yet.</td></tr>');
+			return;
+		}
+		for(let username of usernames){
+			let $tr = $('<tr>');
+			$tr.append($('<td>').text(username));
+			let $pass = $('<input type="text" class="form-control form-control-sm" placeholder="new password">');
+			$tr.append($('<td>').append($pass));
+			let $actions = $('<td>');
+			let $save = $('<button type="button" class="btn btn-sm btn-outline-secondary me-1"><i class="fa-solid fa-key"></i></button>');
+			$save.on('click', function(){
+				let password = $pass.val();
+				if(!password) return;
+				app.api.put('host/' + encodeURIComponent(host) + '/basicauth-user/' + encodeURIComponent(username), {password}, function(error, data){
+					if(error) return app.util.actionMessage((data && data.message) || 'Failed to update password', $rows, 'danger');
+					$pass.val('');
+					app.util.actionMessage('Password updated for "' + username + '".', $rows, 'success');
+				});
+			});
+			// No confirm step, matching this form's existing "Delete" button
+			// (host deletion itself is also a single click, no dialog — see the
+			// host row actions above).
+			let $del = $('<button type="button" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i></button>');
+			$del.on('click', function(){
+				app.api.delete('host/' + encodeURIComponent(host) + '/basicauth-user/' + encodeURIComponent(username), function(error, data){
+					if(error) return app.util.actionMessage((data && data.message) || 'Failed to delete user', $rows, 'danger');
+					$tr.remove();
+					$('.basicauth-current').text(Object.keys((data && data.basicauth_users) || {}).join(', ') || 'none');
+				});
+			});
+			$actions.append($save).append($del);
+			$tr.append($actions);
+			$rows.append($tr);
+		}
+	}
+
 	// Fill the user/group datalists that back the allow-list autocomplete.
 	function hostLoadAuthSuggestions(){
 		app.api.get('host/auth-suggestions', function(error, data){
@@ -135,6 +195,8 @@
 			.addClass('challengeType-container');
 		$('#challengeType-child-relatedHost').text('');
 		$('.basicauth-current').text('none');
+		hostFormCurrentHost = null;
+		hostAuthModeChanged('none');
 		hostShowTab('hostTab-general-btn');
 	}
 
@@ -174,6 +236,13 @@
 		// Never echo basic-auth passwords; show current usernames as a hint.
 		$f.find("textarea[name='basicauth_users']").val('');
 		$('.basicauth-current').text(Object.keys(h.basicauth_users || {}).join(', ') || 'none');
+
+		// Auth: one radio drives both mutually-exclusive booleans.
+		hostFormCurrentHost = host;
+		let authMode = h.sso_enabled ? 'sso' : (h.basicauth_enabled ? 'basic' : 'none');
+		$f.find('#auth_mode-' + authMode).prop('checked', true);
+		hostAuthModeChanged(authMode);
+		hostRenderBasicAuthUsers(host, h.basicauth_users);
 
 		// The host name is the key; it can't change on edit. Wildcard hosts can
 		// still toggle their matching mode.
@@ -637,71 +706,88 @@
 						<!-- Authentication -->
 						<div class="tab-pane fade" id="hostTab-auth" role="tabpanel">
 							<p class="field-help text-muted">
-								Basic auth and SSO are OR'd &mdash; if either is enabled, a request
-								is allowed when it passes <b>either</b> one. Leave both off for a
-								public host.
+								Pick one authentication method for this host &mdash; basic auth and
+								SSO can't both be enabled, to avoid ambiguity about which one
+								actually protected a request. Choose "Off" for a public host.
 							</p>
 
-							<h6 class="text-muted">Basic authentication</h6>
 							<div class="form-group">
 								<div class="radio"><label>
-									<input type="radio" name="basicauth_enabled" id="basicauth_enabled-false" value="false" checked>
-									Off
+									<input type="radio" id="auth_mode-none" value="none" checked onchange="hostAuthModeChanged('none')">
+									Off (public)
 								</label></div>
 								<div class="radio"><label>
-									<input type="radio" name="basicauth_enabled" id="basicauth_enabled-true" value="true">
-									Require username / password
+									<input type="radio" id="auth_mode-basic" value="basic" onchange="hostAuthModeChanged('basic')">
+									Basic authentication
+								</label></div>
+								<div class="radio"><label>
+									<input type="radio" id="auth_mode-sso" value="sso" onchange="hostAuthModeChanged('sso')">
+									Single sign-on (SSO)
 								</label></div>
 							</div>
-							<div class="form-group">
-								<label for="basicauth_realm" class="form-label">Realm</label>
-								<input type="text" name="basicauth_realm" class="form-control" value="Restricted" placeholder="Restricted" />
-							</div>
-							<div class="form-group">
-								<label for="basicauth_users" class="form-label">Users</label>
-								<textarea name="basicauth_users" class="form-control" rows="2" placeholder="username:password, one per line"></textarea>
-								<small class="field-help text-muted d-block">
-									Current: <span class="basicauth-current">none</span>.
-									Passwords are stored hashed and never shown here. Leave blank to keep
-									the current users; entering any lines replaces the whole list.
-								</small>
+							<!-- Actually-submitted fields; kept in sync with the radios above by
+							     hostAuthModeChanged() so only one can be true at a time. -->
+							<input type="hidden" name="basicauth_enabled" id="basicauth_enabled-hidden" value="false">
+							<input type="hidden" name="sso_enabled" id="sso_enabled-hidden" value="false">
+
+							<div id="hostTab-auth-basicFields" style="display:none">
+								<hr>
+								<h6 class="text-muted">Basic authentication</h6>
+								<div class="form-group">
+									<label for="basicauth_realm" class="form-label">Realm</label>
+									<input type="text" name="basicauth_realm" class="form-control" value="Restricted" placeholder="Restricted" />
+								</div>
+								<div class="form-group">
+									<label for="basicauth_users" class="form-label">Users</label>
+									<textarea name="basicauth_users" class="form-control" rows="2" placeholder="username:password, one per line"></textarea>
+									<small class="field-help text-muted d-block">
+										Current: <span class="basicauth-current">none</span>.
+										Passwords are stored hashed and never shown here. Leave blank to keep
+										the current users; entering any lines replaces the whole list. To
+										manage individual users (delete / change password), use the table
+										below once the host has been saved.
+									</small>
+								</div>
 							</div>
 
-							<hr>
-							<h6 class="text-muted">Single sign-on (SSO)</h6>
-							<div class="form-group">
-								<div class="radio"><label>
-									<input type="radio" name="sso_enabled" id="sso_enabled-false" value="false" checked>
-									Off
-								</label></div>
-								<div class="radio"><label>
-									<input type="radio" name="sso_enabled" id="sso_enabled-true" value="true">
-									Require login via the configured OIDC provider
-								</label></div>
-								<small class="field-help text-muted d-block">Gates the site behind the same identity provider the admin app uses. Empty allow-lists below mean any authenticated user is allowed.</small>
+							<div id="hostTab-auth-ssoFields" style="display:none">
+								<hr>
+								<h6 class="text-muted">Single sign-on (SSO)</h6>
+								<p class="field-help text-muted">Gates the site behind the same identity provider the admin app uses. Empty allow-lists below mean any authenticated user is allowed.</p>
+
+								<div class="form-group">
+									<label for="sso_allow_users" class="form-label">Allowed users</label>
+									<div class="input-group mb-1">
+										<input type="text" class="form-control" list="hostSsoUsers" placeholder="type to search users…"
+											onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_users');}">
+										<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_users')">
+											<i class="fa-solid fa-plus"></i> Add
+										</button>
+									</div>
+									<textarea name="sso_allow_users" class="form-control" rows="2" placeholder="one email/username per line; blank = any authenticated user"></textarea>
+								</div>
+								<div class="form-group">
+									<label for="sso_allow_groups" class="form-label">Allowed groups</label>
+									<div class="input-group mb-1">
+										<input type="text" class="form-control" list="hostSsoGroups" placeholder="type to search groups…"
+											onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_groups');}">
+										<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_groups')">
+											<i class="fa-solid fa-plus"></i> Add
+										</button>
+									</div>
+									<textarea name="sso_allow_groups" class="form-control" rows="2" placeholder="one group per line; blank = any authenticated user"></textarea>
+								</div>
 							</div>
 
-							<div class="form-group">
-								<label for="sso_allow_users" class="form-label">Allowed users</label>
-								<div class="input-group mb-1">
-									<input type="text" class="form-control" list="hostSsoUsers" placeholder="type to search users…"
-										onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_users');}">
-									<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_users')">
-										<i class="fa-solid fa-plus"></i> Add
-									</button>
+							<div id="hostTab-auth-basicUsersMgmt" style="display:none">
+								<hr>
+								<h6 class="text-muted">Manage basic-auth users</h6>
+								<div class="table-responsive">
+									<table class="table table-sm">
+										<thead><tr><th>Username</th><th>New password</th><th></th></tr></thead>
+										<tbody id="basicAuthUserRows"></tbody>
+									</table>
 								</div>
-								<textarea name="sso_allow_users" class="form-control" rows="2" placeholder="one email/username per line; blank = any authenticated user"></textarea>
-							</div>
-							<div class="form-group">
-								<label for="sso_allow_groups" class="form-label">Allowed groups</label>
-								<div class="input-group mb-1">
-									<input type="text" class="form-control" list="hostSsoGroups" placeholder="type to search groups…"
-										onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_groups');}">
-									<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_groups')">
-										<i class="fa-solid fa-plus"></i> Add
-									</button>
-								</div>
-								<textarea name="sso_allow_groups" class="form-control" rows="2" placeholder="one group per line; blank = any authenticated user"></textarea>
 							</div>
 						</div>
 

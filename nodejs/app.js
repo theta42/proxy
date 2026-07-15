@@ -3,6 +3,7 @@
 const path = require('path');
 const ejs = require('ejs')
 const express = require('express');
+const compression = require('compression');
 
 // Set up the express app.
 const app = express();
@@ -52,8 +53,15 @@ app.onListen.push(function(){
   });
 }); 
 
+// Gzip text responses (HTML/JS/CSS/JSON). The admin UI loads ~13 separate,
+// uncompressed vendor JS/CSS files on every full page navigation (a
+// traditional multi-page app, not an SPA) — this alone meaningfully cuts
+// bytes-over-the-wire and perceived load time on a real network, where it
+// matters far more than on localhost.
+app.use(compression());
+
 // load the JSON parser middleware. Express will parse JSON into native objects
-// for any request that has JSON in its content type. 
+// for any request that has JSON in its content type.
 app.use(express.json());
 
 // Set up the templating engine to build HTML for the front end.
