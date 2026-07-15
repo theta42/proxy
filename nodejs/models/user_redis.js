@@ -3,6 +3,7 @@
 const Table = require('.');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const conf = require('@simpleworkjs/conf');
 const saltRounds = 10;
 
 class User extends Table{
@@ -87,16 +88,22 @@ User.register();
 
 (async function(){
 	var defaultUser = 'proxyadmin2'
+	// Optional: an orchestrator (e.g. theta-env's setup.sh) can set
+	// auth.localAdminPass in proxy-secrets.js to a generated password so this
+	// bootstrap account isn't left at the well-known default (username ==
+	// password == "proxyadmin2"). Only used on first creation -- once the
+	// account exists this is never read again, so it's safe to leave set.
+	var defaultPass = (conf.auth && conf.auth.localAdminPass) || defaultUser;
 	try{
 		let user = await User.get(defaultUser);
 	}catch(error){
 		try{
 			let user = await User.create({
 				username:defaultUser,
-				password: defaultUser,
+				password: defaultPass,
 				created_by: defaultUser
 			});
-			console.log(defaultUser, 'created', user);	
+			console.log(defaultUser, 'created', user);
 		}catch(error){
 			console.error(error)
 		}

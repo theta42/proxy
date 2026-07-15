@@ -10,6 +10,36 @@
 # /usr/local/openresty/lualib (which is on OpenResty's package.path) — no manual
 # --lua-dir/--tree wrangling needed.
 
+# ── Git commit hash (build-time only) ────────────────────────────────────────
+# The final image intentionally has no git binary and no .git directory (kept
+# lean, per .dockerignore), so `git rev-parse` always fails at runtime and
+# build_info.js silently fell back to "unknown". Resolve it here instead,
+# where .git IS available (build context), and bake just the short hash into
+# a file — this stage itself is discarded, only /commit.txt survives via the
+# COPY --from below. Reuses the main base image (already pulled for the real
+# build below) rather than a separate one, so this adds no extra image pull.
+#
+# GIT_COMMIT lets a caller override the resolved hash instead of computing it
+# from .git in this build context. Needed when this repo is built as a git
+# submodule (e.g. from theta-env): a submodule's .git is a pointer FILE, not
+# a directory — the real object database lives in the superproject's
+# .git/modules/, outside this repo's own directory and therefore outside
+# Docker's build context entirely, so `git rev-parse` can never resolve it
+# from in here no matter what. theta-env's setup.sh passes
+# --build-arg GIT_COMMIT=$(git -C proxy rev-parse --short HEAD), computed on
+# the host where the submodule resolves correctly.
+ARG GIT_COMMIT=""
+FROM openresty/openresty:1.31.1.1-2-bookworm-fat AS gitinfo
+ARG GIT_COMMIT
+WORKDIR /repo
+COPY .git ./.git
+RUN if [ -n "$GIT_COMMIT" ]; then \
+        echo "$GIT_COMMIT" > /commit.txt; \
+    else \
+        { apt-get update && apt-get install -y --no-install-recommends git \
+        && git rev-parse --short HEAD > /commit.txt; } 2>/dev/null || echo unknown > /commit.txt; \
+    fi
+
 FROM openresty/openresty:1.31.1.1-2-bookworm-fat
 
 # ── Tooling needed before adding apt repos ──────────────────────────────────
@@ -76,6 +106,9 @@ COPY nodejs/services ./services
 COPY nodejs/utils ./utils
 COPY nodejs/views ./views
 COPY nodejs/public ./public
+
+# Baked commit hash from the gitinfo stage (see build_info.js).
+COPY --from=gitinfo /commit.txt ./.build_commit
 
 # ── OpenResty config (mirrors ops/install.sh symlink targets) ─────────────────
 # The default OpenResty config lives at /usr/local/openresty/nginx/conf/nginx.conf
