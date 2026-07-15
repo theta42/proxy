@@ -5,117 +5,73 @@ title: Home
 
 # Proxy
 
-A reverse proxy and HTTPS termination service using OpenResty/nginx with a management API and web GUI.
+A reverse proxy and HTTPS termination service built on OpenResty/nginx, with a
+management API and web GUI. It puts any of your apps behind single sign-on
+(OIDC) and can also look users up directly in LDAP — so the same people who
+log in to your SSO are the people allowed to reach your proxied apps.
+
+Automatic HTTPS from Let's Encrypt (including wildcards), routing by hostname,
+and per-host access control tied to your identity provider — managed from a
+web UI or a REST API, with no downtime on config changes.
+
+Part of the theta42 self-hosted identity stack, alongside
+[SSO Manager](https://theta42.github.io/sso-manager-node/) and
+[theta-env](https://theta42.github.io/theta-env/) (the two composed with one
+command).
 
 ## Screenshots
 
-| Hosts | Authentication |
-| --- | --- |
-| ![Host list](images/hosts.png) | ![Per-host SSO auth](images/host-auth-sso.png) |
+<a href="images/hosts.png" target="_blank"><img src="images/hosts.png" alt="Host list" width="49%"></a>
+<a href="images/host-auth-sso.png" target="_blank"><img src="images/host-auth-sso.png" alt="Per-host SSO auth" width="49%"></a>
 
 Basic auth and SSO are mutually exclusive per host, with per-user password
 management once basic auth is enabled:
 
-![Per-host basic auth](images/host-auth-basic.png)
+<a href="images/host-auth-basic.png" target="_blank"><img src="images/host-auth-basic.png" alt="Per-host basic auth" width="60%"></a>
+
+*(click any screenshot to view full size)*
+
+## Why this over the alternatives
+
+Nginx Proxy Manager, Traefik, and Caddy are all good reverse proxies with
+auto-HTTPS. This one is built around identity: it is both an **OIDC client**
+of an SSO provider (for browser login) **and** a direct **LDAP client** (for
+user lookups and per-host access control), so access decisions come from your
+real user directory, not a static allow-list or a separate auth proxy bolted
+on top. The trade-off is that it expects an OIDC/LDAP identity source to point
+at — it is not a standalone auth server. Pair it with
+[SSO Manager](https://theta42.github.io/sso-manager-node/) (bundled OpenLDAP +
+OIDC) for a self-hosted SSO + proxy stack, or point it at any OIDC provider +
+LDAP directory you already run.
 
 ## Features
 
-- **Automated HTTPS/SSL** - Let's Encrypt integration with HTTP-01 and DNS-01 challenges
-- **Wildcard SSL Certificates** - Support for wildcard domains with automatic renewal
-- **Multiple DNS Providers** - Cloudflare, DigitalOcean, PorkBun, DuckDNS (free) integrations
-- **Advanced Routing** - Sophisticated wildcard domain matching (*, **)
-- **RESTful API** - Full programmatic control
-- **Web Interface** - User-friendly management GUI
-- **High Performance** - Unix socket-based host lookup for minimal latency
+- Automated HTTPS via Let's Encrypt — HTTP-01 and DNS-01 (wildcard) challenges
+- Multiple DNS providers (Cloudflare, DigitalOcean, PorkBun, DuckDNS — free)
+- Dynamic host routing with wildcard domain matching (`*`, `**`)
+- **OIDC login** and **direct LDAP lookups**, independently of each other
+- Per-host **basic auth** as an alternative to SSO (mutually exclusive, so
+  it's never ambiguous which one gated a request)
+- **Role-based access control** — global admins, local groups, and
+  per-domain permissions (viewer/manager)
+- Self-service API tokens for scripting/CI without a browser session
+- Web UI and a full REST API
 
-## Quick Start
-
-### Docker (recommended for self-hosters)
-
-A single all-in-one image bundling OpenResty + the app + Redis:
+## Get it
 
 ```bash
 git clone https://github.com/theta42/proxy.git
 cd proxy && docker compose up -d --build
 ```
 
-See the [Docker Guide](docker.html) for configuration (OIDC/LDAP via `app_*` env)
-and fronting an SSO Manager.
+That's the standalone quick start. For the full set of install options (Docker,
+bare-metal, or as part of the combined SSO + proxy stack), configuration
+reference, and API docs, see the
+**[GitHub repository](https://github.com/theta42/proxy)**.
 
-### Automated bare-metal installation
+## Related projects
 
-For modern Debian-based systems (Ubuntu 20.04+, Debian 11+):
-
-```bash
-wget -O - https://raw.githubusercontent.com/theta42/proxy/master/ops/install.sh | sudo bash
-```
-
-### Requirements (bare metal)
-
-- Node.js 18+ (tested with 18.x, 20.x, 22.x)
-- OpenResty (nginx with Lua support)
-- Redis
-- Linux system with root access
-
-## Documentation
-
-- [Docker Guide](docker.html) - All-in-one container deployment + configuration
-- [Installation Guide](installation.html) - Bare-metal setup instructions
-- [API Reference](api.html) - Complete API documentation
-- [Architecture](architecture.html) - System design and components
-- [Contributing](contributing.html) - Development and testing guide
-
-## Use Cases
-
-**Development Teams**
-- Host multiple projects on a single server with unique domains
-- Automatic SSL for all development sites
-- Easy configuration via API or web UI
-
-**Production Deployments**
-- High-performance reverse proxy for microservices
-- Centralized SSL certificate management
-- Dynamic routing without nginx reloads
-
-**Personal Projects**
-- Self-hosted services with automatic HTTPS
-- Wildcard certificates for unlimited subdomains
-- Simple management interface
-
-## Architecture
-
-```
-┌─────────────┐
-│   Client    │
-└──────┬──────┘
-       │ HTTPS
-       ▼
-┌─────────────────────┐
-│  OpenResty/Nginx    │
-│  - SSL Termination  │
-│  - Host Routing     │
-└──────┬──────────────┘
-       │ Unix Socket
-       ▼
-┌─────────────────────┐      ┌─────────────┐
-│   Node.js API       │◄────►│    Redis    │
-│  - Management       │      │  - Storage  │
-│  - SSL Orchestration│      │  - Cache    │
-└──────┬──────────────┘      └─────────────┘
-       │
-       ▼
-┌─────────────────────┐
-│  Backend Services   │
-│  - Your Apps        │
-└─────────────────────┘
-```
-
-## Community
-
-- [GitHub Repository](https://github.com/theta42/proxy)
-- [Issue Tracker](https://github.com/theta42/proxy/issues)
-- [Pull Requests](https://github.com/theta42/proxy/pulls)
-
-## License
-
-MIT License - See [LICENSE](https://github.com/theta42/proxy/blob/master/LICENSE) for details.
+- **[SSO Manager](https://theta42.github.io/sso-manager-node/)** — the OIDC
+  provider + LDAP directory this proxy is designed to sit in front of.
+- **[theta-env](https://theta42.github.io/theta-env/)** — runs this proxy and
+  SSO Manager together with one command.

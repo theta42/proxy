@@ -22,12 +22,12 @@ proxy serves them over TLS with auto-renewing certs and no downtime on changes.
 
 | Hosts | Authentication |
 | --- | --- |
-| ![Host list](docs/images/hosts.png) | ![Per-host SSO auth](docs/images/host-auth-sso.png) |
+| [![Host list](docs/images/hosts.png)](docs/images/hosts.png) | [![Per-host SSO auth](docs/images/host-auth-sso.png)](docs/images/host-auth-sso.png) |
 
 Basic auth and SSO are mutually exclusive per host, with per-user password
 management once basic auth is enabled:
 
-![Per-host basic auth](docs/images/host-auth-basic.png)
+[![Per-host basic auth](docs/images/host-auth-basic.png)](docs/images/host-auth-basic.png)
 
 ## Why this over the alternatives
 
