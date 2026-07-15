@@ -4,10 +4,12 @@ const path = require('path');
 const express = require('express');
 const router = require('express').Router();
 const conf = require('@simpleworkjs/conf');
+const buildInfo = require('../utils/build_info');
 
 const values ={
   title: conf.environment !== 'production' ? `dev` : '',
   titleIcon: conf.environment !== 'production' ? `<i class="fa-brands fa-dev"></i>` : '',
+  ...buildInfo,
 }
 
 // List of front end node modules to be served

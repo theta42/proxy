@@ -1,3 +1,21 @@
 		</div>
+
+		<footer class="py-2 bg-dark text-light mt-4">
+			<div class="container-fluid d-flex flex-wrap justify-content-between align-items-center small gap-2">
+				<span class="d-flex align-items-center gap-2">
+					<a href="https://theta42.com" target="_blank">
+						<img width="64" src="/static/img/theta42.svg"/>
+					</a>
+					&copy; <%- buildYear %> theta42 &middot;
+					<a href="https://github.com/theta42/proxy/blob/master/LICENSE" target="_blank" class="text-light">MIT License</a>
+				</span>
+				<span class="d-flex align-items-center gap-3">
+					<a href="https://github.com/theta42/proxy" target="_blank" class="text-light text-decoration-none">
+						<i class="fa-brands fa-github"></i> GitHub
+					</a>
+				</span>
+				<span>v<%- buildVersion %> (<%- buildHash %>)</span>
+			</div>
+		</footer>
     </body>
 </html>
