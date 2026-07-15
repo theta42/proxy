@@ -40,6 +40,7 @@ are `JSON.parse`-coerced when possible and kept as raw strings otherwise.
 | `app_ldap__tlsOptions__ca` | `conf.ldap.tlsOptions.ca` | path to a CA cert for strict trust |
 | `app_auth__adminUsers` | `conf.auth.adminUsers` | local anti-lockout admin (uid) |
 | `app_auth__adminGroups` | `conf.auth.adminGroups` | SSO/LDAP groups that are global admin (JSON array) |
+| `app_auth__localAdminPass` | `conf.auth.localAdminPass` | initial password for the local anti-lockout admin (used once, on first creation only — defaults to the username itself if unset) |
 | `app_redis__prefix` | `conf.redis.prefix` | default `proxy_` |
 
 See [`docs/docker.md`](docs/docker.md) for a shorter, container-focused version
