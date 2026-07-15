@@ -9,7 +9,7 @@ const {passwordError} = require('../utils/password_policy');
 // per-field key the frontend surfaces inline.
 function validatePassword(password){
 	let message = passwordError(password);
-	if(message) throw User.errors.ObjectValidateError([{key: 'password', message}]);
+	if(message) throw new User.errors.ObjectValidateError([{key: 'password', message}]);
 }
 
 // User management is global-admin-only, except the self-service routes below

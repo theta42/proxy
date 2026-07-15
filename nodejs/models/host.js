@@ -189,7 +189,7 @@ class Host extends Table{
 		}catch(error){
 			console.log('validateWildcardCreate error', error)
 			if(error.status === 404) error.message = "No matching DNS provider registered"
-			throw this.errors.ObjectValidateError([{key: 'host', message: error.message}]);
+			throw new this.errors.ObjectValidateError([{key: 'host', message: error.message}]);
 		}
 	}
 

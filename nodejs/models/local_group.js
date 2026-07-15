@@ -30,7 +30,7 @@ class LocalGroup extends Table{
 	static async create(data){
 		data.name = this.slug(data.name);
 		if(!data.name){
-			throw this.errors.ObjectValidateError([{key: 'name', message: 'A group name is required.'}]);
+			throw new this.errors.ObjectValidateError([{key: 'name', message: 'A group name is required.'}]);
 		}
 		if(!Array.isArray(data.members)) data.members = [];
 		return super.create(data);
@@ -39,7 +39,7 @@ class LocalGroup extends Table{
 	async addMember(username){
 		username = String(username || '').trim();
 		if(!username){
-			throw this.constructor.errors.ObjectValidateError([{key: 'username', message: 'A username is required.'}]);
+			throw new this.constructor.errors.ObjectValidateError([{key: 'username', message: 'A username is required.'}]);
 		}
 		let members = Array.isArray(this.members) ? this.members : [];
 		if(members.includes(username)) return this;
