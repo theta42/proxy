@@ -11,7 +11,16 @@ end
 
 print("In targetInfo module")
 
--- Main function of the module
+-- Main function of the module. Returns (res) on success, or (nil, httpStatus)
+-- on failure -- it must NOT call ngx.exit() itself: this is called both from
+-- proxy.conf's access_by_lua_block (a normal request phase, where ngx.exit()
+-- is fine) AND from nginx.conf's request_domain callback, which runs during
+-- the TLS handshake (ssl_certificate_by_lua*). ngx.exit() is not a supported
+-- API in that phase -- calling it there aborts the handshake with a bare
+-- "internal error" TLS alert and no log output, breaking TLS entirely
+-- (including the self-signed fallback cert, since auto-ssl never gets to
+-- fall back gracefully). Callers that can legitimately abort the request
+-- (i.e. proxy.conf) must call ngx.exit() themselves using the returned status.
 function M.get(ngx, domain, targetInfo)
     -- Reuse a previously-resolved target ONLY when it was resolved for this
     -- exact host. HTTP/2 connection coalescing lets a browser serve several
@@ -26,10 +35,9 @@ function M.get(ngx, domain, targetInfo)
 
     local json = require "cjson"
     local redis = require "resty.redis"
-    
+
     if not domain then
-        ngx.exit(499)
-        return false
+        return nil, 499
     end
 
     local red = redis:new()
@@ -38,7 +46,7 @@ function M.get(ngx, domain, targetInfo)
     local ok, err = red:connect("127.0.0.1", 6379)
     if not ok then
         ngx.log(ngx.ERR, "failed to connect to redis: ", err)
-        return ngx.exit(598)
+        return nil, 598
     end
 
     local res, err = red:hgetall("proxy_Host_"..domain)
@@ -53,7 +61,7 @@ function M.get(ngx, domain, targetInfo)
     end
 
     if not res["ip"] then
-        if connect("/var/run/proxy_lookup.socket") then 
+        if connect("/var/run/proxy_lookup.socket") then
             local socket = require("socket.unix")()
             assert(socket:settimeout(.1))
             assert(socket:connect("/var/run/proxy_lookup.socket"))
@@ -70,8 +78,7 @@ function M.get(ngx, domain, targetInfo)
     end
 
     if not res["ip"] then
-        ngx.exit(406)
-        return false
+        return nil, 406
     end
 
     ngx.ctx.targetInfo = res
