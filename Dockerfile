@@ -18,11 +18,27 @@
 # a file — this stage itself is discarded, only /commit.txt survives via the
 # COPY --from below. Reuses the main base image (already pulled for the real
 # build below) rather than a separate one, so this adds no extra image pull.
+#
+# GIT_COMMIT lets a caller override the resolved hash instead of computing it
+# from .git in this build context. Needed when this repo is built as a git
+# submodule (e.g. from theta-env): a submodule's .git is a pointer FILE, not
+# a directory — the real object database lives in the superproject's
+# .git/modules/, outside this repo's own directory and therefore outside
+# Docker's build context entirely, so `git rev-parse` can never resolve it
+# from in here no matter what. theta-env's setup.sh passes
+# --build-arg GIT_COMMIT=$(git -C proxy rev-parse --short HEAD), computed on
+# the host where the submodule resolves correctly.
+ARG GIT_COMMIT=""
 FROM openresty/openresty:1.31.1.1-2-bookworm-fat AS gitinfo
+ARG GIT_COMMIT
 WORKDIR /repo
 COPY .git ./.git
-RUN { apt-get update && apt-get install -y --no-install-recommends git \
-    && git rev-parse --short HEAD > /commit.txt; } 2>/dev/null || echo unknown > /commit.txt
+RUN if [ -n "$GIT_COMMIT" ]; then \
+        echo "$GIT_COMMIT" > /commit.txt; \
+    else \
+        { apt-get update && apt-get install -y --no-install-recommends git \
+        && git rev-parse --short HEAD > /commit.txt; } 2>/dev/null || echo unknown > /commit.txt; \
+    fi
 
 FROM openresty/openresty:1.31.1.1-2-bookworm-fat
 
