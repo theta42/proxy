@@ -10,6 +10,20 @@
 # /usr/local/openresty/lualib (which is on OpenResty's package.path) — no manual
 # --lua-dir/--tree wrangling needed.
 
+# ── Git commit hash (build-time only) ────────────────────────────────────────
+# The final image intentionally has no git binary and no .git directory (kept
+# lean, per .dockerignore), so `git rev-parse` always fails at runtime and
+# build_info.js silently fell back to "unknown". Resolve it here instead,
+# where .git IS available (build context), and bake just the short hash into
+# a file — this stage itself is discarded, only /commit.txt survives via the
+# COPY --from below. Reuses the main base image (already pulled for the real
+# build below) rather than a separate one, so this adds no extra image pull.
+FROM openresty/openresty:1.31.1.1-2-bookworm-fat AS gitinfo
+WORKDIR /repo
+COPY .git ./.git
+RUN { apt-get update && apt-get install -y --no-install-recommends git \
+    && git rev-parse --short HEAD > /commit.txt; } 2>/dev/null || echo unknown > /commit.txt
+
 FROM openresty/openresty:1.31.1.1-2-bookworm-fat
 
 # ── Tooling needed before adding apt repos ──────────────────────────────────
@@ -76,6 +90,9 @@ COPY nodejs/services ./services
 COPY nodejs/utils ./utils
 COPY nodejs/views ./views
 COPY nodejs/public ./public
+
+# Baked commit hash from the gitinfo stage (see build_info.js).
+COPY --from=gitinfo /commit.txt ./.build_commit
 
 # ── OpenResty config (mirrors ops/install.sh symlink targets) ─────────────────
 # The default OpenResty config lives at /usr/local/openresty/nginx/conf/nginx.conf

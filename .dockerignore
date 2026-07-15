@@ -19,7 +19,10 @@ docs/
 .github/
 
 # Git + editor + secrets.
-.git/
+# NOTE: .git/ is intentionally NOT excluded — the gitinfo build stage in the
+# Dockerfile reads it to bake the commit hash into the image (see
+# nodejs/utils/build_info.js), then it's discarded before the final stage.
+# It never ends up in the final image.
 .gitignore
 *.md
 !README.md
