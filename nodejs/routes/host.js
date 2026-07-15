@@ -1,6 +1,7 @@
 'use strict';
 
 const router = require('express').Router();
+const {rateLimit} = require('express-rate-limit');
 const conf = require('@simpleworkjs/conf');
 const {Host, Domain, User} = require('../models').models;
 const {LocalGroup} = require('../models/local_group');
@@ -11,6 +12,20 @@ const {collectHostFieldErrors} = require('../utils/hostname_validate');
 const {hashBasicAuthUsers} = require('../utils/basicauth');
 
 const Model = Host;
+
+// Throttle host-mutating endpoints (create/update/delete a host, manage a
+// basic-auth user's password) per IP. These already require an authenticated,
+// authorized manager/admin, but a compromised or careless session shouldn't
+// be able to hammer them unboundedly — same pattern as routes/auth.js's
+// authLimiter, just a higher ceiling since legitimate admin work (bulk edits)
+// is expected here.
+const mutateLimiter = rateLimit({
+	windowMs: 15 * 60 * 1000,   // 15 minutes
+	max: 300,                   // 300 mutations per IP per window
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: {name: 'TooManyRequests', message: 'Too many requests, please try again later.'},
+});
 
 // Reject a malformed host/target before it reaches the model. Throws a 422
 // ObjectValidateError (per-field keys) that the frontend surfaces inline.
@@ -83,7 +98,7 @@ router.get('/', async function(req, res, next){
 	}
 });
 
-router.post('/', authz.requireDomainRole('manager', authz.resolve.hostBody), async function(req, res, next){
+router.post('/', mutateLimiter, authz.requireDomainRole('manager', authz.resolve.hostBody), async function(req, res, next){
 	try{
 		req.body.created_by = authz.reqUsername(req);
 		validateHostFields(req.body);
@@ -125,7 +140,7 @@ router.get('/lookupobj', authz.requireAdmin, async function(req, res, next){
 	}
 });
 
-router.delete('/cache', authz.requireAdmin, async function(req, res, next){
+router.delete('/cache', mutateLimiter, authz.requireAdmin, async function(req, res, next){
 	try{
 		let count = await Model.clearCache();
 
@@ -150,7 +165,7 @@ router.get('/:item', authz.requireDomainRole('viewer', authz.resolve.hostParam),
 	}
 });
 
-router.put('/:item', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
+router.put('/:item', mutateLimiter, authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		req.body.updated_by = authz.reqUsername(req);
 		validateHostFields(req.body);
@@ -172,7 +187,7 @@ router.put('/:item', authz.requireDomainRole('manager', authz.resolve.hostParam)
 	}
 });
 
-router.delete('/:item', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
+router.delete('/:item', mutateLimiter, authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		let count = await item.remove();
@@ -192,7 +207,7 @@ router.delete('/:item', authz.requireDomainRole('manager', authz.resolve.hostPar
 // textarea there means "leave existing users untouched", see
 // normalizeHostFeatures), which makes deleting or rotating one user's
 // password error-prone from that form. These two routes touch exactly one key.
-router.put('/:item/basicauth-user/:username', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
+router.put('/:item/basicauth-user/:username', mutateLimiter, authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		let sanitized = sanitizeBasicAuthObject({[req.params.username]: req.body.password});
@@ -210,7 +225,7 @@ router.put('/:item/basicauth-user/:username', authz.requireDomainRole('manager',
 	}
 });
 
-router.delete('/:item/basicauth-user/:username', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
+router.delete('/:item/basicauth-user/:username', mutateLimiter, authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		let users = Object.assign({}, item.basicauth_users);
@@ -223,7 +238,7 @@ router.delete('/:item/basicauth-user/:username', authz.requireDomainRole('manage
 	}
 });
 
-router.put('/:item/renew', authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
+router.put('/:item/renew', mutateLimiter, authz.requireDomainRole('manager', authz.resolve.hostParam), async function(req, res, next){
 	try{
 		let item = await Model.get(req.params.item);
 		item.createWildcardCert();
