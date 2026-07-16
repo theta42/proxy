@@ -83,7 +83,31 @@
 				</div>
 			</div>
 		</nav>
+
+		<!-- Admin-only "a newer release is available" notice (services/update_check.js).
+		     Dismissal is per-browser-session only (sessionStorage), not persisted server-side.
+		     Fixed-positioned below the fixed navbar (a plain in-flow div here would render
+		     UNDER the nav, since fixed elements are taken out of document flow) -- shown/hidden
+		     dynamically, so #spa-shell's margin-top is adjusted in JS to make room for it. -->
+		<div id="update-banner" class="alert alert-info alert-dismissible mb-0 rounded-0 text-center" style="display:none; position:fixed; left:0; right:0; z-index:1029;">
+			<span id="update-banner-text"></span>
+			<button type="button" class="btn-close" onclick="dismissUpdateBanner()"></button>
+		</div>
+
 		<script type="text/javascript">
+			function showUpdateBanner(){
+				let $nav = $('nav.fixed-top');
+				let $banner = $('#update-banner');
+				$banner.css('top', $nav.outerHeight() + 'px').show();
+				$('#spa-shell').css('margin-top', ($nav.outerHeight() + $banner.outerHeight()) + 'px');
+			}
+
+			function dismissUpdateBanner(){
+				$('#update-banner').hide();
+				$('#spa-shell').css('margin-top', '');
+				sessionStorage.setItem('update-banner-dismissed', '1');
+			}
+
 			$(document).ready(function(){
 
 				// Set the correct link to active in the top nav bar
@@ -108,7 +132,21 @@
 						$('#cl-login-button').show();
 					}
 
-					if(data && data.isAdmin) $('.nav-admin').css('display', '');
+					if(data && data.isAdmin){
+						$('.nav-admin').css('display', '');
+
+						if(!sessionStorage.getItem('update-banner-dismissed')){
+							app.api.get('update-check', function(error, info){
+								if(error || !info || !info.updateAvailable) return;
+								$('#update-banner-text').html(
+									'A newer version of the proxy is available: <b>v' + info.latestVersion + '</b> ' +
+									'(running v' + info.currentVersion + ') — ' +
+									'<a href="' + info.releaseUrl + '" target="_blank" class="alert-link">see what changed</a>.'
+								);
+								showUpdateBanner();
+							});
+						}
+					}
 				});
 
 			});

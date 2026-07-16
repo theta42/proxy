@@ -34,6 +34,7 @@ app.contoller = require('./controller');
 require('./services/host_lookup');
 require('./services/host_scheduler');
 require('./services/dynamic_dns');
+require('./services/update_check');
 
 // Push pubsub over the socket and back.
 app.onListen.push(function(){
