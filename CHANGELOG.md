@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.3] - 2026-07-16
+
+### Added
+- `CHANGELOG.md` (this file), backfilled from the release notes for every tag so far and served in-app at `/docs/changelog`. Closes [theta-env#43](https://github.com/theta42/theta-env/issues/43).
+
 ## [1.1.2] - 2026-07-16
 
 ### Fixed
@@ -29,7 +34,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.3...HEAD
+[1.1.3]: https://github.com/theta42/proxy/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/theta42/proxy/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/theta42/proxy/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/theta42/proxy/releases/tag/v1.1.0
