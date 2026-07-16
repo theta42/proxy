@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.6] - 2026-07-16
+
+### Fixed
+- Hosts admin UI's Authentication tab radios (Off / Basic / SSO) had no shared `name`, so clicking one didn't uncheck the others -- multiple options could appear selected at once. Added `name="auth_mode"` to restore standard exclusive radio-group behavior.
+
 ## [1.1.5] - 2026-07-16
 
 ### Fixed
@@ -44,7 +49,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.5...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.6...HEAD
+[1.1.6]: https://github.com/theta42/proxy/compare/v1.1.5...v1.1.6
 [1.1.5]: https://github.com/theta42/proxy/compare/v1.1.4...v1.1.5
 [1.1.4]: https://github.com/theta42/proxy/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/theta42/proxy/compare/v1.1.2...v1.1.3
