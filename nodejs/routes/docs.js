@@ -3,9 +3,21 @@
 const fs = require('fs');
 const path = require('path');
 const router = require('express').Router();
+const {rateLimit} = require('express-rate-limit');
 const {marked} = require('marked');
 const conf = require('@simpleworkjs/conf');
 const buildInfo = require('../utils/build_info');
+
+// Public, unauthenticated, and reads from disk on every request -- throttle
+// per IP so it can't be used to hammer the filesystem (mirrors the pattern
+// in routes/auth.js/routes/host.js), generous since this is just docs.
+const docsLimiter = rateLimit({
+	windowMs: 60 * 1000,
+	max: 120,
+	standardHeaders: true,
+	legacyHeaders: false,
+	message: {name: 'TooManyRequests', message: 'Too many requests, please try again later.'},
+});
 
 const values = {
 	title: conf.environment !== 'production' ? `dev` : '',
@@ -38,6 +50,8 @@ router.use('/images', require('express').static(path.join(__dirname, '../../docs
 function fixImagePaths(html) {
 	return html.replace(/(["(])docs\/images\//g, '$1/docs/images/');
 }
+
+router.use(docsLimiter);
 
 router.get('/', function(req, res) {
 	res.render('docs_index', {...values, docs: docList});
