@@ -2,6 +2,8 @@
 // Using https://github.com/simpleworkjs/conf to handle configuration
 
 module.exports = {
+	name: "Dynamic Proxy", // displayed in the UI
+	logo: "/static/img/theta42.svg", // shown in the nav; point at your own file under public/ (or an absolute URL) to white-label
 	userModel: 'redis', // pam, redis, ldap
 	ldap: {
 		url: 'ldap://192.168.1.55:389',

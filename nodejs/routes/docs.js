@@ -22,6 +22,8 @@ const docsLimiter = rateLimit({
 const values = {
 	title: conf.environment !== 'production' ? `dev` : '',
 	titleIcon: conf.environment !== 'production' ? `<i class="fa-brands fa-dev"></i>` : '',
+	name: conf.name,
+	logo: conf.logo,
 	...buildInfo,
 };
 
