@@ -14,8 +14,6 @@ ops/cookbooks/
 ops/roles/
 ops/proxy.service
 
-# Docs site (served via GitHub Pages, not from the image).
-docs/
 .github/
 
 # Git + editor + secrets.
@@ -24,8 +22,13 @@ docs/
 # nodejs/utils/build_info.js), then it's discarded before the final stage.
 # It never ends up in the final image.
 .gitignore
+# docs/ and the doc files below ARE needed in the image now — served in-app
+# at /docs (routes/docs.js) so they're readable without internet access.
 *.md
 !README.md
+!DEPLOYMENT.md
+!nodejs/api.md
+!docs/**/*.md
 secrets.js
 secrets.json
 *.env

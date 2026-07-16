@@ -1,0 +1,31 @@
+<%- include('top') %>
+
+<div class="row">
+	<div class="col-md-3 d-none d-md-block">
+		<div class="card shadow-lg mt-4 mb-4">
+			<div class="card-header shadow">
+				<i class="fa-solid fa-book"></i> Documentation
+			</div>
+			<div class="list-group list-group-flush">
+				<% docs.forEach(function(doc){ %>
+					<a href="/docs/<%= doc.slug %>"
+						class="list-group-item list-group-item-action<%= doc.slug === currentSlug ? ' active' : '' %>">
+						<%= doc.title %>
+					</a>
+				<% }) %>
+			</div>
+		</div>
+	</div>
+	<div class="col-md-9">
+		<div class="card shadow-lg mt-4 mb-4">
+			<div class="card-header shadow">
+				<i class="fa-solid fa-file-lines"></i> <%= docTitle %>
+			</div>
+			<div class="card-body markdown-body">
+				<%- docHtml %>
+			</div>
+		</div>
+	</div>
+</div>
+
+<%- include('bottom') %>
