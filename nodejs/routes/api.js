@@ -31,4 +31,6 @@ router.use('/group', middleware.auth, authz.requireAdmin, require('./group'));
 // Self-service API tokens (PATs) — owner-scoped, no admin gate required.
 router.use('/api-token', middleware.auth, require('./api_token'));
 
+router.use('/update-check', middleware.auth, require('./update_check'));
+
 module.exports = router;

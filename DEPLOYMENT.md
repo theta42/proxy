@@ -147,10 +147,21 @@ required for HTTP-01 challenges (mapped in the compose).
 
 **Automatic snapshots** — when run as part of the unified `theta-env` stack,
 `setup.sh` snapshots Redis + `./config/` to `./backups/<timestamp>/` before every
-rebuild and keeps the last `BACKUP_KEEP` (default 5). Standalone deployments use
-the manual steps below.
+rebuild and keeps the last `BACKUP_KEEP` (default 5). Standalone deployments
+should run `ops/backup.sh` the same way (on a cron/systemd timer, or by hand
+before an upgrade):
 
-**Manual backup**
+```bash
+./ops/backup.sh              # keeps the last 5 by default
+./ops/backup.sh 10           # or override retention
+BACKUP_KEEP=10 ./ops/backup.sh
+```
+
+It snapshots Redis (`BGSAVE`, falling back to a synchronous `SAVE` if that
+doesn't complete quickly) and `./config/` to `./backups/<timestamp>/`,
+pruning older backups beyond the retention count — the same approach
+`theta-env`'s `setup.sh` uses, just scoped to this one container. Equivalent
+manual steps, if you'd rather not use the script:
 
 ```bash
 # Redis — hot snapshot: trigger a save, then copy the RDB out
@@ -160,8 +171,8 @@ docker compose cp proxy:/data/dump.rdb proxy-redis-$(date +%F).rdb
 # Secrets — copy the config dir (holds OIDC client secret, LDAP bind password)
 cp -a ./config config-backup-$(date +%F) && chmod 700 config-backup-$(date +%F)
 ```
-Store the `.rdb` and config copy **off the host** — they contain secrets and
-the whole Host/permission/user dataset.
+Store the backup **off the host** — it contains secrets and the whole
+Host/permission/user dataset.
 
 **Restore — Redis (full proxy state + certs)**
 

@@ -66,7 +66,12 @@ module.exports = {
 			enabled: true,
 			initial: 15000,      // first refresh 15s after start
 			interval: 14400000,  // then every 4 hours
-		}
+		},
+		updateCheck:{
+			enabled: true,
+			initial: 30000,      // first check 30s after start
+			interval: 86400000,  // then every 24h
+		},
 	},
 
 	// Dynamic DNS: services queried (in order) to learn this box's public IP.
