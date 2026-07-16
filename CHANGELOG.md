@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-07-16
+
+### Fixed
+- Bumped `jq-repeat` 2.0.1 -> 2.1.0. Fixed real breakage: `users.ejs`/`groups.ejs`/`permissions.ejs` called the removed `$.scope.X.__setPut(fn)`/`__setTake(fn)` setter-method API; insert/remove row hooks are now set via direct property assignment (`$.scope.X.__put = fn`), matching 2.1.0's API.
+
 ## [1.1.4] - 2026-07-16
 
 ### Added
@@ -39,7 +44,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.4...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.5...HEAD
+[1.1.5]: https://github.com/theta42/proxy/compare/v1.1.4...v1.1.5
 [1.1.4]: https://github.com/theta42/proxy/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/theta42/proxy/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/theta42/proxy/compare/v1.1.1...v1.1.2
