@@ -32,6 +32,7 @@ const values = {
 // there's no way to make this read outside the doc set below.
 const DOCS = {
 	overview:     {title: 'Overview',      file: path.join(__dirname, '../../README.md')},
+	changelog:    {title: 'Changelog',     file: path.join(__dirname, '../../CHANGELOG.md')},
 	deployment:   {title: 'Deployment',    file: path.join(__dirname, '../../DEPLOYMENT.md')},
 	api:          {title: 'API Reference', file: path.join(__dirname, '../api.md')},
 	installation: {title: 'Installation',  file: path.join(__dirname, '../../docs/installation.md')},

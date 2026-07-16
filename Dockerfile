@@ -113,6 +113,7 @@ COPY nodejs/api.md ./api.md
 # flattened /app (mirrors sso-manager-node's tos.md -> /tos.md convention);
 # docs/ mirrors the repo's own top-level docs/ folder.
 COPY README.md /README.md
+COPY CHANGELOG.md /CHANGELOG.md
 COPY DEPLOYMENT.md /DEPLOYMENT.md
 COPY docs /docs
 
