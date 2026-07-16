@@ -77,6 +77,11 @@ app.use('/__proxy_auth', require('./routes/host_auth'));
 // Routes for front end content.
 app.use('/', require('./routes/render'));
 
+// Local, in-app copy of the project's documentation (README, DEPLOYMENT,
+// api.md, docs/*) -- public, no auth, so it's readable even by a locked-out
+// admin or an air-gapped operator with no route to GitHub Pages.
+app.use('/docs', require('./routes/docs'));
+
 // Routes for API
 app.use('/api', require('./routes/api'));
 

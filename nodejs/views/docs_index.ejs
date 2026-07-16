@@ -1,0 +1,26 @@
+<%- include('top') %>
+
+<div class="row justify-content-center">
+	<div class="col-md-8">
+		<div class="card shadow-lg mt-4 mb-4">
+			<div class="card-header shadow">
+				<i class="fa-solid fa-book"></i> Documentation
+			</div>
+			<div class="card-body">
+				<p class="text-muted">
+					A local copy of this project's documentation, readable from the
+					running app -- no internet access required.
+				</p>
+				<ul class="list-group">
+					<% docs.forEach(function(doc){ %>
+						<li class="list-group-item">
+							<a href="/docs/<%= doc.slug %>"><%= doc.title %></a>
+						</li>
+					<% }) %>
+				</ul>
+			</div>
+		</div>
+	</div>
+</div>
+
+<%- include('bottom') %>

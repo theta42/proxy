@@ -76,8 +76,17 @@ class DynamicRecord extends Table{
 		}
 	}
 
-	// Resolve the public IP once, then reconcile every record to it.
+	// Resolve the public IP once, then reconcile every record to it. Checked
+	// BEFORE the public-IP lookup: on a stock install with zero dynamic
+	// records configured, this runs on a timer regardless (services/dynamic_dns.js)
+	// -- without this guard it would still reach out to the public-IP
+	// resolvers (utils/public_ip.js) every cycle for nothing, which is
+	// exactly the kind of always-on external call an air-gapped deployment
+	// can't have.
 	static async refreshAll(){
+		let records = await this.listDetail();
+		if(!records.length) return {count: 0};
+
 		let ip;
 		try{
 			ip = await getPublicIp();
@@ -86,7 +95,6 @@ class DynamicRecord extends Table{
 			return {error: error.message};
 		}
 
-		let records = await this.listDetail();
 		for(let record of records){
 			await record.apply(ip);
 		}

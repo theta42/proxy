@@ -106,6 +106,15 @@ COPY nodejs/services ./services
 COPY nodejs/utils ./utils
 COPY nodejs/views ./views
 COPY nodejs/public ./public
+COPY nodejs/api.md ./api.md
+
+# Documentation, served in-app at /docs (routes/docs.js) so it's readable
+# without internet access. README.md/DEPLOYMENT.md land one level above the
+# flattened /app (mirrors sso-manager-node's tos.md -> /tos.md convention);
+# docs/ mirrors the repo's own top-level docs/ folder.
+COPY README.md /README.md
+COPY DEPLOYMENT.md /DEPLOYMENT.md
+COPY docs /docs
 
 # Baked commit hash from the gitinfo stage (see build_info.js).
 COPY --from=gitinfo /commit.txt ./.build_commit
