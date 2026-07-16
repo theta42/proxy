@@ -115,10 +115,13 @@
 	// attach users to).
 	let hostFormCurrentHost = null;
 
-	// The auth_mode radios aren't real form fields (no [name]); this keeps the
-	// two hidden basicauth_enabled/sso_enabled inputs — the ones actually
-	// submitted — in sync so only one can ever be true, and shows/hides the
-	// matching field group.
+	// The auth_mode radios share a name so the browser enforces mutual
+	// exclusivity, but auth_mode itself isn't in Host's _keyMap -- the model
+	// layer strips unrecognized fields on save (see model-redis's
+	// processKeys), so it's never actually persisted. This keeps the two
+	// hidden basicauth_enabled/sso_enabled inputs -- the real, submitted
+	// fields -- in sync with whichever radio is selected, and shows/hides
+	// the matching field group.
 	function hostAuthModeChanged(mode){
 		$('#basicauth_enabled-hidden').val(mode === 'basic' ? 'true' : 'false');
 		$('#sso_enabled-hidden').val(mode === 'sso' ? 'true' : 'false');
@@ -713,15 +716,15 @@
 
 							<div class="form-group">
 								<div class="radio"><label>
-									<input type="radio" id="auth_mode-none" value="none" checked onchange="hostAuthModeChanged('none')">
+									<input type="radio" name="auth_mode" id="auth_mode-none" value="none" checked onchange="hostAuthModeChanged('none')">
 									Off (public)
 								</label></div>
 								<div class="radio"><label>
-									<input type="radio" id="auth_mode-basic" value="basic" onchange="hostAuthModeChanged('basic')">
+									<input type="radio" name="auth_mode" id="auth_mode-basic" value="basic" onchange="hostAuthModeChanged('basic')">
 									Basic authentication
 								</label></div>
 								<div class="radio"><label>
-									<input type="radio" id="auth_mode-sso" value="sso" onchange="hostAuthModeChanged('sso')">
+									<input type="radio" name="auth_mode" id="auth_mode-sso" value="sso" onchange="hostAuthModeChanged('sso')">
 									Single sign-on (SSO)
 								</label></div>
 							</div>
