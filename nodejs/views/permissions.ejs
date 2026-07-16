@@ -57,10 +57,10 @@
 
 		loadSubjectSuggestions();
 
-		$.scope.Permission.__setTake(function($el, item, list){
+		$.scope.Permission.__take = function($el, item, list){
 			$el.addClass('bg-danger');
 			$el.fadeOut(600, function(){ $el.remove(); });
-		});
+		};
 
 		// Live updates (model:Permission:*), so adds/removes reflect for everyone.
 		app.subscribe(/^model:Permission:create/, function(data){

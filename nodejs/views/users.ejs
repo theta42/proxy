@@ -26,12 +26,12 @@
 			for(let user of data.results){
 				$.scope.users.push(user);
 			}
-			$.scope.users.__setPut(function($el, item, list){
+			$.scope.users.__put = function($el, item, list){
 				$el.addClass('bg-success');
 				$el.fadeIn(3000, function(){
 					$el.removeClass('bg-success');
 				});
-			})
+			};
 		});
 	}
 
@@ -45,12 +45,12 @@
 	$(document).ready(function(){
 		populateUsers(); //populate the table
 
-		$.scope.users.__setTake(function($el, item, list){
+		$.scope.users.__take = function($el, item, list){
 			$el.addClass('bg-danger');
 			$el.fadeOut(1000, function(){
 				$el.remove()
 			});
-		});
+		};
 
 	});
 </script>
