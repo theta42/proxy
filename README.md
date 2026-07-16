@@ -17,8 +17,6 @@ proxy serves them over TLS with auto-renewing certs and no downtime on changes.
 > the proxy and the SSO find each other without manual config.
 
 **Documentation:** [https://theta42.github.io/proxy/](https://theta42.github.io/proxy/)
-([CHANGELOG.md](CHANGELOG.md) for what changed in each release) — also
-readable from the running app itself at `/docs`, no internet access required.
 
 ## Screenshots
 

@@ -26,7 +26,6 @@ ops/proxy.service
 # at /docs (routes/docs.js) so they're readable without internet access.
 *.md
 !README.md
-!CHANGELOG.md
 !DEPLOYMENT.md
 !nodejs/api.md
 !docs/**/*.md
