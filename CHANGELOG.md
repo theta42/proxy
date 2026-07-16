@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.4] - 2026-07-16
+
+### Added
+- **White-label**: `<title>`, the navbar brand text, and the nav logo image were hardcoded "Proxy - Theta 42"/"Dynamic Proxy". Now driven by new `conf.name`/`conf.logo` keys (defaults unchanged). Footer attribution (copyright, `theta42.com` link, GitHub/license links) and favicon are left as-is. Closes [#45](https://github.com/theta42/proxy/issues/45).
+
 ## [1.1.3] - 2026-07-16
 
 ### Added
@@ -34,7 +39,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.3...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.4...HEAD
+[1.1.4]: https://github.com/theta42/proxy/compare/v1.1.3...v1.1.4
 [1.1.3]: https://github.com/theta42/proxy/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/theta42/proxy/compare/v1.1.1...v1.1.2
 [1.1.1]: https://github.com/theta42/proxy/compare/v1.1.0...v1.1.1
