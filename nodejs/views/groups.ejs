@@ -60,10 +60,10 @@
 
 		loadUserSuggestions();
 
-		$.scope.LocalGroup.__setTake(function($el){
+		$.scope.LocalGroup.__take = function($el){
 			$el.addClass('bg-danger');
 			$el.fadeOut(600, function(){ $el.remove(); });
-		});
+		};
 
 		app.subscribe(/^model:LocalGroup:create/, function(data){
 			$.scope.LocalGroup.remove(data.name);
