@@ -67,14 +67,15 @@ class DuckDns extends DnsApi{
 	}
 
 	// No API to enumerate owned subdomains, so the operator supplies them.
-	// This call both validates the token and, as a side effect, syncs each
-	// domain's A/AAAA record to this host's current public IP if the token
-	// is valid (DuckDNS auto-detects the caller's IP when `ip` is omitted)
-	// — the same thing an operator would need to do anyway when pointing a
-	// fresh DuckDNS domain at this proxy.
+	// This call validates the token by writing a fixed marker to the TXT
+	// record only -- never `ip`/`ipv6` -- so adding/validating a provider
+	// never changes where the domain's A/AAAA records actually point. (An
+	// earlier version omitted `ip` here, which made DuckDNS auto-detect and
+	// apply this host's public IP as a side effect of validation; that's
+	// exactly what this call must not do.)
 	async listDomains(){
 		let labels = this.subdomains.split(',').map(d => this.__normalizeLabel(d.trim())).filter(Boolean);
-		await this.update(labels.join(','), {});
+		await this.update(labels.join(','), {txt: 'theta42-proxy-validated'});
 
 		return labels.map(label => ({domain: `${label}.duckdns.org`}));
 	}
