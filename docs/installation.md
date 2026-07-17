@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Installation
+description: Installing the proxy — Docker, bare metal, or as part of the unified theta-env stack.
 ---
 
 # Installation Guide

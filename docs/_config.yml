@@ -1,9 +1,47 @@
 title: Proxy
-description: A reverse proxy and HTTPS termination service using OpenResty/nginx with a management API and web GUI
-theme: jekyll-theme-cayman
-show_downloads: false
+description: A reverse proxy and HTTPS termination service built on OpenResty/nginx, with an OIDC + LDAP-aware management API and web GUI.
+url: "https://theta42.github.io"
+baseurl: "/proxy"
+logo: /assets/img/theta42.svg
+lang: en_US
+
+plugins:
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
 github:
   repository_url: https://github.com/theta42/proxy
   zip_url: https://github.com/theta42/proxy/archive/refs/heads/master.zip
   tar_url: https://github.com/theta42/proxy/archive/refs/heads/master.tar.gz
   repository_name: theta42/proxy
+
+nav:
+  - title: Home
+    page: /
+    icon: fa-house
+  - title: Installation
+    page: /installation.html
+    icon: fa-download
+  - title: Architecture
+    page: /architecture.html
+    icon: fa-sitemap
+  - title: API
+    page: /api.html
+    icon: fa-code
+  - title: Docker
+    page: /docker.html
+    icon: fa-box
+  - title: Contributing
+    page: /contributing.html
+    icon: fa-code-branch
+  - title: Changelog
+    url: https://github.com/theta42/proxy/blob/master/CHANGELOG.md
+    icon: fa-list
+
+defaults:
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: default
+      image: /assets/img/theta42.svg

@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Architecture
+description: How the proxy's OIDC client, LDAP client, and OpenResty routing fit together.
 ---
 
 # Architecture

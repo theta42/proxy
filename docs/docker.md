@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Docker
+description: Running the proxy's all-in-one Docker image — OpenResty, the management app, and Redis in one container.
 ---
 
 # Docker Deployment
