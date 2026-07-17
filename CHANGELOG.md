@@ -6,7 +6,13 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
-## [1.1.7] - 2026-07-16
+## [1.1.8] - 2026-07-17
+
+### Fixed
+- **Couldn't attach an existing host to a parent wildcard.** The host edit form's "Parent Wildcard" option submitted correctly, but `Host.prototype.update()` had no `challengeType` handling at all (only `Host.create()` did) — selecting it and saving silently did nothing. Added the same wildcard-parent lookup to `update()`.
+- **Couldn't register a wildcard's own base domain as a host.** A wildcard cert's `altNames` already cover both the base domain and `*.base domain`, but the lookup tree stores the wildcard one level below its base domain, and a lookup for the bare base domain landed on that empty parent node and found nothing — even though the already-issued cert covers it. `buildLookUpObj()` now also stamps the parent node so this resolves correctly, without re-issuing or duplicating the cert.
+
+Both required a corrected lookup: attaching an *existing* host (which already has its own tree leaf) needed a new `Host.lookUpWildcardParent()` that checks the sibling wildcard slot instead of resolving to the host's own record.
 
 ### Changed
 - Redesigned the GitHub Pages docs site to match the app's own look (dark navbar/footer, Bootstrap 5, Font Awesome) instead of the generic `jekyll-theme-cayman` theme, added a real cross-page nav, SEO (`jekyll-seo-tag` + `jekyll-sitemap`, per-page descriptions, OG/Twitter tags, sitemap.xml, robots.txt), and mobile-responsive layout.
@@ -54,7 +60,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.7...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.8...HEAD
+[1.1.8]: https://github.com/theta42/proxy/compare/v1.1.7...v1.1.8
 [1.1.7]: https://github.com/theta42/proxy/compare/v1.1.6...v1.1.7
 [1.1.6]: https://github.com/theta42/proxy/compare/v1.1.5...v1.1.6
 [1.1.5]: https://github.com/theta42/proxy/compare/v1.1.4...v1.1.5
