@@ -6,7 +6,13 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
-## [1.1.9] - 2026-07-17
+## [1.1.10] - 2026-07-17
+
+### Added
+- A help icon (❓) in the top-right header now deep-links to the doc most relevant to the current page (falls back to the docs index elsewhere).
+- The in-app docs viewer (`/docs`) is now searchable — a simple line-substring search over the same local doc set, no new dependency, still works with no internet access.
+
+Bumps to v1.1.10.
 
 ### Added
 - The host list now shows who created each host, and when.
@@ -71,7 +77,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.9...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.10...HEAD
+[1.1.10]: https://github.com/theta42/proxy/compare/v1.1.9...v1.1.10
 [1.1.9]: https://github.com/theta42/proxy/compare/v1.1.8...v1.1.9
 [1.1.8]: https://github.com/theta42/proxy/compare/v1.1.7...v1.1.8
 [1.1.7]: https://github.com/theta42/proxy/compare/v1.1.6...v1.1.7

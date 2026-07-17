@@ -60,6 +60,30 @@ router.get('/', function(req, res) {
 	res.render('docs_index', {...values, docs: docList});
 });
 
+// Plain, dependency-free line-substring search over the same allowlisted
+// doc set -- no separate index to build/maintain, no new dependency, and it
+// keeps working with no internet access (same reasoning as the rest of this
+// route). Must be registered before the /:slug catch-all below, or "search"
+// would be treated as a (nonexistent) doc slug and 404.
+router.get('/search', function(req, res) {
+	const q = (req.query.q || '').trim();
+	if (!q) return res.json({results: []});
+	const qLower = q.toLowerCase();
+
+	const results = [];
+	for (const [slug, doc] of Object.entries(DOCS)) {
+		try {
+			const content = fs.readFileSync(doc.file, 'utf8');
+			const matchLine = content.split('\n').find(line => line.toLowerCase().includes(qLower));
+			if (matchLine) {
+				results.push({slug, title: doc.title, snippet: matchLine.trim().slice(0, 200)});
+			}
+		} catch (error) { /* unreadable doc file -- skip it */ }
+	}
+
+	res.json({results});
+});
+
 router.get('/:slug', function(req, res, next) {
 	const doc = DOCS[req.params.slug];
 	if (!doc) return next({status: 404, message: 'Doc not found'});

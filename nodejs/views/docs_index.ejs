@@ -11,7 +11,12 @@
 					A local copy of this project's documentation, readable from the
 					running app -- no internet access required.
 				</p>
-				<ul class="list-group">
+				<div class="input-group mb-3">
+					<span class="input-group-text"><i class="fa-solid fa-magnifying-glass"></i></span>
+					<input type="search" id="docs-search-input" class="form-control" placeholder="Search the docs…" oninput="docsSearch(this.value)">
+				</div>
+				<div id="docs-search-results" style="display:none"></div>
+				<ul id="docs-list" class="list-group">
 					<% docs.forEach(function(doc){ %>
 						<li class="list-group-item">
 							<a href="/docs/<%= doc.slug %>"><%= doc.title %></a>
@@ -22,5 +27,41 @@
 		</div>
 	</div>
 </div>
+<script type="text/javascript">
+	var docsSearchTimer;
+	function docsSearch(q){
+		clearTimeout(docsSearchTimer);
+		docsSearchTimer = setTimeout(function(){ docsSearchRun(q); }, 200);
+	}
+	function docsSearchRun(q){
+		q = (q || '').trim();
+		var $results = $('#docs-search-results');
+		var $list = $('#docs-list');
+		if(!q){
+			$results.hide().empty();
+			$list.show();
+			return;
+		}
+		// Not app.api.get() -- routes/docs.js is mounted at /docs directly,
+		// not under /api, unlike the rest of this app's endpoints.
+		$.getJSON('/docs/search', {q: q}, function(data){
+			$list.hide();
+			$results.empty().show();
+			var hits = (data && data.results) || [];
+			if(!hits.length){
+				$results.append($('<p class="text-muted"></p>').text('No results for "' + q + '".'));
+				return;
+			}
+			var $ul = $('<ul class="list-group"></ul>');
+			hits.forEach(function(hit){
+				var $li = $('<li class="list-group-item"></li>');
+				$('<a></a>').attr('href', '/docs/' + hit.slug).text(hit.title).appendTo($li);
+				$('<div class="text-muted small"></div>').text(hit.snippet).appendTo($li);
+				$ul.append($li);
+			});
+			$results.append($ul);
+		});
+	}
+</script>
 
 <%- include('bottom') %>
