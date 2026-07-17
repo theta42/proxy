@@ -2,7 +2,7 @@
 
 const Table = require('.');
 const {Domain} = require('.').models;
-const {deleteCert} = require('./cert');
+const {getCert, setCert, deleteCert} = require('./cert');
 const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
@@ -343,9 +343,42 @@ class Host extends Table{
 				}
 			}
 
+			// Real hostname rename. model-redis's own update() (see super.update()
+			// below) already handles the Redis primary-key RENAME + collision
+			// check, and Host.buildLookUpObj() below already rebuilds the lookup
+			// tree afterward -- but the cert cache (models/cert.js, `${host}:latest`)
+			// is a separate record keyed by hostname string that the generic field
+			// system doesn't know about, so it doesn't move on its own. Only
+			// wildcard hosts (createWildcardCert) ever populate this key -- for a
+			// plain HTTP-01 host this is a no-op (nothing to migrate; auto-ssl
+			// transparently issues a fresh cert under the new name on first
+			// access, same as it does for any newly-created host).
+			let oldHost = this.host;
+			let renaming = data && typeof data.host === 'string' && data.host !== oldHost;
+			if(renaming){
+				let cert = await getCert(oldHost);
+				if(cert && Object.keys(cert).length) await setCert(data.host, cert);
+			}
+
 			let out = await super.update(data, ...args)
 			await this.bustCache(this.host);
 			await Host.buildLookUpObj();
+
+			if(renaming){
+				await deleteCert(oldHost);
+
+				// Work around a model-redis bug (as of ^1.5.0): super.update()'s
+				// field-application loop iterates _keyMap's definition order and
+				// only reassigns this[_key] (this.host) to the NEW value once it
+				// reaches the `host` field itself -- but `updated_on` (always:
+				// true, so always included) is defined BEFORE `host` in _keyMap,
+				// so it gets HSET while this.host is still the OLD name. Redis's
+				// HSET on a non-existent key (the old hash, just RENAMEd away)
+				// silently recreates it -- leaving a stray, incomplete hash under
+				// the old hostname that makes Host.exists(oldHost) wrongly return
+				// true forever, blocking that name from ever being reused.
+				await this.constructor.redisClient.DEL(`${conf.redis.prefix || ''}Host_${oldHost}`);
+			}
 
 			return out;
 		} catch(error){

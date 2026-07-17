@@ -39,6 +39,7 @@
 
 	// Parse the JSON object for a host to something the UI wants
 	function hostParseRow(host) {
+		host['created_on_text'] = moment(host['created_on'], "x").fromNow();
 		host['updated_on_text'] = moment(host['updated_on'], "x").fromNow();
 		host['wildcard_expires_text'] = moment(host['wildcard_expires'], "x").fromNow();
 		host['targetssl_text'] = host['targetssl'] ? 'https://' : 'http://';
@@ -191,6 +192,7 @@
 		let $f = $(form);
 		$f.attr('method', 'POST').attr('action', 'host').attr('evalAJAX', 'hostModalClose()');
 		$f.find('[name=host]').prop('disabled', false);
+		$('#host-rename-help').hide();
 		if($f.validateClear) $f.validateClear();
 
 		// A fresh host only qualifies for HTTP-01 until the name says otherwise.
@@ -247,9 +249,15 @@
 		hostAuthModeChanged(authMode);
 		hostRenderBasicAuthUsers(host, h.basicauth_users);
 
-		// The host name is the key; it can't change on edit. Wildcard hosts can
-		// still toggle their matching mode.
-		$f.find('[name=host]').prop('disabled', true);
+		// The host name is the Redis record's key -- renaming it is a real
+		// migration (see Host.prototype.update() in models/host.js), scoped
+		// there to plain hosts only: a wildcard's children reference it by
+		// name (wildcard_parent) and a cache entry's parent likewise, so
+		// renaming either would orphan those pointers. Keep the field locked
+		// for those cases; a plain host can be renamed freely.
+		let hostRenameable = !h.is_wildcard && !h.wildcard_parent && !h.is_cache;
+		$f.find('[name=host]').prop('disabled', !hostRenameable);
+		$('#host-rename-help').toggle(!hostRenameable);
 		if(h.is_wildcard){
 			$('#wildcard_matchAny-container').removeClass('challengeType-container');
 		}
@@ -423,6 +431,7 @@
 						<th>SSL Expire</th>
 						<th>Host Name</th>
 						<th>target</th>
+						<th class="hidden-xs">Created</th>
 						<th class="hidden-xs">Updated</th>
 						<th>Actions</th>
 					</thead>
@@ -453,6 +462,11 @@
 							</td>
 							<td>
 								{{{ targetssl_text }}}{{ ip }}:{{ targetPort }}
+							</td>
+							<td class="hidden-xs momentFromNow" data-date="{{ created_on }}" title="Created by {{ created_by }}">
+								{{ created_on_text }}
+								<br />
+								<small class="text-muted">{{ created_by }}</small>
 							</td>
 							<td class="hidden-xs momentFromNow" data-date="{{ updated_on }}" >
 								{{ updated_on_text }}
@@ -519,7 +533,7 @@
 			<div class="card-header actionMessage m-0" style="display:none"></div>
 
 			<div class="modal-body">
-				<ul class="nav nav-tabs" role="tablist">
+				<ul class="nav nav-tabs flex-nowrap overflow-x-auto" role="tablist">
 					<li class="nav-item"><button class="nav-link active" id="hostTab-general-btn" data-bs-toggle="tab" data-bs-target="#hostTab-general" type="button" role="tab">General</button></li>
 					<li class="nav-item"><button class="nav-link" id="hostTab-tls-btn" data-bs-toggle="tab" data-bs-target="#hostTab-tls" type="button" role="tab">TLS &amp; Wildcard</button></li>
 					<li class="nav-item"><button class="nav-link" id="hostTab-traffic-btn" data-bs-toggle="tab" data-bs-target="#hostTab-traffic" type="button" role="tab">Traffic</button></li>
@@ -541,6 +555,12 @@
 									The public hostname clients request. Use <code>*.example.com</code>
 									for one subdomain level, <code>**.example.com</code> for any depth,
 									or <code>**</code> as a catch-all.
+								</small>
+								<small id="host-rename-help" class="field-help text-muted d-block" style="display:none">
+									Wildcard hosts, their children, and auto-created subdomain cache
+									entries can't be renamed here — the name is referenced elsewhere
+									(the wildcard's own children, or the cache entry's parent). Delete
+									and recreate instead.
 								</small>
 							</div>
 
@@ -582,6 +602,7 @@
 										<input type="radio" name="targetssl" id="targetssl-true" value="true">
 										Proxy to HTTPS
 									</label></div>
+									<small class="field-help text-muted d-block">Whether the proxy talks to the target over HTTP or HTTPS. Independent of Incoming SSL above — clients can use HTTPS to reach the proxy while it still talks plain HTTP to the target, or vice versa.</small>
 								</div>
 							</div>
 						</div>
@@ -620,6 +641,14 @@
 									<input type="radio" name="wildcard_matchAny" id="wildcard_matchAny-true" value="true">
 									Match any subdomain and proxy to this host
 								</label></div>
+								<small class="field-help text-muted d-block">
+									"Recommended" only routes subdomains you've explicitly registered
+									as their own host (optionally as a "Parent Wildcard" child of this
+									one, to reuse this cert). "Match any" auto-creates a temporary
+									route to this host's target for <i>any</i> undefined subdomain the
+									first time it's requested — convenient, but it means every subdomain
+									typo or scan attempt also gets routed here.
+								</small>
 							</div>
 						</div>
 

@@ -14,6 +14,14 @@ async function getCert(host){
 	}
 }
 
+async function setCert(host, cert){
+	try{
+		return await client.SET(`${host}:latest`, JSON.stringify(cert));
+	}catch(error){
+		return {}
+	}
+}
+
 async function deleteCert(host){
 	try{
 		console.log('looking for', host);
@@ -23,4 +31,4 @@ async function deleteCert(host){
 	}
 }
 
-module.exports = {getCert, deleteCert};
+module.exports = {getCert, setCert, deleteCert};

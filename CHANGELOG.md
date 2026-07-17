@@ -6,7 +6,18 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
-## [1.1.8] - 2026-07-17
+## [1.1.9] - 2026-07-17
+
+### Added
+- The host list now shows who created each host, and when.
+- Plain (non-wildcard) hosts can now be renamed after creation — the hostname field is no longer permanently locked. Wildcard hosts, wildcard children, and auto-created subdomain cache entries stay locked, since other records reference them by name.
+- More inline help text on the host create/edit form (Target SSL, wildcard matching behavior).
+
+### Fixed
+- The host create/edit modal's tabs could overflow awkwardly on narrow (mobile) screens — they now scroll horizontally instead.
+- Fixed a bug in the vendored `model-redis` library's record-rename path: renaming a record's primary key while another `always`-type field (e.g. `updated_on`) is defined earlier in the schema left a stray, incomplete hash behind under the old key, making that name permanently unavailable for reuse. Worked around in `Host.prototype.update()`.
+
+Bumps to v1.1.9.
 
 ### Fixed
 - **Couldn't attach an existing host to a parent wildcard.** The host edit form's "Parent Wildcard" option submitted correctly, but `Host.prototype.update()` had no `challengeType` handling at all (only `Host.create()` did) — selecting it and saving silently did nothing. Added the same wildcard-parent lookup to `update()`.
@@ -60,7 +71,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.8...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.9...HEAD
+[1.1.9]: https://github.com/theta42/proxy/compare/v1.1.8...v1.1.9
 [1.1.8]: https://github.com/theta42/proxy/compare/v1.1.7...v1.1.8
 [1.1.7]: https://github.com/theta42/proxy/compare/v1.1.6...v1.1.7
 [1.1.6]: https://github.com/theta42/proxy/compare/v1.1.5...v1.1.6
