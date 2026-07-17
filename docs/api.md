@@ -1,6 +1,7 @@
 ---
 layout: default
 title: API Reference
+description: The proxy's management REST API — hosts, DNS providers, users, groups, and permissions.
 ---
 
 # API Documentation

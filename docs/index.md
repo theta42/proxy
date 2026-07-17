@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Home
+description: A reverse proxy and HTTPS termination service built on OpenResty/nginx, with automatic Let's Encrypt certs, OIDC login, and direct LDAP access control per host.
 ---
 
 # Proxy

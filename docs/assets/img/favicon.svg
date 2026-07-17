@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="#1a1a1a" stroke="#4a9eff" stroke-width="3"/>
+
+  <!-- Network nodes -->
+  <circle cx="30" cy="30" r="8" fill="#4a9eff"/>
+  <circle cx="70" cy="30" r="8" fill="#4a9eff"/>
+  <circle cx="50" cy="50" r="10" fill="#66b3ff"/>
+  <circle cx="30" cy="70" r="8" fill="#4a9eff"/>
+  <circle cx="70" cy="70" r="8" fill="#4a9eff"/>
+
+  <!-- Connection lines -->
+  <line x1="30" y1="30" x2="50" y2="50" stroke="#4a9eff" stroke-width="2"/>
+  <line x1="70" y1="30" x2="50" y2="50" stroke="#4a9eff" stroke-width="2"/>
+  <line x1="30" y1="70" x2="50" y2="50" stroke="#4a9eff" stroke-width="2"/>
+  <line x1="70" y1="70" x2="50" y2="50" stroke="#4a9eff" stroke-width="2"/>
+</svg>

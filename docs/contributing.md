@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Contributing
+description: How to contribute to the proxy — dev setup, tests, and code conventions.
 ---
 
 # Contributing Guide
