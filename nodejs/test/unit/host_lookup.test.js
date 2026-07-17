@@ -137,6 +137,125 @@ describe('Host Lookup Algorithm', () => {
 });
 
 /**
+ * Tests for the wildcard's-own-base-domain fix: a single-level wildcard's
+ * issued cert also covers its own base domain (altNames: [domain, *.domain],
+ * see utils/letsencrypt.js), but that base domain sits one tree level ABOVE
+ * the wildcard's own leaf. buildLookUpObj() now also stamps that parent
+ * node's #record, and lookUpWildcardParent() finds it even when the base
+ * domain is ALSO separately registered as its own plain host (the "attach an
+ * existing host to a parent wildcard" case, unlike lookUp() which would just
+ * resolve to that host's own record).
+ */
+describe('Host wildcard base-domain lookup', () => {
+
+	let Host;
+
+	before(async () => {
+		Host = createMockHostClassWithWildcardParentFix();
+	});
+
+	test('lookUp finds the wildcard record for its own bare base domain when no plain host exists', async () => {
+		await populateTree(Host, ['*.cool.mysite.com']);
+		const result = Host.lookUp('cool.mysite.com');
+		assert.ok(result, 'Should find a match');
+		assert.strictEqual(result.host, '*.cool.mysite.com');
+	});
+
+	test('lookUp still prefers an explicitly-created plain host over the wildcard, regardless of population order', async () => {
+		await populateTree(Host, ['*.cool.mysite.com', 'cool.mysite.com']);
+		assert.strictEqual(Host.lookUp('cool.mysite.com').host, 'cool.mysite.com');
+
+		await populateTree(Host, ['cool.mysite.com', '*.cool.mysite.com']);
+		assert.strictEqual(Host.lookUp('cool.mysite.com').host, 'cool.mysite.com');
+	});
+
+	test('lookUpWildcardParent finds the wildcard even when the base domain already has its own plain host', async () => {
+		await populateTree(Host, ['*.cool.mysite.com', 'cool.mysite.com']);
+		const result = Host.lookUpWildcardParent('cool.mysite.com');
+		assert.ok(result, 'Should find the sibling wildcard');
+		assert.strictEqual(result.host, '*.cool.mysite.com');
+	});
+
+	test('lookUpWildcardParent returns undefined when there is no wildcard sibling', async () => {
+		await populateTree(Host, ['cool.mysite.com']);
+		assert.strictEqual(Host.lookUpWildcardParent('cool.mysite.com'), undefined);
+	});
+
+	test('lookUpWildcardParent returns undefined for an unrelated host', async () => {
+		await populateTree(Host, ['*.cool.mysite.com']);
+		assert.strictEqual(Host.lookUpWildcardParent('other.example.com'), undefined);
+	});
+});
+
+/**
+ * Same mock shape as createMockHostClass() above, plus the parent-record
+ * stamp in the tree-population loop and the lookUpWildcardParent() method --
+ * both copied from the real implementation in models/host.js.
+ */
+function createMockHostClassWithWildcardParentFix() {
+	return class MockHost {
+		static lookUpObj = {};
+
+		static lookUp(host) {
+			let place = this.lookUpObj;
+			let last_resort = {};
+			let parent = undefined;
+
+			for(let fragment of host.split('.').reverse()){
+				parent = place;
+				if(place['**']) last_resort = place['**'];
+				if({...last_resort, ...place}[fragment]){
+					place = {...last_resort, ...place}[fragment];
+				}else if(place['*']){
+					place = place['*']
+				}else if(last_resort){
+					place = last_resort;
+				}
+			}
+
+			if(place && place['#record']) return place['#record'];
+			if(parent && parent['*'] && parent['*']['#record']) return parent['*']['#record'];
+		}
+
+		static lookUpWildcardParent(host) {
+			let place = this.lookUpObj;
+			for(let fragment of host.split('.').reverse()){
+				if(!place[fragment]) return undefined;
+				place = place[fragment];
+			}
+			if(place['*'] && place['*']['#record']) return place['*']['#record'];
+		}
+	};
+}
+
+async function populateTree(Host, hosts) {
+	Host.lookUpObj = {};
+
+	for(let host of hosts){
+		let fragments = host.split('.');
+		let pointer = Host.lookUpObj;
+
+		while(fragments.length){
+			let fragment = fragments.pop();
+
+			if(!pointer[fragment]){
+				pointer[fragment] = {};
+			}
+
+			if(fragments.length === 0){
+				pointer[fragment]['#record'] = {host};
+
+				if(fragment === '*' && !pointer['#record']){
+					pointer['#record'] = pointer[fragment]['#record'];
+				}
+			}
+
+			pointer = pointer[fragment];
+		}
+	}
+}
+
+/**
  * Creates a mock Host class with just the lookUp functionality
  * This allows us to test the algorithm without Redis dependencies
  */

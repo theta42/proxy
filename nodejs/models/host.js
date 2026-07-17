@@ -320,9 +320,30 @@ class Host extends Table{
 		}
 	}
 
-	async update(...args){
+	async update(data, ...args){
 		try{
-			let out = await super.update(...args)
+			// Mirror Host.create()'s challengeType handling (lines above) so an
+			// existing HTTP-01 host can be attached to a parent wildcard's cert
+			// after creation -- previously this was silently dropped since only
+			// create() understood challengeType, leaving no way to convert an
+			// existing host onto a wildcard once one was issued.
+			if(data && data.challengeType === 'wildcardChild'){
+				// Not Host.lookUp() -- this.host already has its own leaf in the
+				// tree (it already exists), so a plain lookUp() would just find
+				// itself. lookUpWildcardParent() checks the sibling "*" slot
+				// instead. See its comment for why create()'s own wildcardChild
+				// branch doesn't need this (a host being newly created hasn't
+				// claimed its own leaf yet, so plain lookUp() already falls
+				// through to the wildcard correctly there).
+				let parentHost = Host.lookUpWildcardParent(this.host);
+				if(parentHost && parentHost.is_wildcard){
+					data.wildcard_parent = parentHost.host;
+				}else{
+					throw new Error(`No parent wild card for ${this.host}`);
+				}
+			}
+
+			let out = await super.update(data, ...args)
 			await this.bustCache(this.host);
 			await Host.buildLookUpObj();
 
@@ -385,6 +406,25 @@ class Host extends Table{
 					// #record denotes a leaf node on this tree.
 					if(fragments.length === 0){
 						pointer[fragment]['#record'] = await this.get(host)
+
+						// A single-level wildcard's issued cert also covers its own
+						// base domain (createWildcardCert requests altNames:
+						// [domain, *.domain] -- see utils/letsencrypt.js), but the
+						// base domain sits one level ABOVE the wildcard's own leaf
+						// in this tree (e.g. "*.cool.mysite.com" is a child of the
+						// node for "cool.mysite.com"). Without this, looking up the
+						// bare base domain when it has no host of its own falls
+						// through to nothing, even though the already-issued cert
+						// covers it. `pointer` here is still that parent node
+						// (reassigned to the child only below) -- stamp it too, but
+						// only if a real, explicitly-created host at that exact
+						// name hasn't already claimed this leaf (order-independent:
+						// this only ever fills a gap -- a real host's own pass
+						// through this loop always overwrites #record
+						// unconditionally when it's finalized, see above).
+						if(fragment === '*' && !pointer['#record']){
+							pointer['#record'] = pointer[fragment]['#record'];
+						}
 					}
 
 					// Advance the pointer to the next level of the tree.
@@ -443,6 +483,26 @@ class Host extends Table{
 
 		// If the parent has a wild, its the wildcard we want.
 		if(parent && parent['*'] && parent['*']['#record']) return parent['*']['#record'];
+	}
+
+	// Find the wildcard covering @host as its own base domain (e.g.
+	// "*.cool.mysite.com" for host="cool.mysite.com"), regardless of whether
+	// @host is already registered as its own host. Unlike lookUp(), which
+	// walks to and returns @host's own exact-match leaf when one exists, this
+	// walks to that exact position and looks one level deeper at its "*"
+	// child -- the sibling wildcard slot -- so it still finds the parent
+	// wildcard even when @host already has its own (non-wildcard) record.
+	// Used when attaching an already-created host to a wildcard after the
+	// fact (see update() below); Host.create()'s own wildcardChild handling
+	// can keep using plain lookUp() since a host being newly created hasn't
+	// claimed its own leaf yet.
+	static lookUpWildcardParent(host){
+		let place = this.lookUpObj;
+		for(let fragment of host.split('.').reverse()){
+			if(!place[fragment]) return undefined;
+			place = place[fragment];
+		}
+		if(place['*'] && place['*']['#record']) return place['*']['#record'];
 	}
 
 	static async lookUpReady(){
