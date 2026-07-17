@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.7] - 2026-07-16
+
+### Changed
+- Redesigned the GitHub Pages docs site to match the app's own look (dark navbar/footer, Bootstrap 5, Font Awesome) instead of the generic `jekyll-theme-cayman` theme, added a real cross-page nav, SEO (`jekyll-seo-tag` + `jekyll-sitemap`, per-page descriptions, OG/Twitter tags, sitemap.xml, robots.txt), and mobile-responsive layout.
+
 ## [1.1.6] - 2026-07-16
 
 ### Fixed
@@ -49,7 +54,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.6...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.7...HEAD
+[1.1.7]: https://github.com/theta42/proxy/compare/v1.1.6...v1.1.7
 [1.1.6]: https://github.com/theta42/proxy/compare/v1.1.5...v1.1.6
 [1.1.5]: https://github.com/theta42/proxy/compare/v1.1.4...v1.1.5
 [1.1.4]: https://github.com/theta42/proxy/compare/v1.1.3...v1.1.4
