@@ -9,13 +9,14 @@
 #   3. OpenResty        (80/443/4443) — exec'd in the foreground as PID 2 (under
 #                      dumb-init, PID 1) so it receives SIGTERM from `docker stop`.
 #
-# The app reads its config from conf/base.js deep-merged with conf/secrets.js
-# and `app_*` env vars (requires @simpleworkjs/conf >= 1.1.0, pinned in
+# The app reads its config from conf/base.js deep-merged with a secrets file
+# and `app_*` env vars (requires @simpleworkjs/conf >= 1.2.0, pinned in
 # nodejs/package-lock.json). No secrets.js is baked into the image. The unified
 # theta-env stack mounts ./config/proxy-secrets.js at /config; this entrypoint
-# symlinks it into /app/conf/secrets.js so the app reads oidc/ldap/auth config
-# from the file (no app_* env needed). Without the mount, supply the same config
-# via `app_*` env (compose `environment:` / `env_file:`).
+# points CONF_SECRETS at it so the app reads oidc/ldap/auth config straight
+# from the mounted file (no app_* env needed, no write access to /app/conf
+# required). Without the mount, supply the same config via `app_*` env
+# (compose `environment:` / `env_file:`).
 #
 # OpenResty config: the committed ops/nginx_conf/*.conf carry the bare-metal
 # home-LAN values (set_real_ip_from 192.168.1.0/24; resolver 192.168.1.1). They
@@ -30,14 +31,14 @@ error() { echo "[ERROR] $*" >&2; }
 
 # ── Optional: mount proxy secrets.js ─────────────────────────────────────────
 # When /config/proxy-secrets.js is present (unified theta-env stack, or any
-# deployment that bind-mounts ./config), symlink it into /app/conf/secrets.js so
-# @simpleworkjs/conf reads the oidc/ldap/auth config from the file. No app_* env
-# should then be passed — app_* env beats secrets.js in @simpleworkjs/conf
+# deployment that bind-mounts ./config), point CONF_SECRETS at it so
+# @simpleworkjs/conf reads the oidc/ldap/auth config from the file. No app_*
+# env should then be passed — app_* env beats secrets.js in @simpleworkjs/conf
 # (precedence: base.js < <env>.js < secrets.js < app_* env), so the file is
 # authoritative only if the matching app_* env is absent. When the file is
 # absent the app falls back to app_* env (compose environment / env_file).
 if [[ -f /config/proxy-secrets.js ]]; then
-    ln -sf /config/proxy-secrets.js /app/conf/secrets.js
+    export CONF_SECRETS=/config/proxy-secrets.js
     info "Loaded config from /config/proxy-secrets.js (secrets.js authoritative)"
 fi
 
