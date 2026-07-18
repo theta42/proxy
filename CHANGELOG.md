@@ -14,24 +14,24 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 ### Fixed
 - The in-app docs viewer rendered every `docs/*.md` page with a garbled heading and a stray horizontal rule at the top — Jekyll front matter (meant only for the GitHub Pages build) was never stripped before being handed to the markdown renderer. Also fixed: cross-doc links never resolved in-app, since this viewer serves docs at `/docs/<slug>` with no `.html` suffix — they're now rewritten to the correct in-app URL (by registered slug, falling back to the doc's real filename), the same way image paths already were.
 
-Bumps to v1.1.13.
+## [1.1.12] - 2026-07-17
 
 ### Fixed
 - The host edit form's "Parent Wildcard" option stayed greyed out even when a valid wildcard actually existed for that host, so an already-created host could never be switched onto one from the edit modal (only brand-new hosts, via the field's `keyup` handler, ever saw it become available). The underlying `/host/lookup/:item` check also had the same self-match issue as the recently-fixed backend bug: it resolved an already-existing host to its own record instead of a sibling wildcard. Added a dedicated `/host/wildcard-parent/:item` endpoint that checks both directions, and the edit form now actually runs the check when it opens.
 - Fixed an nginx startup warning: `the "listen ... http2" directive is deprecated, use the "http2" directive instead`. Migrated to the standalone `http2 on;` directive (nginx 1.25.1+).
 
-Bumps to v1.1.12.
+## [1.1.11] - 2026-07-17
 
 ### Changed
 - Moved the help (❓) link out of the global header and onto each relevant card individually (Proxy List, Add/Edit host, Add DNS Provider, Dynamic A Records, Add New User, User List, Add Permission, Permissions, Add Group) — each now deep-links straight to the doc that actually covers it, instead of one generic header icon.
 
-Bumps to v1.1.11.
+## [1.1.10] - 2026-07-17
 
 ### Added
 - A help icon (❓) in the top-right header now deep-links to the doc most relevant to the current page (falls back to the docs index elsewhere).
 - The in-app docs viewer (`/docs`) is now searchable — a simple line-substring search over the same local doc set, no new dependency, still works with no internet access.
 
-Bumps to v1.1.10.
+## [1.1.9] - 2026-07-17
 
 ### Added
 - The host list now shows who created each host, and when.
@@ -42,13 +42,15 @@ Bumps to v1.1.10.
 - The host create/edit modal's tabs could overflow awkwardly on narrow (mobile) screens — they now scroll horizontally instead.
 - Fixed a bug in the vendored `model-redis` library's record-rename path: renaming a record's primary key while another `always`-type field (e.g. `updated_on`) is defined earlier in the schema left a stray, incomplete hash behind under the old key, making that name permanently unavailable for reuse. Worked around in `Host.prototype.update()`.
 
-Bumps to v1.1.9.
+## [1.1.8] - 2026-07-17
 
 ### Fixed
 - **Couldn't attach an existing host to a parent wildcard.** The host edit form's "Parent Wildcard" option submitted correctly, but `Host.prototype.update()` had no `challengeType` handling at all (only `Host.create()` did) — selecting it and saving silently did nothing. Added the same wildcard-parent lookup to `update()`.
 - **Couldn't register a wildcard's own base domain as a host.** A wildcard cert's `altNames` already cover both the base domain and `*.base domain`, but the lookup tree stores the wildcard one level below its base domain, and a lookup for the bare base domain landed on that empty parent node and found nothing — even though the already-issued cert covers it. `buildLookUpObj()` now also stamps the parent node so this resolves correctly, without re-issuing or duplicating the cert.
 
 Both required a corrected lookup: attaching an *existing* host (which already has its own tree leaf) needed a new `Host.lookUpWildcardParent()` that checks the sibling wildcard slot instead of resolving to the host's own record.
+
+## [1.1.7] - 2026-07-16
 
 ### Changed
 - Redesigned the GitHub Pages docs site to match the app's own look (dark navbar/footer, Bootstrap 5, Font Awesome) instead of the generic `jekyll-theme-cayman` theme, added a real cross-page nav, SEO (`jekyll-seo-tag` + `jekyll-sitemap`, per-page descriptions, OG/Twitter tags, sitemap.xml, robots.txt), and mobile-responsive layout.
