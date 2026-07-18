@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.14] - 2026-07-17
+
+### Changed
+- Bumped `@simpleworkjs/conf` to 1.2.0 and `jq-repeat` to 2.2.0. The Docker entrypoint now sets the new `CONF_SECRETS` env var to point directly at a mounted `proxy-secrets.js` instead of symlinking it into `/app/conf/secrets.js` — the app no longer needs write access to its own `conf/` directory to pick up mounted secrets.
+
 ## [1.1.13] - 2026-07-17
 
 ### Added
@@ -98,7 +103,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.13...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.14...HEAD
+[1.1.14]: https://github.com/theta42/proxy/compare/v1.1.13...v1.1.14
 [1.1.13]: https://github.com/theta42/proxy/compare/v1.1.12...v1.1.13
 [1.1.12]: https://github.com/theta42/proxy/compare/v1.1.11...v1.1.12
 [1.1.11]: https://github.com/theta42/proxy/compare/v1.1.10...v1.1.11
