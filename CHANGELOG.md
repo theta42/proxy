@@ -6,6 +6,15 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.15] - 2026-07-18
+
+### Changed
+- `ops/install.sh` now installs to `/opt/theta42/proxy` (was `/var/www/proxy`) and seeds `/etc/proxy/secrets.js` from `secrets.js.example` on first run (never overwritten on later runs), instead of requiring a manual `nodejs/conf/secrets.js` edit inside the repo checkout. `ops/proxy.service` sets `CONF_SECRETS=/etc/proxy/secrets.js` to match.
+- `install.sh` now prints the version it's updating from/to (or "Already up to date") on every run, instead of updating silently.
+
+### Fixed
+- `install.sh` could hang indefinitely on a fresh host if a base package pulled in `tzdata` as a new dependency — it prompted interactively for a timezone with no TTY attached. Set `DEBIAN_FRONTEND=noninteractive`.
+
 ## [1.1.14] - 2026-07-17
 
 ### Changed
@@ -103,7 +112,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.14...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.15...HEAD
+[1.1.15]: https://github.com/theta42/proxy/compare/v1.1.14...v1.1.15
 [1.1.14]: https://github.com/theta42/proxy/compare/v1.1.13...v1.1.14
 [1.1.13]: https://github.com/theta42/proxy/compare/v1.1.12...v1.1.13
 [1.1.12]: https://github.com/theta42/proxy/compare/v1.1.11...v1.1.12
