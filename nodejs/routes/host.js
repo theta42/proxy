@@ -128,6 +128,29 @@ router.get('/lookup/:item', authz.requireDomainRole('viewer', authz.resolve.host
 	}
 });
 
+// Is there a wildcard host that could serve as :item's parent (i.e. an
+// already-issued cert :item could reuse instead of getting its own)? Two
+// cases, covered by two different lookups: a brand-new subdomain that has
+// never been created (lookUp()'s normal wildcard fallback finds it, since
+// the name has no leaf of its own yet), and an ALREADY-EXISTING host or the
+// wildcard's own base domain (lookUp() would just resolve to that host's
+// own leaf -- lookUpWildcardParent() checks the sibling "*" slot instead;
+// see its comment in models/host.js). Used by the host create/edit form to
+// decide whether to offer "Parent Wildcard" as a challenge type.
+router.get('/wildcard-parent/:item', authz.requireDomainRole('viewer', authz.resolve.hostParam), async function(req, res, next){
+	try{
+		let match = Model.lookUp(req.params.item);
+		if(!match || !match.is_wildcard){
+			match = Model.lookUpWildcardParent(req.params.item);
+		}
+		return res.json({
+			results: (match && match.is_wildcard) ? match : null,
+		});
+	}catch(error){
+		return next(error);
+	}
+});
+
 // The full lookup tree exposes every host, so restrict it to admins.
 router.get('/lookupobj', authz.requireAdmin, async function(req, res, next){
 	try{

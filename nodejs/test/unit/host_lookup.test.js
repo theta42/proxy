@@ -188,6 +188,52 @@ describe('Host wildcard base-domain lookup', () => {
 });
 
 /**
+ * Tests for the exact fallback combination used by
+ * routes/host.js's GET /wildcard-parent/:item (and, via hostMatchWildcard(),
+ * the host create/edit form's "Parent Wildcard" option) -- lookUp() first
+ * (handles a brand-new subdomain that has no leaf of its own yet), falling
+ * back to lookUpWildcardParent() only when lookUp() didn't resolve to a
+ * wildcard (handles an ALREADY-EXISTING host, which lookUp() would resolve
+ * to its own record). Regression coverage for the edit-form bug where the
+ * "Parent Wildcard" option stayed permanently greyed out for an existing
+ * host, because the route only ever tried lookUp().
+ */
+describe('Host wildcard-parent route fallback (lookUp then lookUpWildcardParent)', () => {
+
+	let Host;
+
+	before(async () => {
+		Host = createMockHostClassWithWildcardParentFix();
+	});
+
+	function findWildcardParent(host){
+		let match = Host.lookUp(host);
+		if(!match || !match.is_wildcard) match = Host.lookUpWildcardParent(host);
+		return (match && match.is_wildcard) ? match : null;
+	}
+
+	test('finds the wildcard for a brand-new subdomain that was never created', async () => {
+		await populateTree(Host, ['*.cool.mysite.com']);
+		const result = findWildcardParent('newthing.cool.mysite.com');
+		assert.ok(result);
+		assert.strictEqual(result.host, '*.cool.mysite.com');
+	});
+
+	test('finds the wildcard for the wildcard\'s own base domain, whether or not it is already a plain host', async () => {
+		await populateTree(Host, ['*.cool.mysite.com']);
+		assert.strictEqual(findWildcardParent('cool.mysite.com').host, '*.cool.mysite.com');
+
+		await populateTree(Host, ['*.cool.mysite.com', 'cool.mysite.com']);
+		assert.strictEqual(findWildcardParent('cool.mysite.com').host, '*.cool.mysite.com');
+	});
+
+	test('returns null when the host has no wildcard sibling at all', async () => {
+		await populateTree(Host, ['cool.mysite.com']);
+		assert.strictEqual(findWildcardParent('cool.mysite.com'), null);
+	});
+});
+
+/**
  * Same mock shape as createMockHostClass() above, plus the parent-record
  * stamp in the tree-population loop and the lookUpWildcardParent() method --
  * both copied from the real implementation in models/host.js.
@@ -243,7 +289,11 @@ async function populateTree(Host, hosts) {
 			}
 
 			if(fragments.length === 0){
-				pointer[fragment]['#record'] = {host};
+				// is_wildcard mirrors the real Host model's own field (set
+				// whenever a host is DNS-01 wildcard-issued, i.e. starts with
+				// "*."), needed by tests that check it the same way the real
+				// /wildcard-parent/:item route does.
+				pointer[fragment]['#record'] = {host, is_wildcard: host.startsWith('*.')};
 
 				if(fragment === '*' && !pointer['#record']){
 					pointer['#record'] = pointer[fragment]['#record'];
