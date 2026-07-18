@@ -6,7 +6,13 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
-## [1.1.11] - 2026-07-17
+## [1.1.12] - 2026-07-17
+
+### Fixed
+- The host edit form's "Parent Wildcard" option stayed greyed out even when a valid wildcard actually existed for that host, so an already-created host could never be switched onto one from the edit modal (only brand-new hosts, via the field's `keyup` handler, ever saw it become available). The underlying `/host/lookup/:item` check also had the same self-match issue as the recently-fixed backend bug: it resolved an already-existing host to its own record instead of a sibling wildcard. Added a dedicated `/host/wildcard-parent/:item` endpoint that checks both directions, and the edit form now actually runs the check when it opens.
+- Fixed an nginx startup warning: `the "listen ... http2" directive is deprecated, use the "http2" directive instead`. Migrated to the standalone `http2 on;` directive (nginx 1.25.1+).
+
+Bumps to v1.1.12.
 
 ### Changed
 - Moved the help (❓) link out of the global header and onto each relevant card individually (Proxy List, Add/Edit host, Add DNS Provider, Dynamic A Records, Add New User, User List, Add Permission, Permissions, Add Group) — each now deep-links straight to the doc that actually covers it, instead of one generic header icon.
@@ -82,7 +88,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.11...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.12...HEAD
+[1.1.12]: https://github.com/theta42/proxy/compare/v1.1.11...v1.1.12
 [1.1.11]: https://github.com/theta42/proxy/compare/v1.1.10...v1.1.11
 [1.1.10]: https://github.com/theta42/proxy/compare/v1.1.9...v1.1.10
 [1.1.9]: https://github.com/theta42/proxy/compare/v1.1.8...v1.1.9

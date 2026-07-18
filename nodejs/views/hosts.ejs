@@ -212,7 +212,7 @@
 		hostModal().show();
 	}
 
-	function hostEditOpen(host){
+	async function hostEditOpen(host){
 		hostFormReset();
 		let h = $.scope.hosts.getByKey(host);
 		let $f = $('#hostForm');
@@ -258,8 +258,31 @@
 		let hostRenameable = !h.is_wildcard && !h.wildcard_parent && !h.is_cache;
 		$f.find('[name=host]').prop('disabled', !hostRenameable);
 		$('#host-rename-help').toggle(!hostRenameable);
+
+		// Reflect + enable the challenge-type options actually available for
+		// this host. Setting the host field's .val() above does not fire a
+		// 'keyup' event, so without this the "Parent Wildcard" option stayed
+		// permanently greyed out on edit even when a valid parent wildcard
+		// existed -- it only ever got un-greyed by the user re-typing the
+		// hostname (the keyup handler further down).
+		$('#challengeType-child-container, #challengeType-DNS-01-wildcard-container, #wildcard_matchAny-container')
+			.addClass('challengeType-container');
+
 		if(h.is_wildcard){
+			$('#challengeType-DNS-01-wildcard-container').removeClass('challengeType-container');
+			$('#challengeType-DNS-01-wildcard').prop('checked', true);
 			$('#wildcard_matchAny-container').removeClass('challengeType-container');
+		}else{
+			let wildcardParent = await hostMatchWildcard(h.host);
+			if(wildcardParent){
+				$('#challengeType-child-container').removeClass('challengeType-container');
+				$('#challengeType-child-relatedHost').text(wildcardParent.host);
+			}
+			if(h.wildcard_parent){
+				$('#challengeType-wildcardChild').prop('checked', true);
+			}else{
+				$('#challengeType-HTTP-01').prop('checked', true);
+			}
 		}
 
 		hostModal().show();
@@ -306,10 +329,12 @@
 
 	async function hostMatchWildcard(host){
 		try{
-			let res = await app.api.get(`host/lookup/${host}`);
-			if(res.results && res.results.is_wildcard){
-				return res.results;
-			}
+			// Not /host/lookup/ -- that resolves an ALREADY-EXISTING host to its
+			// own record, not a sibling wildcard (see the route's comment). This
+			// dedicated endpoint correctly finds a usable wildcard parent whether
+			// @host is brand new or already exists as its own host.
+			let res = await app.api.get(`host/wildcard-parent/${host}`);
+			return res.results || false;
 		}catch(error){
 			return false;
 		}
