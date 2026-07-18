@@ -22,7 +22,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.3.0",
     "@popperjs/core": "^2.11.8",
-    "@simpleworkjs/conf": "^1.1.0",
+    "@simpleworkjs/conf": "^1.2.0",
     "acme-client": "^5.4.0",
     "axios": "^1.13.5",
     "bcrypt": "^6.0.0",
@@ -32,7 +32,7 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "extend": "^3.0.2",
-    "jq-repeat": "^2.1.0",
+    "jq-repeat": "^2.2.0",
     "jquery": "^4.0.0",
     "ldapts": "^8.1.8",
     "linux-sys-user": "^1.2.0",
