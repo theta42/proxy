@@ -8,6 +8,11 @@ description: How the proxy's OIDC client, LDAP client, and OpenResty routing fit
 
 [← Back to Home](index.html)
 
+> Looking for a plainer explanation of hosts, HTTPS, or the local
+> permission model instead of internals? See
+> [Hosts & HTTPS](concepts-hosts.html) and
+> [Users, Groups & Permissions](concepts-access.html).
+
 ## System Overview
 
 The proxy system consists of three main components working together to provide high-performance reverse proxying with automated SSL management.
