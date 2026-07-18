@@ -8,9 +8,10 @@ Type=simple
 Restart=always
 RestartSec=1
 User=root
-WorkingDirectory=/var/www/proxy/nodejs
+WorkingDirectory=/opt/theta42/proxy/nodejs
 Environment="NODE_ENV=production"
-ExecStart=/usr/bin/env node /var/www/proxy/nodejs/bin/www
+Environment="CONF_SECRETS=/etc/proxy/secrets.js"
+ExecStart=/usr/bin/env node /opt/theta42/proxy/nodejs/bin/www
 
 [Install]
 WantedBy=multi-user.target

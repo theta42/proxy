@@ -9,19 +9,29 @@
 # update is just "sync the repo + reload" -- the files under /etc always track
 # the repo, so there is nothing to re-copy.
 #
+# Secrets live at $SECRETS_FILE (/etc/proxy/secrets.js by default), outside the
+# repo checkout so they survive the hard reset below. First run seeds it from
+# secrets.js.example (placeholders you must fill in); later runs never touch
+# an existing file.
+#
 # Intended to be driven by CI/CD with no human writes on prod: the checkout is
 # hard-reset to origin/$BRANCH on every run, so the box deterministically mirrors
 # the repo (any drift on the box is discarded).
 #
-# Usage: sudo ./install.sh   (override with REPO_URL=, REPO_DIR=, BRANCH=)
+# Usage: sudo ./install.sh   (override with REPO_URL=, REPO_DIR=, BRANCH=,
+#                             SECRETS_FILE=)
 set -euo pipefail
 # Never block on an interactive git credential prompt in CI.
 export GIT_TERMINAL_PROMPT=0
+# Never block on an interactive debconf prompt (e.g. tzdata, pulled in as a
+# dependency on a box that's never configured it).
+export DEBIAN_FRONTEND=noninteractive
 
 REPO_URL="${REPO_URL:-https://github.com/theta42/proxy.git}"
-REPO_DIR="${REPO_DIR:-/var/www/proxy}"
+REPO_DIR="${REPO_DIR:-/opt/theta42/proxy}"
 BRANCH="${BRANCH:-master}"
 NODE_MAJOR=22
+SECRETS_FILE="${SECRETS_FILE:-/etc/proxy/secrets.js}"
 
 if [ "$(id -u)" -ne 0 ]; then
 	echo "This script must be run as root (try: sudo $0)" >&2
@@ -33,6 +43,19 @@ link(){
 	ln -sfn "$1" "$2"
 	echo "linked $2 -> $1"
 }
+
+# Read the "version" field out of a package.json without depending on Node
+# being installed yet (this runs before the Node.js install step below).
+pkg_version(){
+	sed -n 's/^[[:space:]]*"version":[[:space:]]*"\([^"]*\)".*/\1/p' "$1" | head -1
+}
+
+# Installed version before this run touches anything, for the upgrade banner
+# at the end. Empty on a fresh install (no prior checkout).
+CURRENT_VERSION=""
+if [ -f "$REPO_DIR/nodejs/package.json" ]; then
+	CURRENT_VERSION="$(pkg_version "$REPO_DIR/nodejs/package.json")"
+fi
 
 echo "==> Base packages"
 apt-get update
@@ -134,6 +157,20 @@ else
 	git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
 fi
 
+NEW_VERSION="$(pkg_version "$REPO_DIR/nodejs/package.json")"
+
+echo "==> Secrets file at ${SECRETS_FILE}"
+install -d -m 0750 "$(dirname "$SECRETS_FILE")"
+if [ ! -f "$SECRETS_FILE" ]; then
+	cp "$REPO_DIR/secrets.js.example" "$SECRETS_FILE"
+	chmod 600 "$SECRETS_FILE"
+	echo "    seeded ${SECRETS_FILE} from secrets.js.example -- EDIT IT before the proxy will work:"
+	echo "        \$EDITOR ${SECRETS_FILE}"
+	echo "    then re-run this script (or: sudo systemctl restart proxy)"
+else
+	echo "    ${SECRETS_FILE} already exists, leaving it untouched"
+fi
+
 echo "==> Symlink config from the repo"
 install -d /etc/openresty/sites-enabled /var/log/nginx
 link "$REPO_DIR/ops/nginx_conf/nginx.conf"     /etc/openresty/nginx.conf
@@ -162,4 +199,12 @@ else
 	exit 1
 fi
 
-echo "==> Done. Update later with: sudo BRANCH=${BRANCH} $0"
+echo "==> Done."
+if [ -z "$CURRENT_VERSION" ]; then
+	echo "    Installed v${NEW_VERSION}."
+elif [ "$CURRENT_VERSION" = "$NEW_VERSION" ]; then
+	echo "    Already up to date (v${NEW_VERSION})."
+else
+	echo "    Updated v${CURRENT_VERSION} -> v${NEW_VERSION}."
+fi
+echo "    Update later with: sudo BRANCH=${BRANCH} $0"

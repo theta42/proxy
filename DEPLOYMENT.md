@@ -227,16 +227,25 @@ docker compose logs --tail=200 --since=10m proxy    # recent context
 
 `ops/install.sh` is an idempotent installer: it installs Node.js 22.x, OpenResty
 (from openresty.org), Lua modules (luarocks), Redis, force-syncs the repo to
-`/var/www/proxy`, symlinks the OpenResty + systemd config from the repo, and
-starts `proxy.service`. Re-run it to update.
+`/opt/theta42/proxy`, symlinks the OpenResty + systemd config from the repo, and
+starts `proxy.service`. Re-run it to update — it prints the version you're
+updating from and to (or "Already up to date" if there's nothing new).
+
+```bash
+wget -O - https://raw.githubusercontent.com/theta42/proxy/master/ops/install.sh | sudo bash
+```
+
+or, if you already have the repo checked out:
 
 ```bash
 sudo ./ops/install.sh
 ```
 
-Configuration is file-based: write `nodejs/conf/secrets.js` with the OIDC +
-LDAP values (see `nodejs/conf/base.js` for the shape), then
-`sudo systemctl restart proxy`.
+Configuration is file-based: on first run the installer seeds
+`/etc/proxy/secrets.js` from `secrets.js.example` (placeholders you must fill
+in — OIDC + LDAP values, see `nodejs/conf/base.js` for the shape). Edit it,
+then `sudo systemctl restart proxy`. Later runs never touch an existing
+secrets file.
 
 ---
 
