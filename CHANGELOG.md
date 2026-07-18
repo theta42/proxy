@@ -6,7 +6,12 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
-## [1.1.10] - 2026-07-17
+## [1.1.11] - 2026-07-17
+
+### Changed
+- Moved the help (❓) link out of the global header and onto each relevant card individually (Proxy List, Add/Edit host, Add DNS Provider, Dynamic A Records, Add New User, User List, Add Permission, Permissions, Add Group) — each now deep-links straight to the doc that actually covers it, instead of one generic header icon.
+
+Bumps to v1.1.11.
 
 ### Added
 - A help icon (❓) in the top-right header now deep-links to the doc most relevant to the current page (falls back to the docs index elsewhere).
@@ -77,7 +82,8 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.10...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.11...HEAD
+[1.1.11]: https://github.com/theta42/proxy/compare/v1.1.10...v1.1.11
 [1.1.10]: https://github.com/theta42/proxy/compare/v1.1.9...v1.1.10
 [1.1.9]: https://github.com/theta42/proxy/compare/v1.1.8...v1.1.9
 [1.1.8]: https://github.com/theta42/proxy/compare/v1.1.7...v1.1.8

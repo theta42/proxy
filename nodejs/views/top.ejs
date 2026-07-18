@@ -62,9 +62,6 @@
 					</li>
 				</ul>
 				<div class="form-inline mt-2 mt-md-0">
-					<a id="cl-help" class="nav-link text-light me-3" href="/docs" title="Help">
-						<i class="fa-solid fa-circle-question"></i>
-					</a>
 					<a id="cl-username" class="navbar-text text-light me-3" href="/profile" style="display: none;">
 						<i class="fa-solid fa-user me-1"></i><span id="cl-username-text"></span>
 					</a>
@@ -105,21 +102,6 @@
 				sessionStorage.setItem('update-banner-dismissed', '1');
 			}
 
-			// Deep-link the header help icon to whichever doc is most relevant to
-			// the current page. No server-side "current section" local exists
-			// (every res.render() call shares one values object, see
-			// routes/render.js), so this follows the same client-side
-			// path-matching convention already used for the top-nav active-link
-			// highlighting just below. Unmapped pages fall back to the docs
-			// index (already /docs, the anchor's default).
-			var HELP_DOCS_BY_PATH = {
-				'/hosts': 'installation',
-				'/dns': 'installation',
-				'/users': 'architecture',
-				'/permissions': 'architecture',
-				'/groups': 'architecture',
-			};
-
 			$(document).ready(function(){
 
 				// Set the correct link to active in the top nav bar
@@ -130,9 +112,6 @@
 						$this.addClass('active')
 					}
 				})
-
-				let helpSlug = HELP_DOCS_BY_PATH[window.location.pathname.toLocaleLowerCase()];
-				if(helpSlug) $('#cl-help').attr('href', '/docs/' + helpSlug);
 
 				// Set the correct login/logout button, and reveal admin-only nav
 				// items for global admins.
