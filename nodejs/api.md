@@ -1,5 +1,10 @@
 # API Documentation
 
+> Looking for a plainer explanation of what API tokens are and when you'd
+> want one, instead of a full endpoint reference? See
+> [API Tokens](/docs/api-tokens) (in-app) or
+> [concepts-api-tokens.md](../docs/concepts-api-tokens.md) (repo).
+
 All API endpoints require authentication unless otherwise noted. Three
 authentication methods are supported:
 

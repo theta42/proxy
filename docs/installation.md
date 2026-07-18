@@ -8,6 +8,10 @@ description: Installing the proxy — Docker, bare metal, or as part of the unif
 
 [← Back to Home](index.html)
 
+> Looking for a plainer explanation of hosts, HTTPS, and DNS providers
+> instead of install steps? See [Hosts & HTTPS](concepts-hosts.html) and
+> [DNS Providers](concepts-dns.html).
+
 ## Quick Install (Recommended)
 
 For modern Debian-based systems (Ubuntu 20.04+, Debian 11+):
