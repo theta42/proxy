@@ -127,9 +127,14 @@ This installer will:
 - Install and configure Redis
 - Set up SSL fallback certificates
 - Install Lua dependencies (lua-resty-auto-ssl, luasocket)
-- Clone and install the proxy application
+- Clone/update the proxy application at `/opt/theta42/proxy`
+- Seed `/etc/proxy/secrets.js` on first run (edit it, then re-run or `systemctl restart proxy`)
 - Configure systemd service
 - Start the proxy service
+
+It's idempotent and safe to re-run — re-running it updates the app in place and
+prints the version you're updating from and to (e.g. `Updated v1.1.13 ->
+v1.1.14`), or `Already up to date` if there's nothing new.
 
 ## Logs (Docker)
 
@@ -224,15 +229,24 @@ cp ops/nginx_conf/targetinfo.lua /usr/local/openresty/lualib/targetinfo.lua
 
 Clone and install:
 ```bash
-cd /var/www
+mkdir -p /opt/theta42
+cd /opt/theta42
 git clone https://github.com/theta42/proxy.git
 cd proxy/nodejs
 npm install
 ```
 
+Configure secrets:
+```bash
+mkdir -p /etc/proxy
+cp ../secrets.js.example /etc/proxy/secrets.js
+chmod 600 /etc/proxy/secrets.js
+$EDITOR /etc/proxy/secrets.js
+```
+
 Create systemd service:
 ```bash
-cp ops/proxy.service /etc/systemd/system/proxy.service
+cp ../ops/proxy.service /etc/systemd/system/proxy.service
 systemctl daemon-reload
 systemctl enable proxy.service
 systemctl start proxy.service

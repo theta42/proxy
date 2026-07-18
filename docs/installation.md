@@ -146,7 +146,8 @@ openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
 Clone the repository and copy configuration files:
 
 ```bash
-cd /var/www
+mkdir -p /opt/theta42
+cd /opt/theta42
 git clone https://github.com/theta42/proxy.git
 cd proxy
 
@@ -161,14 +162,26 @@ cp ops/nginx_conf/targetinfo.lua /usr/local/openresty/lualib/targetinfo.lua
 ### Step 7: Install Application
 
 ```bash
-cd /var/www/proxy/nodejs
+cd /opt/theta42/proxy/nodejs
 npm install
 ```
+
+### Step 7b: Configure Secrets
+
+```bash
+mkdir -p /etc/proxy
+cp /opt/theta42/proxy/secrets.js.example /etc/proxy/secrets.js
+chmod 600 /etc/proxy/secrets.js
+$EDITOR /etc/proxy/secrets.js   # set oidc.clientId/clientSecret, ldap.bindPassword, ...
+```
+
+`@simpleworkjs/conf` reads this file via the `CONF_SECRETS` env var, which the
+systemd unit below sets to `/etc/proxy/secrets.js`.
 
 ### Step 8: Configure Systemd Service
 
 ```bash
-cp /var/www/proxy/ops/proxy.service /etc/systemd/system/proxy.service
+cp /opt/theta42/proxy/ops/proxy.service /etc/systemd/system/proxy.service
 systemctl daemon-reload
 systemctl enable proxy.service
 systemctl start proxy.service
