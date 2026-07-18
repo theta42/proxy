@@ -23,6 +23,9 @@
 set -euo pipefail
 # Never block on an interactive git credential prompt in CI.
 export GIT_TERMINAL_PROMPT=0
+# Never block on an interactive debconf prompt (e.g. tzdata, pulled in as a
+# dependency on a box that's never configured it).
+export DEBIAN_FRONTEND=noninteractive
 
 REPO_URL="${REPO_URL:-https://github.com/theta42/proxy.git}"
 REPO_DIR="${REPO_DIR:-/opt/theta42/proxy}"
