@@ -31,7 +31,6 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "extend": "^3.0.2",
-    "isomorphic-dompurify": "^3.19.0",
     "jq-repeat": "^2.2.0",
     "jquery": "^4.0.0",
     "ldapts": "^8.1.8",
@@ -43,7 +42,8 @@
     "p2psub": "^0.2.0",
     "redis": "^6.1.0",
     "socket.io": "^4.8.3",
-    "tld-extract": "^2.1.0"
+    "tld-extract": "^2.1.0",
+    "xss": "^1.0.15"
   },
   "license": "MIT",
   "repository": {
