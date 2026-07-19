@@ -100,15 +100,21 @@ app.use(async function(req, res, next) {
 
 // Error handler. This is where `next()` will go on error
 app.use(async function(err, req, res, next) {
-  try{  
-    console.error(err.status || res.status, err.name, req.method, req.url);
+  try{
+    const status = err.status || 500;
+    console.error(status, err.name, req.method, req.url);
     console.error(err.message);
-    console.error(err.stack);
+    if (err.stack) console.error(err.stack);
     console.error('=========================================');
 
-    res.status(err.status || 500);
-    res.json({name: err.name, message: err.message, keys: err.keys});
+    res.status(status);
+    // Only expose safe, non-internal fields to the client.
+    const body = { name: err.name, message: err.message };
+    res.json(body);
   }catch(error){
-    console.log('error in the catch all error fn....', error);
+    console.error('error in the catch-all error handler', error);
+    if (!res.headersSent) {
+      res.status(500).json({ name: 'Error', message: 'Internal server error' });
+    }
   }
 });

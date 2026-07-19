@@ -75,11 +75,12 @@ $EDITOR config/proxy-secrets.js     # set oidc.clientId/clientSecret, ldap.bindP
 docker compose up -d --build
 ```
 
-`docker-entrypoint.sh` symlinks `/config/proxy-secrets.js` → `/app/conf/secrets.js`
-so `@simpleworkjs/conf` reads it. No `app_*` env is passed — `app_*` env would
-override the file (env beats secrets.js in `@simpleworkjs/conf`), so the file is
-kept authoritative. `RESOLVER` / `REAL_IP_FROM` / `NODE_ENV` / `NODE_PORT` are
-OpenResty-runtime / process env, not `app_*` config, so they stay in the compose.
+`docker-entrypoint.sh` sets `CONF_SECRETS=/config/proxy-secrets.js` so
+`@simpleworkjs/conf` reads it directly. No `app_*` env is passed — `app_*` env
+would override the file (env beats secrets.js in `@simpleworkjs/conf`), so the
+file is kept authoritative. `RESOLVER` / `REAL_IP_FROM` / `NODE_ENV` /
+`NODE_PORT` are OpenResty-runtime / process env, not `app_*` config, so they
+stay in the compose.
 
 > Running the unified `theta-env` stack? Its `setup.sh` generates
 > `./config/proxy-secrets.js` (+ `./config/sso-secrets.js`) for you and

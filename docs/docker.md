@@ -39,11 +39,11 @@ which deep-merges, in order:
 3. `conf/secrets.js` (gitignored)
 4. **`app_*` environment variables** — the highest-precedence layer
 
-The bundled `docker-compose.yml` mount `./config/proxy-secrets.js` at `/config`,
-and `docker-entrypoint.sh` symlinks it into `/app/conf/secrets.js` so the app
-reads the OIDC + LDAP + auth wiring from the file. **No `app_*` env is passed** —
-`app_*` env beats `secrets.js`, so the file is authoritative only if the matching
-`app_*` env is absent. See `secrets.js.example` for the shape.
+The bundled `docker-compose.yml` mounts `./config/proxy-secrets.js` at `/config`,
+and `docker-entrypoint.sh` sets `CONF_SECRETS=/config/proxy-secrets.js` so the
+app reads the OIDC + LDAP + auth wiring from the file. **No `app_*` env is
+passed** — `app_*` env beats `secrets.js`, so the file is authoritative only if
+the matching `app_*` env is absent. See `secrets.js.example` for the shape.
 
 Any env var starting with `app_` overrides the merged config; the rest of the
 name splits on **double-underscore** (`__`) into a nested path. Values are

@@ -1,7 +1,6 @@
 {
   "name": "proxy-api",
-  "version": "1.1.15",
-  "private": true,
+  "version": "1.1.16",
   "author": [
     {
       "name": "William Mantly",
@@ -48,7 +47,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://git.theta42.com/wmantly/proxy.git"
+    "url": "https://github.com/theta42/proxy.git"
   },
   "devDependencies": {
     "nodemon": "^3.1.11"

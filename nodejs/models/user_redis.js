@@ -90,10 +90,19 @@ User.register();
 	var defaultUser = 'proxyadmin2'
 	// Optional: an orchestrator (e.g. theta-env's setup.sh) can set
 	// auth.localAdminPass in proxy-secrets.js to a generated password so this
-	// bootstrap account isn't left at the well-known default (username ==
-	// password == "proxyadmin2"). Only used on first creation -- once the
-	// account exists this is never read again, so it's safe to leave set.
-	var defaultPass = (conf.auth && conf.auth.localAdminPass) || defaultUser;
+	// bootstrap account isn't left at a well-known default. Only used on first
+	// creation -- once the account exists this is never read again, so it's
+	// safe to leave set. If unset, a random password is generated and printed
+	// once; save it from the log or set auth.localAdminPass explicitly.
+	var defaultPass = (conf.auth && conf.auth.localAdminPass);
+	if (!defaultPass) {
+		defaultPass = crypto.randomBytes(16).toString('hex');
+		console.warn(`====================================================================`);
+		console.warn(`Bootstrap admin "${defaultUser}" created with random password:`);
+		console.warn(`${defaultPass}`);
+		console.warn(`Set auth.localAdminPass in your secrets file to make this deterministic.`);
+		console.warn(`====================================================================`);
+	}
 	try{
 		let user = await User.get(defaultUser);
 	}catch(error){
@@ -103,7 +112,7 @@ User.register();
 				password: defaultPass,
 				created_by: defaultUser
 			});
-			console.log(defaultUser, 'created', user);
+			console.log(defaultUser, 'created');
 		}catch(error){
 			console.error(error)
 		}
