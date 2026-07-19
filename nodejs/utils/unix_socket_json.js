@@ -27,12 +27,14 @@ class SocketServerJson {
 		this.onClientClose = new CallbackQueue(args.onClientClose);
 		this.onClientError = new CallbackQueue(args.onClientError);
 
-		// Set socket file permissions after listening
-		// 777 is acceptable here for single-use container environments
-		// Wrapped in try-catch as chmod may fail in test/restricted environments
+		// Set socket file permissions after listening. 660 (owner + group read/write)
+		// is the safest default; the Docker image runs both processes as root, and
+		// bare-metal operators should ensure the proxy service and openresty share a
+		// group when running as separate users. Wrapped in try-catch as chmod may
+		// fail in test/restricted environments.
 		this.onListen.push(() => {
 			try {
-				fs.chmodSync(this.socketFile, '777');
+				fs.chmodSync(this.socketFile, '660');
 			} catch(err) {
 				// Chmod may fail in test environments or certain filesystems
 				// Socket will still work with default permissions

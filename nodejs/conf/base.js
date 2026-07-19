@@ -6,10 +6,10 @@ module.exports = {
 	logo: "/static/img/theta42.svg", // shown in the nav; point at your own file under public/ (or an absolute URL) to white-label
 	userModel: 'redis', // pam, redis, ldap
 	ldap: {
-		url: 'ldap://192.168.1.55:389',
-		bindDN: 'cn=ldapclient service,ou=people,dc=theta42,dc=com',
+		url: 'ldap://localhost',
+		bindDN: 'cn=ldapclient service,ou=people,dc=example,dc=com',
 		bindPassword: '__IN SRECREST FILE__',
-		searchBase: 'ou=people,dc=theta42,dc=com',
+		searchBase: 'ou=people,dc=example,dc=com',
 		userFilter: '(objectClass=inetOrgPerson)',
 		userNameAttribute: 'uid'
 	},
@@ -29,11 +29,11 @@ module.exports = {
 	// redirectUri MUST be registered on the SSO client and match exactly.
 	oidc: {
 		enabled: true,
-		issuer: 'https://sso.theta42.com',
-		authorizationEndpoint: 'https://sso.theta42.com/oauth/authorize',
-		tokenEndpoint: 'https://sso.theta42.com/oauth/token',
-		userinfoEndpoint: 'https://sso.theta42.com/oauth/userinfo',
-		endSessionEndpoint: 'https://sso.theta42.com/oauth/logout',
+		issuer: 'https://sso.example.com',
+		authorizationEndpoint: 'https://sso.example.com/oauth/authorize',
+		tokenEndpoint: 'https://sso.example.com/oauth/token',
+		userinfoEndpoint: 'https://sso.example.com/oauth/userinfo',
+		endSessionEndpoint: 'https://sso.example.com/oauth/logout',
 		clientId: '__SET_ME__',
 		// Where the SSO sends the user back. Must be an absolute URL reachable
 		// by the browser and registered on the SSO client.

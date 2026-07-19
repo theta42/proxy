@@ -6,6 +6,17 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.16] - 2026-07-18
+
+### Changed
+- Public-release packaging: removed `"private": true` from `nodejs/package.json`, corrected the repository URL to `https://github.com/theta42/proxy.git`, and fixed the MIT `LICENSE` copyright line.
+- Genericized committed defaults in `conf/base.js` and `conf/development.js`: LDAP now defaults to `ldap://localhost` with `dc=example,dc=com`, and OIDC endpoints default to `https://sso.example.com` instead of internal theta42 infrastructure.
+- The bootstrap `proxyadmin2` account now gets a random, one-time password when `auth.localAdminPass` is unset, instead of the well-known default `proxyadmin2`. The password is printed to the log on first creation and can be made deterministic by setting `auth.localAdminPass` in the secrets file.
+
+### Fixed
+- The global error handler no longer leaks `err.keys`, stack traces, or other internal details in JSON responses; only `name` and `message` are returned to clients.
+- `DEPLOYMENT.md` and `docs/docker.md` now correctly describe the `CONF_SECRETS` env-var mechanism instead of the old symlink behavior.
+
 ## [1.1.15] - 2026-07-18
 
 ### Changed
