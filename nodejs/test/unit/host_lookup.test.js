@@ -185,6 +185,35 @@ describe('Host wildcard base-domain lookup', () => {
 		await populateTree(Host, ['*.cool.mysite.com']);
 		assert.strictEqual(Host.lookUpWildcardParent('other.example.com'), undefined);
 	});
+
+	// Regression: the common case -- an already-existing single-label subdomain
+	// (its own auto-SSL/HTTP-01 host) sitting beside a wildcard, e.g.
+	// sso.nl.wgnode.com under *.nl.wgnode.com. The wildcard is a SIBLING of the
+	// subdomain's leftmost label, not a child of its node, so the old walk (which
+	// consumed "sso" and only checked that leaf's "*" child) never found it and
+	// the edit form's "Parent Wildcard" option stayed permanently greyed out.
+	test('lookUpWildcardParent finds a sibling wildcard for an existing single-label subdomain', async () => {
+		await populateTree(Host, ['sso.nl.wgnode.com', '*.nl.wgnode.com']);
+		const result = Host.lookUpWildcardParent('sso.nl.wgnode.com');
+		assert.ok(result, 'Should find the sibling wildcard');
+		assert.strictEqual(result.host, '*.nl.wgnode.com');
+	});
+
+	// A subdomain with no leaf of its own (never created) is deliberately NOT
+	// this method's job -- the walk stops before reaching the sibling "*" slot.
+	// The route resolves that case via plain lookUp()'s wildcard fallback first
+	// (covered in the route-fallback describe block below).
+	test('lookUpWildcardParent returns undefined for a subdomain with no leaf of its own', async () => {
+		await populateTree(Host, ['*.nl.wgnode.com']);
+		assert.strictEqual(Host.lookUpWildcardParent('api.nl.wgnode.com'), undefined);
+	});
+
+	test('lookUpWildcardParent does not treat a deeper wildcard as covering a shallower host', async () => {
+		// *.deep.nl.wgnode.com must NOT be offered as a parent for sso.nl.wgnode.com
+		// (a single-level wildcard covers only its own direct children).
+		await populateTree(Host, ['sso.nl.wgnode.com', '*.deep.nl.wgnode.com']);
+		assert.strictEqual(Host.lookUpWildcardParent('sso.nl.wgnode.com'), undefined);
+	});
 });
 
 /**
@@ -231,6 +260,24 @@ describe('Host wildcard-parent route fallback (lookUp then lookUpWildcardParent)
 		await populateTree(Host, ['cool.mysite.com']);
 		assert.strictEqual(findWildcardParent('cool.mysite.com'), null);
 	});
+
+	// The user's scenario: sso.nl.wgnode.com already exists as its own host, and
+	// a *.nl.wgnode.com wildcard is added afterward. lookUp() resolves to sso's
+	// own (non-wildcard) leaf, so the fallback to lookUpWildcardParent() is what
+	// surfaces the sibling wildcard and lets the edit form offer conversion.
+	test('finds the sibling wildcard for an already-existing single-label subdomain', async () => {
+		await populateTree(Host, ['sso.nl.wgnode.com', '*.nl.wgnode.com']);
+		const result = findWildcardParent('sso.nl.wgnode.com');
+		assert.ok(result);
+		assert.strictEqual(result.host, '*.nl.wgnode.com');
+	});
+
+	test('finds the sibling wildcard for a never-created single-label subdomain', async () => {
+		await populateTree(Host, ['*.nl.wgnode.com']);
+		const result = findWildcardParent('api.nl.wgnode.com');
+		assert.ok(result);
+		assert.strictEqual(result.host, '*.nl.wgnode.com');
+	});
 });
 
 /**
@@ -265,11 +312,17 @@ function createMockHostClassWithWildcardParentFix() {
 
 		static lookUpWildcardParent(host) {
 			let place = this.lookUpObj;
+			let parent = undefined;
 			for(let fragment of host.split('.').reverse()){
-				if(!place[fragment]) return undefined;
+				if(!place[fragment]){ place = undefined; break; }
+				parent = place;
 				place = place[fragment];
 			}
-			if(place['*'] && place['*']['#record']) return place['*']['#record'];
+			// Case 1: wildcard is a child of host's own node (base domain).
+			if(place && place['*'] && place['*']['#record']) return place['*']['#record'];
+			// Case 2: wildcard is a sibling of host's leftmost label
+			// (single-label subdomain, e.g. sso.nl.wgnode.com -> *.nl.wgnode.com).
+			if(parent && parent['*'] && parent['*']['#record']) return parent['*']['#record'];
 		}
 	};
 }

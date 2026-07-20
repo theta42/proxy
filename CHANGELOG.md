@@ -13,7 +13,12 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 - Genericized committed defaults in `conf/base.js` and `conf/development.js`: LDAP now defaults to `ldap://localhost` with `dc=example,dc=com`, and OIDC endpoints default to `https://sso.example.com` instead of internal theta42 infrastructure.
 - The bootstrap `proxyadmin2` account now gets a random, one-time password when `auth.localAdminPass` is unset, instead of the well-known default `proxyadmin2`. The password is printed to the log on first creation and can be made deterministic by setting `auth.localAdminPass` in the secrets file.
 
+### Security
+- Sanitized rendered docs HTML via `xss` in `routes/docs.js` so malicious markdown cannot inject scripts or other dangerous markup into the in-app docs viewer.
+- The Unix socket JSON-RPC socket is now created with mode `660` instead of world-writable `777`.
+
 ### Fixed
+- An existing single-label subdomain host (e.g. `sso.nl.wgnode.com`) could not be attached to a wildcard cert added later (e.g. `*.nl.wgnode.com`): `Host.lookUpWildcardParent()` only checked the wildcard-as-child position (the wildcard's own base domain) and missed the far more common wildcard-as-sibling case, so the edit form's "Parent Wildcard" option stayed permanently greyed out. It now checks both positions.
 - The global error handler no longer leaks `err.keys`, stack traces, or other internal details in JSON responses; only `name` and `message` are returned to clients.
 - `DEPLOYMENT.md` and `docs/docker.md` now correctly describe the `CONF_SECRETS` env-var mechanism instead of the old symlink behavior.
 
@@ -123,7 +128,7 @@ First tagged release. Establishes the `vX.Y.Z` tag convention that the in-app up
 - Standalone backup script (`ops/backup.sh`) for deployments not using theta-env's orchestrator — snapshots Redis and `./config`, with retention.
 - Admin-only in-app banner that checks GitHub releases every 24h and surfaces available updates.
 
-[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.15...HEAD
+[Unreleased]: https://github.com/theta42/proxy/compare/v1.1.16...HEAD
 [1.1.15]: https://github.com/theta42/proxy/compare/v1.1.14...v1.1.15
 [1.1.14]: https://github.com/theta42/proxy/compare/v1.1.13...v1.1.14
 [1.1.13]: https://github.com/theta42/proxy/compare/v1.1.12...v1.1.13
