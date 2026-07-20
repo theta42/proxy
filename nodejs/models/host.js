@@ -518,24 +518,38 @@ class Host extends Table{
 		if(parent && parent['*'] && parent['*']['#record']) return parent['*']['#record'];
 	}
 
-	// Find the wildcard covering @host as its own base domain (e.g.
-	// "*.cool.mysite.com" for host="cool.mysite.com"), regardless of whether
-	// @host is already registered as its own host. Unlike lookUp(), which
-	// walks to and returns @host's own exact-match leaf when one exists, this
-	// walks to that exact position and looks one level deeper at its "*"
-	// child -- the sibling wildcard slot -- so it still finds the parent
-	// wildcard even when @host already has its own (non-wildcard) record.
-	// Used when attaching an already-created host to a wildcard after the
-	// fact (see update() below); Host.create()'s own wildcardChild handling
-	// can keep using plain lookUp() since a host being newly created hasn't
-	// claimed its own leaf yet.
+	// Find the wildcard that could cover @host, regardless of whether @host is
+	// already registered as its own host. Unlike lookUp(), which walks to and
+	// returns @host's own exact-match leaf when one exists, this keeps looking
+	// for a sibling/child "*" slot, so it still finds the parent wildcard even
+	// when @host already has its own (non-wildcard) record. Used when attaching
+	// an already-created host to a wildcard after the fact (see update() below);
+	// Host.create()'s own wildcardChild handling can keep using plain lookUp()
+	// since a host being newly created hasn't claimed its own leaf yet.
+	//
+	// Two tree positions qualify, and we must check BOTH:
+	//   1. Child "*" of @host's own node -- @host is the wildcard's base domain
+	//      (e.g. "*.cool.mysite.com" covers host="cool.mysite.com").
+	//   2. Sibling "*" one level up -- @host is a single-label subdomain of the
+	//      wildcard (e.g. "*.nl.wgnode.com" covers host="sso.nl.wgnode.com").
+	// Case 2 is the common one and was previously missed: the walk consumed the
+	// leftmost label ("sso") and only inspected that leaf's "*" child, so an
+	// already-existing sibling subdomain could never be attached to its wildcard.
 	static lookUpWildcardParent(host){
 		let place = this.lookUpObj;
+		let parent = undefined;
 		for(let fragment of host.split('.').reverse()){
-			if(!place[fragment]) return undefined;
+			// @host may have no leaf of its own (brand-new subdomain); that case
+			// is already handled by plain lookUp()'s wildcard fallback in the
+			// caller, so just stop -- we've still tracked `parent` for case 2.
+			if(!place[fragment]){ place = undefined; break; }
+			parent = place;
 			place = place[fragment];
 		}
-		if(place['*'] && place['*']['#record']) return place['*']['#record'];
+		// Case 1: wildcard is a child of @host's own node.
+		if(place && place['*'] && place['*']['#record']) return place['*']['#record'];
+		// Case 2: wildcard is a sibling of @host's leftmost label.
+		if(parent && parent['*'] && parent['*']['#record']) return parent['*']['#record'];
 	}
 
 	static async lookUpReady(){
