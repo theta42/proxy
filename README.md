@@ -51,6 +51,7 @@ provider + LDAP directory you already run.
 - Multiple DNS provider integrations (Cloudflare, DigitalOcean, PorkBun, DuckDNS — DuckDNS is free)
 - Wildcard SSL certificate support with automatic renewal
 - Dynamic host routing with wildcard domain matching (*, **)
+- **Multi-target load balancing** — configure multiple backend targets per host with built-in round-robin load balancing
 - Web-based management interface
 - RESTful API for automation
 - **OIDC login** — the proxy is an OpenID Connect client of an external SSO

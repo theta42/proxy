@@ -68,6 +68,10 @@ host form whenever the name you're entering already has a matching
 wildcard available to reuse — including the wildcard's own bare base
 domain (e.g. `example.com` itself, not just `something.example.com`).
 
+## Load Balancing
+
+If you have multiple servers running the same application, you can load balance traffic across them. When editing a host, you can specify **Additional Targets** (one `IP:port` per line). The proxy will automatically distribute incoming requests across your primary target and all additional targets using a round-robin strategy, providing simple high availability and load distribution without extra configuration.
+
 ## Want more detail?
 
 This page skips the system-internals (Redis, OpenResty, the lookup service)

@@ -50,6 +50,7 @@ LDAP directory you already run.
 - Automated HTTPS via Let's Encrypt — HTTP-01 and DNS-01 (wildcard) challenges
 - Multiple DNS providers (Cloudflare, DigitalOcean, PorkBun, DuckDNS — free)
 - Dynamic host routing with wildcard domain matching (`*`, `**`)
+- **Multi-target load balancing** — configure multiple backend targets per host with built-in round-robin load balancing
 - **OIDC login** and **direct LDAP lookups**, independently of each other
 - Per-host **basic auth** as an alternative to SSO (mutually exclusive, so
   it's never ambiguous which one gated a request)
