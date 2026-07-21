@@ -28,6 +28,7 @@ class Host extends Table{
 		'host': {isRequired: true, type: 'string', min: 1, max: 500},
 		'ip': {isRequired: true, type: 'string', min: 3, max: 500},
 		'targetPort': {isRequired: true, type: 'number', min:0, max:65535},
+		'targets': {default: function(){return []}, isRequired: false, type: 'object'},
 		'forcessl': {isRequired: false, default: true, type: 'boolean'},
 		'targetssl': {isRequired: false, default: false, type: 'boolean'},
 

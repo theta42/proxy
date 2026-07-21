@@ -252,6 +252,7 @@ function normalizeHostFeatures(body){
 	if('sso_enabled' in body) body.sso_enabled = toBool(body.sso_enabled);
 	if('sso_allow_users' in body)  body.sso_allow_users  = parseAllowList(body.sso_allow_users);
 	if('sso_allow_groups' in body) body.sso_allow_groups = parseAllowList(body.sso_allow_groups);
+	if('targets' in body) body.targets = parseAllowList(body.targets);
 
 	if('ratelimit_rate' in body)  body.ratelimit_rate  = clampNumber(body.ratelimit_rate, 1, 1000000, 10);
 	if('ratelimit_burst' in body) body.ratelimit_burst = clampNumber(body.ratelimit_burst, 0, 1000000, 20);

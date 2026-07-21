@@ -62,6 +62,7 @@ function M.get(ngx, domain, targetInfo)
 
     local json = require "cjson"
     local redis = require "resty.redis"
+    local round_robin = require "resty.balancer.round_robin"
 
     if not domain then
         return nil, 499
@@ -93,6 +94,45 @@ function M.get(ngx, domain, targetInfo)
 
     if not res["ip"] then
         return nil, 406
+    end
+
+    -- Load balancing
+    local target_list = {}
+    table.insert(target_list, res["ip"] .. ":" .. tostring(res["targetPort"]))
+    
+    if res["targets"] and res["targets"] ~= "" and res["targets"] ~= "[]" then
+        local decodeOk, decodedTargets = pcall(json.decode, res["targets"])
+        if decodeOk and type(decodedTargets) == "table" then
+            for _, t in ipairs(decodedTargets) do
+                table.insert(target_list, t)
+            end
+        end
+    end
+
+    if #target_list > 1 then
+        if not M.host_balancers then M.host_balancers = {} end
+        local cache_key = domain .. "_" .. (res["updated_on"] or "0")
+        
+        if not M.host_balancers[domain] or M.host_balancers[domain].key ~= cache_key then
+            local b = round_robin:new()
+            local nodes = {}
+            for _, t in ipairs(target_list) do
+                nodes[t] = 1
+            end
+            b:reinit(nodes)
+            M.host_balancers[domain] = { b = b, key = cache_key }
+        end
+        
+        local peer = M.host_balancers[domain].b:find()
+        if peer then
+            local colon = peer:find(":")
+            if colon then
+                res["ip"] = peer:sub(1, colon - 1)
+                res["targetPort"] = peer:sub(colon + 1)
+            else
+                res["ip"] = peer
+            end
+        end
     end
 
     ngx.ctx.targetInfo = res

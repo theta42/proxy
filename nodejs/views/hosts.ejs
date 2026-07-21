@@ -232,6 +232,7 @@
 		});
 
 		$f.find("textarea[name='req_headers']").val(hostFeatureHeadersToText(h.req_headers));
+		$f.find("textarea[name='targets']").val(hostFeatureListToText(h.targets));
 		$f.find("textarea[name='resp_headers']").val(hostFeatureHeadersToText(h.resp_headers));
 		$f.find("textarea[name='ip_allow']").val(hostFeatureListToText(h.ip_allow));
 		$f.find("textarea[name='ip_deny']").val(hostFeatureListToText(h.ip_deny));
@@ -631,6 +632,14 @@
 									</label></div>
 									<small class="field-help text-muted d-block">Whether the proxy talks to the target over HTTP or HTTPS. Independent of Incoming SSL above — clients can use HTTPS to reach the proxy while it still talks plain HTTP to the target, or vice versa.</small>
 								</div>
+							</div>
+
+							<hr>
+
+							<div class="form-group">
+								<label for="targets" class="form-label">Additional Targets (Load Balancing)</label>
+								<textarea name="targets" class="form-control" rows="2" placeholder="10.0.0.2:8080&#10;10.0.0.3:8080"></textarea>
+								<small class="field-help text-muted d-block">Add additional targets here (IP:port, one per line) to load balance across them using round-robin. The primary target above is always included.</small>
 							</div>
 						</div>
 

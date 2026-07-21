@@ -83,6 +83,7 @@ RUN apt-get update \
 # resty.limit.req is bundled with OpenResty, so no rock is needed for it.
 RUN luarocks install lua-resty-auto-ssl \
     && luarocks install luasocket \
+    && luarocks install lua-resty-balancer \
     && luarocks install lua-resty-ipmatcher
 
 # ── Node app ─────────────────────────────────────────────────────────────────
