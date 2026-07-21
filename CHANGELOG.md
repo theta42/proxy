@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.2.2] - 2026-07-21
+
+### Fixed
+- Multi-target load balancing (added in 1.2.0) crashed every request to a load-balanced host: `ops/nginx_conf/targetinfo.lua` required a nonexistent `resty.balancer.round_robin` module. The `lua-resty-balancer` rock installed by the Dockerfile/`install.sh` doesn't provide that path — it provides `resty.roundrobin` (constructed as `roundrobin:new(nodes)`, not `:new()` + `:reinit(nodes)`). Fixed `targetinfo.lua` to use the real module and API; verified end-to-end that requests now round-robin across targets with no Lua errors.
+
 ## [1.2.1] - 2026-07-21
 
 ### Fixed

@@ -62,7 +62,7 @@ function M.get(ngx, domain, targetInfo)
 
     local json = require "cjson"
     local redis = require "resty.redis"
-    local round_robin = require "resty.balancer.round_robin"
+    local roundrobin = require "resty.roundrobin"
 
     if not domain then
         return nil, 499
@@ -114,12 +114,11 @@ function M.get(ngx, domain, targetInfo)
         local cache_key = domain .. "_" .. (res["updated_on"] or "0")
         
         if not M.host_balancers[domain] or M.host_balancers[domain].key ~= cache_key then
-            local b = round_robin:new()
             local nodes = {}
             for _, t in ipairs(target_list) do
                 nodes[t] = 1
             end
-            b:reinit(nodes)
+            local b = roundrobin:new(nodes)
             M.host_balancers[domain] = { b = b, key = cache_key }
         end
         
