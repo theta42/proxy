@@ -123,6 +123,7 @@ apt-get install -y nodejs openresty
 echo "==> Lua modules"
 luarocks install lua-resty-auto-ssl
 luarocks install luasocket
+luarocks install lua-resty-balancer
 # CIDR matcher for the per-host IP allow/deny lists (hostfeatures.lua).
 # resty.limit.req is bundled with OpenResty, so no rock is needed for it.
 luarocks install lua-resty-ipmatcher
