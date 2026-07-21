@@ -6,6 +6,15 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.1.18] - 2026-07-21
+
+### Fixed
+- The bootstrap anti-lockout admin account was always created as `proxyadmin2` regardless of `conf.auth.adminUsers`, while `migrations/permission_bootstrap.js` grants the global-admin permission to `conf.auth.adminUsers[0]`. If an operator customized `adminUsers` away from the default, the bootstrapped account and the permissioned account were two different (non-matching) usernames, so the anti-lockout account ended up with no admin access. `models/user_redis.js` now derives the bootstrap username from `conf.auth.adminUsers[0]` (falling back to `proxyadmin2`), matching `permission_bootstrap.js`.
+- Corrected a `secrets.js.example` comment that claimed the bootstrap admin's password "defaults to the username itself" — it actually generates a random password printed to the container log on first boot.
+
+### Changed
+- Refreshed all README screenshots (hosts, per-host SSO auth, per-host basic auth) against the current UI, and added a new load-balancing screenshot for the multi-target feature.
+
 ## [1.1.17] - 2026-07-20
 
 ### Fixed

@@ -87,7 +87,11 @@ class User extends Table{
 User.register();
 
 (async function(){
-	var defaultUser = 'proxyadmin2'
+	// Matches migrations/permission_bootstrap.js: the anti-lockout account is
+	// the first entry in conf.auth.adminUsers (default 'proxyadmin2'), NOT a
+	// hardcoded name -- otherwise an operator who customizes adminUsers ends
+	// up with a bootstrap account that has no admin permissions.
+	var defaultUser = (conf.auth && conf.auth.adminUsers && conf.auth.adminUsers[0]) || 'proxyadmin2';
 	// Optional: an orchestrator (e.g. theta-env's setup.sh) can set
 	// auth.localAdminPass in proxy-secrets.js to a generated password so this
 	// bootstrap account isn't left at a well-known default. Only used on first

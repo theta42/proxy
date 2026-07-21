@@ -31,6 +31,10 @@ management once basic auth is enabled:
 
 [![Per-host basic auth](docs/images/host-auth-basic.png)](docs/images/host-auth-basic.png)
 
+Multiple backend targets per host, load balanced round-robin:
+
+[![Load balancing](docs/images/load-balancing.png)](docs/images/load-balancing.png)
+
 ## Why this over the alternatives
 
 Nginx Proxy Manager, Traefik, and Caddy are all good reverse proxies with
