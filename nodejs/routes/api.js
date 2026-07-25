@@ -6,7 +6,7 @@ const middleware = require('../middleware/auth');
 const authz = require('../middleware/authz');
 
 // API routes for authentication.
-router.use('/auth',  require('./auth'));
+router.use('/auth',  require('../models').authRouter);
 
 // API routes for working with users. All endpoints need to be have valid user.
 // User management is admin-only; the router allows self-service exceptions
