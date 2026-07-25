@@ -6,6 +6,21 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-07-25
+
+### Added
+- Adopted the shared `@simpleworkjs/*` packages published under the simpleworkjs org, replacing this app's byte-identical forks of the same code so the theta42 apps share one codebase and API schema:
+  - `@simpleworkjs/oidc-client` — the OIDC client (session models, auth router, OIDC utils, safe-redirect, local-admin bootstrap). Deleted the local `utils/oidc.js`, `utils/safe_redirect.js`, `models/oidc_state.js`, `models/token.js`, `models/auth.js`, and `routes/auth.js`; `models/index.js` now wires the factory. The per-host SSO in `routes/host_auth.js` is unchanged but consumes the shared OIDC utils.
+  - `@simpleworkjs/ldap` — the ldapts client + RFC 4515/4514 escaping.
+  - `@simpleworkjs/app-stack` — unified `build_info` (`{buildVersion, buildHash, buildYear}`) and the `static-modules` mounting helper. `utils/build_info.js` and the static-modules loop in `routes/render.js` now use the shared helpers.
+
+### Security
+- **LDAP filter injection in `User.get`.** The user lookup built its search filter by interpolating `data.username` raw into `(&(objectClass=inetOrgPerson)(uid=<username>))`. A username containing `*`, `(`, `)`, `\`, or NUL could widen or alter the filter (e.g. `*` → match-all). The filter value is now passed through `escapeFilter` from `@simpleworkjs/ldap` (RFC 4515 escaping).
+
+### Changed
+- Dependency alignment: `model-redis` `^1.5` → `^1.6.0`, `ldapts` `^8.1.2` → `^8.1.8`. The four new `@simpleworkjs/*` deps resolve from the npm registry (`^1.0.0`); no `file:`/`link:` entries in the lockfile, so `npm ci` is clean in docker builds.
+- `build_info` export shape changed from `{commit, version}` to `{buildVersion, buildHash, buildYear}` (the shared shape used by all three apps). The `/health` endpoint and footer now report `buildVersion`/`buildHash`.
+
 ## [1.2.2] - 2026-07-21
 
 ### Fixed

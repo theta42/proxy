@@ -3,7 +3,8 @@
 /**
  * Per-host SSO endpoints (#57), served under /__proxy_auth on EVERY proxied host
  * (nginx routes that path here; see ops/nginx_conf/proxy.conf). These run the
- * OIDC authorization-code flow (reusing utils/oidc.js and conf.oidc) and, on a
+ * OIDC authorization-code flow (reusing @simpleworkjs/oidc-client's pure oidc
+ * utils and conf.oidc) and, on a
  * successful + authorized login, mint a Redis-backed SsoSession and set the
  * `__proxy_sso` cookie for the host. OpenResty then gates the host on that
  * session (ops/nginx_conf/hostfeatures.lua).
@@ -15,7 +16,7 @@
 
 const router = require('express').Router();
 const conf = require('@simpleworkjs/conf');
-const oidc = require('../utils/oidc');
+const {oidc} = require('@simpleworkjs/oidc-client');
 const {Host} = require('../models').models;
 const {HostSsoState, SsoSession} = require('../models/sso_session');
 const {identityAllowed} = require('../utils/host_sso');

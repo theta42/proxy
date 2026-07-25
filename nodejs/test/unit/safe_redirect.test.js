@@ -3,7 +3,7 @@
 const {describe, test} = require('node:test');
 const assert = require('node:assert');
 
-const {safeInternalPath} = require('../../utils/safe_redirect');
+const {safeInternalPath} = require('@simpleworkjs/oidc-client');
 
 /**
  * safeInternalPath guards the OIDC post-login redirect against open-redirect

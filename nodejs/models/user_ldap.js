@@ -1,8 +1,8 @@
 'use strict';
 
 const { Client, Attribute, Change } = require('ldapts');
-const {Token} = require('./token');
 const conf = require('@simpleworkjs/conf').ldap;
+const { escapeFilter } = require('@simpleworkjs/ldap');
 
 // tlsOptions is optional and forwarded to ldapts so the proxy can bind to
 // ldaps:// with a self-signed or internal-CA cert. Set via conf/secrets.js or
@@ -107,7 +107,9 @@ User.get = async function(data){
 		
 		await client.bind(conf.bindDN, conf.bindPassword);
 
-		let filter = `(&${conf.userFilter}(${conf.userNameAttribute}=${data.username}))`;
+		// Escape the interpolated username (RFC 4515) — previously raw, which
+		// let `*`/`(`/`)`/`\`/NUL in a username break or broaden the filter.
+		let filter = `(&${conf.userFilter}(${conf.userNameAttribute}=${escapeFilter(data.username)}))`;
 
 		const res = await client.search(conf.searchBase, {
 			scope: 'sub',

@@ -4,7 +4,7 @@ const {describe, test} = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 
-const oidc = require('../../utils/oidc');
+const oidc = require('@simpleworkjs/oidc-client').oidc;
 const conf = require('@simpleworkjs/conf');
 
 /**

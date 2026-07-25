@@ -1,29 +1,16 @@
 'use strict';
 
-const fs = require('fs');
+// Unified build-info shape ({ buildVersion, buildHash, buildYear }) via the
+// shared @simpleworkjs/app-stack. The baked commit file lives at nodejs/.build_commit
+// (../ from here in utils/), matching the Dockerfile gitinfo stage; cwd is
+// utils/ for the bare-metal git fallback.
+
 const path = require('path');
-const { execSync } = require('child_process');
-const { version: buildVersion } = require('../package.json');
+const { createBuildInfo } = require('@simpleworkjs/app-stack');
+const { version } = require('../package.json');
 
-// Docker builds bake the commit hash into ../.build_commit (see the gitinfo
-// stage in Dockerfile) -- the final image has no git binary and no .git
-// directory, so `git rev-parse` below always fails there. Bare-metal/dev
-// runs have no baked file, so they fall back to asking git directly.
-function readBuildHash() {
-	try {
-		const baked = fs.readFileSync(path.join(__dirname, '../.build_commit'), 'utf8').trim();
-		if (baked) return baked;
-	} catch (_) {}
-
-	try {
-		return execSync('git rev-parse --short HEAD', { cwd: __dirname }).toString().trim();
-	} catch (_) {
-		return 'unknown';
-	}
-}
-
-module.exports = {
-	buildVersion,
-	buildHash: readBuildHash(),
-	buildYear: new Date().getFullYear(),
-};
+module.exports = createBuildInfo({
+	version,
+	buildCommitPath: path.join(__dirname, '../.build_commit'),
+	cwd: __dirname,
+});

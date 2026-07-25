@@ -2,7 +2,6 @@
 
 const linuxUser = require('linux-sys-user').promise();
 const objValidate = require('../utils/object_validate');
-const {Token} = require('./token');
 const {promisify} = require('util');
 const pam = require('authenticate-pam');
 const authenticate = promisify(pam.authenticate);
