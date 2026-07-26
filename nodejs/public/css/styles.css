@@ -18,3 +18,7 @@ body {
 .card-title{
 	font-weight: bold;
 }
+
+.group-required{
+	display: none;
+}

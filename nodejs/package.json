@@ -1,6 +1,6 @@
 {
   "name": "proxy-api",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "author": [
     {
       "name": "William Mantly",
@@ -30,7 +30,7 @@
     "bcrypt": "^6.0.0",
     "bootstrap": "^5.3.8",
     "compression": "^1.8.1",
-    "ejs": "^6.0.1",
+    "ejs": "^3.1.10",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "extend": "^3.0.2",

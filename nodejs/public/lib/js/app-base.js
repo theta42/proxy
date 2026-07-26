@@ -1,3 +1,12 @@
+// Shared client framework for the theta42 apps.
+//
+// This file is byte-identical across sso-manager-node, proxy and jump-host —
+// per-app behaviour comes from the server (the `ui` locals in views/top.ejs and
+// the /api/user/me response), never from edits to this file. Edit all three
+// copies together.
+//
+// jQuery 4 safe: no $.isFunction, no $.holdReady.
+
 var app = {};
 
 app.pubsub = (function(){
@@ -45,7 +54,7 @@ app.pubsub = (function(){
 app.socket = (function(app){
 	// $.getScript('/socket.io/socket.io.js')
 	// <script type="text/javascript" src="/socket.io/socket.io.js"></script>
-	
+
 	var socket;
 	$(document).ready(function(){
 		socket = io({
@@ -75,10 +84,26 @@ app.socket = (function(app){
 app.api = (function(app){
 	var baseURL = '/api/'
 
-	function post(url, data, callback){
-		if(typeof callback !== 'function') callback = callback2;
+	// post/put/delete are dual-mode: pass a callback for the node-style
+	// (error, data, status) form, or omit it to get a Promise that resolves
+	// with the parsed body and rejects with the error body. get/options return
+	// the jqXHR, which is itself thenable, so `await app.api.get(...)` works.
+
+	function body(method, url, data, callback){
+		if(typeof callback !== 'function'){
+			return new Promise(function(resolve, reject){
+				$.ajax({
+					type: method,
+					url: baseURL+url,
+					headers: { 'auth-token': app.auth.getToken() },
+					data: JSON.stringify(data),
+					contentType: 'application/json; charset=utf-8',
+					dataType: 'json',
+				}).done(resolve).fail(function(xhr){ reject(xhr.responseJSON || {}); });
+			});
+		}
 		return $.ajax({
-			type: 'POST',
+			type: method,
 			url: baseURL+url,
 			headers:{
 				'auth-token': app.auth.getToken()
@@ -87,40 +112,44 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback ? callback(
+				callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				) : function(){}
+				);
 			}
 		});
+	}
+
+	function post(url, data, callback){
+		return body('POST', url, data, callback);
 	}
 
 	function put(url, data, callback){
-		if(typeof callback !== 'function') callback = callback2;
-		return $.ajax({
-			type: 'PUT',
-			url: baseURL+url,
-			headers:{
-				'auth-token': app.auth.getToken()
-			},
-			data: JSON.stringify(data),
-			contentType: "application/json; charset=utf-8",
-			dataType: "json",
-			complete: function(res, text){
-				callback ? callback(
-					text !== 'success' ? res.statusText : null,
-					JSON.parse(res.responseText),
-					res.status
-				) : function(){}
-			}
-		});
+		return body('PUT', url, data, callback);
 	}
 
-	function remove(url, callback, callback2){
-		if(typeof callback !== 'function') callback = callback2;
+	// Called both as (url, callback) and — from formAJAX, which always passes
+	// the serialized form as the second argument — as (url, data, callback).
+	// No request body is sent either way.
+	function remove(url, data, callback){
+		if(typeof data === 'function'){
+			callback = data;
+			data = undefined;
+		}
+		if(typeof callback !== 'function'){
+			return new Promise(function(resolve, reject){
+				$.ajax({
+					type: 'DELETE',
+					url: baseURL+url,
+					headers: { 'auth-token': app.auth.getToken() },
+					contentType: 'application/json; charset=utf-8',
+					dataType: 'json',
+				}).done(resolve).fail(function(xhr){ reject(xhr.responseJSON || {}); });
+			});
+		}
 		return $.ajax({
-			type: 'delete',
+			type: 'DELETE',
 			url: baseURL+url,
 			headers:{
 				'auth-token': app.auth.getToken()
@@ -128,11 +157,11 @@ app.api = (function(app){
 			contentType: "application/json; charset=utf-8",
 			dataType: "json",
 			complete: function(res, text){
-				callback ? callback(
+				callback(
 					text !== 'success' ? res.statusText : null,
 					JSON.parse(res.responseText),
 					res.status
-				) : function(){}
+				);
 			}
 		});
 	}
@@ -179,7 +208,11 @@ app.api = (function(app){
 })(app)
 
 app.auth = (function(app){
-	var user = {}
+	// One in-flight/cached GET /api/user/me per page load. Every gating
+	// decision (nav items, per-view forceLogin, group-required elements) reads
+	// this same promise instead of re-fetching.
+	var userPromise = null;
+
 	function setToken(token){
 		localStorage.setItem('APIToken', token);
 	}
@@ -188,16 +221,93 @@ app.auth = (function(app){
 		return localStorage.getItem('APIToken');
 	}
 
-	function isLoggedIn(callback){
-		if(getToken()){
-			return app.api.get('user/me', function(error, data){
-				// data now carries effective rights (isAdmin, global, domains).
-				if(!error) app.auth.user = app.auth.perms = data;
-				return callback(error, data);
-			});
-		}else{
-			callback(null, false);
+	async function getUser(){
+		try{
+			return await app.api.get('user/me');
+		}catch(error){
+			if(error && error.status === 401) return null;
+			throw error;
 		}
+	}
+
+	// Cached current user, or false when there's no token at all. Callers that
+	// need a fresh copy (after a login or a profile change) pass force.
+	function loadUser(force){
+		if(force || !userPromise){
+			userPromise = getToken() ? getUser() : Promise.resolve(null);
+			userPromise = userPromise.then(function(user){
+				app.auth.user = app.auth.perms = user || null;
+				return user;
+			});
+		}
+		return userPromise;
+	}
+
+	// The apps report group membership two ways: sso-manager-node returns LDAP
+	// DNs in `memberOf`, the OIDC clients return plain CNs in `groups`. Both
+	// normalise to a list of CNs. `isAdmin` (the clients' effective-rights flag)
+	// is exposed as a synthetic `admin` group so one gating model covers both.
+	function groupCNs(user){
+		var raw = (user && (user.memberOf || user.groups)) || [];
+		if(!Array.isArray(raw)) raw = [raw];
+		var names = raw.map(function(group){
+			return String(group).split(',')[0].replace(/^cn=/i, '');
+		});
+		if(user && user.isAdmin && names.indexOf('admin') === -1) names.push('admin');
+		return names;
+	}
+
+	async function memberOf(groupNameToFind, user){
+		user = user || await loadUser();
+		if(!user) return false;
+		groupNameToFind = Array.isArray(groupNameToFind) ? groupNameToFind : [groupNameToFind];
+
+		return groupCNs(user).some(function(group){
+			return groupNameToFind.includes(group);
+		});
+	}
+
+	// True when the logged-in user is a global admin (per user/me). Sync — only
+	// meaningful once isLoggedIn/forceLogin has resolved.
+	function isAdmin(){
+		return !!(app.auth.perms && app.auth.perms.isAdmin);
+	}
+
+	// Dual-mode: returns a Promise resolving to the user (or false), and calls
+	// an optional node-style callback with the same result.
+	function isLoggedIn(callback){
+		var promise = loadUser().then(function(user){
+			return user || false;
+		});
+
+		if(typeof callback === 'function'){
+			promise.then(function(user){
+				callback(null, user);
+			}, function(error){
+				callback(error, false);
+			});
+		}
+
+		return promise;
+	}
+
+	function logIn(args, callback){
+		app.api.post('auth/login', args, function(error, data){
+			if(data.login){
+				setToken(data.token);
+			}
+			loadUser(true);
+			callback(error, !!data.token);
+		});
+	}
+
+	// Clears the session only — the caller decides where to go next (the nav's
+	// Log Out button uses ui.logoutRedirect).
+	function logOut(callback){
+		localStorage.removeItem('APIToken');
+		userPromise = null;
+		app.auth.user = app.auth.perms = null;
+		if(typeof callback === 'function') callback();
 	}
 
 	// Constrain a redirect target to a same-origin absolute path. Rejects
@@ -230,46 +340,68 @@ app.auth = (function(app){
 		return true;
 	}
 
-	// True when the logged-in user is a global admin (per user/me).
-	function isAdmin(){
-		return !!(app.auth.perms && app.auth.perms.isAdmin);
+	// Page-level gate. jQuery 4 removed $.holdReady, so an unauthenticated or
+	// unauthorised user is kept off the page by a redirect / an error panel
+	// rather than by pausing document ready.
+	//
+	// `requiredGroups` is a group CN or an OR-list of them; the synthetic
+	// `admin` group covers the OIDC clients' isAdmin flag.
+	async function forceLogin(requiredGroups){
+		var user = await loadUser();
+
+		if(!user){
+			logOut(function(){});
+			location.replace('/login?redirect=' + encodeURIComponent(
+				location.pathname + location.search
+			));
+			return false;
+		}
+
+		if(user.onboardingRequired && location.pathname !== '/onboarding'){
+			location.replace('/onboarding');
+			return false;
+		}
+
+		if(requiredGroups && !await memberOf(requiredGroups, user)){
+			app.util.actionMessage(
+				`<h1>
+					<i class="fa-solid fa-triangle-exclamation"></i>
+					<b>You do not have permission to be here.</b>
+					<i class="fa-solid fa-triangle-exclamation"></i>
+				</h1>`,
+				$('#spa-shell'),
+				'danger',
+			);
+			throw new Error("User does not have permission");
+		}
+
+		return user;
 	}
 
-	function logIn(args, callback){
-		app.api.post('auth/login', args, function(error, data){
-			if(data.login){
-				setToken(data.token);
-			}
-			callback(error, !!data.token);
-		});
-	}
-
-	function logOut(callback){
-		localStorage.removeItem('APIToken');
-		callback();
-	}
-
-	function forceLogin(){
-		// jQuery 4 removed $.holdReady; rely on the redirect below to keep an
-		// unauthenticated user off the page instead of pausing document ready.
-		app.auth.isLoggedIn(function(error, isLoggedIn){
-			if(error || !isLoggedIn){
-				app.auth.logOut(function(){})
-				location.replace(`/login${location.href.replace(location.origin, '')}`);
-			}
-		});
-	}
-
+	// Where to go after a successful login: the ?redirect= query param, or the
+	// legacy /login/<path> suffix form, constrained to a same-origin path. The
+	// suffix form keeps its query string — /login/oauth/authorize?client_id=…
+	// is how the OIDC provider sends an unauthenticated user through login.
 	function logInRedirect(){
-		window.location.href = safeInternalPath(location.href.replace(location.origin+'/login', '') || '/')
+		var params = new URLSearchParams(location.search);
+		var target = params.get('redirect')
+			|| location.href.replace(location.origin + '/login', '')
+			|| '/';
+		window.location.href = safeInternalPath(target);
 	}
 
 	return {
 		getToken: getToken,
 		setToken: setToken,
-		isLoggedIn: isLoggedIn,
-		consumeTokenFragment: consumeTokenFragment,
+		getUser: getUser,
+		loadUser: loadUser,
+		groupCNs: groupCNs,
+		memberOf: memberOf,
 		isAdmin: isAdmin,
+		isLoggedIn: isLoggedIn,
+		safeInternalPath: safeInternalPath,
+		consumeTokenFragment: consumeTokenFragment,
+		user: null,
 		perms: null,
 		logIn: logIn,
 		logOut: logOut,
@@ -278,6 +410,11 @@ app.auth = (function(app){
 	}
 
 })(app);
+
+// Back-compat alias for views that awaited the cached user directly.
+Object.defineProperty(app.auth, 'asyncUser', {
+	get: function(){ return app.auth.loadUser(); },
+});
 
 app.user = (function(app){
 	function list(callback){
@@ -308,6 +445,8 @@ app.user = (function(app){
 
 })(app);
 
+// Local (app-managed) permissions and groups. Only the OIDC-client apps serve
+// these endpoints; the calls are inert elsewhere.
 app.permission = (function(app){
 	function list(callback){
 		app.api.get('permission/', function(error, data){
@@ -381,9 +520,12 @@ app.util = (function(app){
 		return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 	};
 
-	function actionMessage(message, $target, type, callback){
+	function actionMessage(message, $targetPassed, type, callback){
 		message = message || '';
-		$target = $target.closest('div.card').find('.actionMessage');
+
+		let $target = $targetPassed.closest('div.card').find('.actionMessage');
+		if(!$target.length) $target = $($targetPassed.find('.actionMessage')[0]);
+
 		type = type || 'info';
 		callback = callback || function(){};
 
@@ -400,10 +542,46 @@ app.util = (function(app){
 			})
 		}else{
 			if(type) $target.addClass('bg-' + type);
-			message = '<span class="align-middle">' + message + '</span><button class="action-close btn btn-sm btn-outline-dark float-end"><i class="fa-solid fa-xmark"></i></button>'
+
+			// Messages that bring their own buttons (actionConfirm) are left
+			// alone; everything else gets the standard dismiss button.
+			if(!message.includes('<button')) message = `
+				<span class="align-middle">${message}</span>
+				<button class="action-close btn btn-sm btn-outline-dark float-end">
+					<i class="fa-solid fa-xmark"></i>
+				</button>
+			`
 			$target.html(message).slideDown('fast');
 		}
 		setTimeout(callback,10)
+	}
+
+	function actionConfirm(message, $target, type, callback){
+		return new Promise((resolve, reject) =>{
+			let id = crypto.randomUUID();
+			message = `
+				<h4 class"align-middle" >
+					<i class="fa-solid fa-triangle-exclamation"></i>
+					<b>${message}</b>
+					<span class="float-end">
+						<button type="button" class="btn btn-success confirm-${id}" data-confirm="true">
+							<i class="fa-solid fa-circle-check"></i>
+							Confirm
+						</button>
+						<button type="button" class="btn btn-danger confirm-${id}">
+							<i class="fa-solid fa-circle-stop"></i>
+							Cancel
+						</button>
+					</span>
+				</h4>
+			`
+			actionMessage(message, $target, type);
+			$("body").on('click', `.confirm-${id}`, function(){
+				actionMessage('', $target, type);
+				resolve(!!$(this).data('confirm'));
+			});
+		});
+
 	}
 
 	$.fn.serializeObject = function() {
@@ -462,11 +640,42 @@ app.util = (function(app){
 	return {
 		downloadFile: downloadFile,
 		getUrlParameter: getUrlParameter,
-		actionMessage: actionMessage
+		actionMessage: actionMessage,
+		actionConfirm,
 	}
 })(app);
 
-$( document ).ready(function(){
+// Reveal every .group-required-<cn> element the current user's groups entitle
+// them to. Elements carrying .group-required start hidden (styles.css), so a
+// user who is in no groups — or who isn't logged in — simply never sees them.
+app.auth.applyGroupVisibility = function(user){
+	var groups = app.auth.groupCNs(user);
+	if(!groups.length) return;
+
+	var style = document.getElementById('group-required-rules');
+	if(!style){
+		style = document.createElement('style');
+		style.id = 'group-required-rules';
+		document.head.appendChild(style);
+	}
+
+	for(var group of groups){
+		try{
+			style.sheet.insertRule(
+				`.group-required-${CSS.escape(group)} { display: revert !important; }`,
+				style.sheet.cssRules.length
+			);
+		}catch(error){
+			// A group whose CN isn't a usable CSS identifier just gates nothing.
+		}
+	}
+};
+
+$( document ).ready(async function(){
+
+	// Show content the user's groups entitle them to.
+	app.auth.applyGroupVisibility(await app.auth.loadUser());
+
 	$('div.row').fadeIn('slow'); //show the page
 
 	//panel button's
@@ -520,12 +729,14 @@ function formAJAX(btn){
 	var method = ($form.attr('method') || 'post').toLowerCase();
 
 	if($form.validate && !$form.validate()){
-		app.util.actionMessage('Please fix the form errors.', $form, 'danger');
+		app.util.actionMessage('Please fix the form errors.', $form, 'danger')
 		return false;
 	}
-	
-	app.util.actionMessage( 
-		'<div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div>',
+
+	app.util.actionMessage(
+		`<div class="spinner-border" role="status">
+			<span class="visually-hidden">Loading...</span>
+		</div>`,
 		$form,
 		'info'
 	);
