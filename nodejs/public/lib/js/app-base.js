@@ -379,11 +379,13 @@ app.auth = (function(app){
 	}
 
 	// Where to go after a successful login: the ?redirect= query param, or the
-	// legacy /login/<path> suffix form, constrained to a same-origin path.
+	// legacy /login/<path> suffix form, constrained to a same-origin path. The
+	// suffix form keeps its query string — /login/oauth/authorize?client_id=…
+	// is how the OIDC provider sends an unauthenticated user through login.
 	function logInRedirect(){
 		var params = new URLSearchParams(location.search);
 		var target = params.get('redirect')
-			|| location.href.replace(location.origin + '/login', '').split('?')[0]
+			|| location.href.replace(location.origin + '/login', '')
 			|| '/';
 		window.location.href = safeInternalPath(target);
 	}
