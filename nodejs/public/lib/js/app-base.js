@@ -129,7 +129,14 @@ app.api = (function(app){
 		return body('PUT', url, data, callback);
 	}
 
-	function remove(url, callback){
+	// Called both as (url, callback) and — from formAJAX, which always passes
+	// the serialized form as the second argument — as (url, data, callback).
+	// No request body is sent either way.
+	function remove(url, data, callback){
+		if(typeof data === 'function'){
+			callback = data;
+			data = undefined;
+		}
 		if(typeof callback !== 'function'){
 			return new Promise(function(resolve, reject){
 				$.ajax({
