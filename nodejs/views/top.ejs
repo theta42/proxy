@@ -4,8 +4,11 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 		<title><%- name %> <%- title %></title>
+		<!-- Shared UI shell — byte-identical across sso-manager-node, proxy and
+		     jump-host. Everything per-app comes from `ui` (utils/ui.js, exposed
+		     via app.locals in app.js). Edit all three copies together. -->
 		<!-- Favicon -->
-		<link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
+		<link rel="icon" type="image/svg+xml" href="<%- ui.faviconUrl %>">
 		<!-- CSS are placed here -->
 		<link rel="stylesheet" href="/static-modules/bootstrap/dist/css/bootstrap.min.css">
 		<link rel="stylesheet" href="/static-modules/@fortawesome/fontawesome-free/css/all.min.css">
@@ -14,8 +17,6 @@
 		<!-- Scripts are placed here -->
 		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
 		<script type="text/javascript" src='/static-modules/jquery/dist/jquery.js'></script>
-		<!-- <script type="text/javascript" src="/static/lib/js/popper-1.16.0.min.js"></script> -->
-		<!-- <script type="text/javascript" src="/static-modules/bootstrap/dist/js/bootstrap.min.js"></script> -->
 		<script type="text/javascript" src="/static-modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
 		<script type="text/javascript" src="/static-modules/@fortawesome/fontawesome-free/js/all.min.js"></script>
 		<script type="text/javascript" src='/static-modules/mustache/mustache.min.js'></script>
@@ -28,49 +29,38 @@
 	<body>
 
 		<nav class="navbar navbar-expand-md navbar-dark fixed-top bg-dark">
-			<a class="navbar-brand" href="#"><img src="<%- logo %>" height="28" class="me-2" alt=""><%- name %> <%- titleIcon %></a>
+			<a class="navbar-brand" href="/"><img src="<%- logo %>" height="28" class="me-2" alt=""><%- name %> <%- titleIcon %></a>
 			<button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
 				<span class="navbar-toggler-icon"></span>
 			</button>
 			<div class="collapse navbar-collapse justify-content-end" id="navbarSupportedContent">
 				<ul class="navbar-nav top-nav">
-					<li class="nav-item">
-						<a class="nav-link active" href="/hosts">
-							<i class="fa-solid fa-network-wired"></i>
-							Hosts
+					<%# Items gated on a group start hidden (.group-required) and are
+					    revealed by app-base.js for the groups the user is in. %>
+					<% for(const item of ui.nav){ %>
+					<li class="nav-item<%- item.groups.length ? ' group-required' : '' %><%- item.groups.map(group => ' group-required-' + group).join('') %>">
+						<a class="nav-link" href="<%- item.href %>"><i class="<%- item.icon %>"></i>
+							<%- item.label %>
 						</a>
 					</li>
-					<li class="nav-item">
-						<a class="nav-link" href="/dns"><i class="fa-solid fa-record-vinyl"></i>
-							DNS
-						</a>
-					</li>
-					<li class="nav-item nav-admin" style="display: none;">
-						<a class="nav-link" href="/users"><i class="fa-solid fa-users"></i>
-							Users
-						</a>
-					</li>
-					<li class="nav-item nav-admin" style="display: none;">
-						<a class="nav-link" href="/permissions"><i class="fa-solid fa-user-shield"></i>
-							Permissions
-						</a>
-					</li>
-					<li class="nav-item nav-admin" style="display: none;">
-						<a class="nav-link" href="/groups"><i class="fa-solid fa-users-gear"></i>
-							Groups
-						</a>
-					</li>
+					<% } %>
 				</ul>
 				<div class="form-inline mt-2 mt-md-0">
-					<a id="cl-username" class="navbar-text text-light me-3" href="/profile" style="display: none;">
+					<% if(ui.profileUrl){ %>
+					<a id="cl-username" class="navbar-text text-light me-3" href="<%- ui.profileUrl %>" style="display: none;">
 						<i class="fa-solid fa-user me-1"></i><span id="cl-username-text"></span>
 					</a>
+					<% } else { %>
+					<span id="cl-username" class="navbar-text text-light me-3" style="display: none;">
+						<i class="fa-solid fa-user me-1"></i><span id="cl-username-text"></span>
+					</span>
+					<% } %>
 					<a id="cl-login-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.forceLogin()" style="display: none;">
-						<i class="fas fa-sign-out"></i>
+						<i class="fas fa-sign-in"></i>
 						Login
 					</a>
 
-					<button id="cl-logout-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.logOut(e => window.location.href='/')" style="display: none;">
+					<button id="cl-logout-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.logOut(function(){ window.location.href = '<%- ui.logoutRedirect %>'; })" style="display: none;">
 						<i class="fas fa-sign-out"></i>
 						Log Out
 					</button>
@@ -78,6 +68,7 @@
 			</div>
 		</nav>
 
+		<% if(ui.updateCheck){ %>
 		<!-- Admin-only "a newer release is available" notice (services/update_check.js).
 		     Dismissal is per-browser-session only (sessionStorage), not persisted server-side.
 		     Fixed-positioned below the fixed navbar (a plain in-flow div here would render
@@ -102,6 +93,22 @@
 				sessionStorage.setItem('update-banner-dismissed', '1');
 			}
 
+			function checkForUpdate(){
+				if(sessionStorage.getItem('update-banner-dismissed')) return;
+				app.api.get('update-check', function(error, info){
+					if(error || !info || !info.updateAvailable) return;
+					$('#update-banner-text').html(
+						'A newer version of <%- ui.updateLabel %> is available: <b>v' + info.latestVersion + '</b> ' +
+						'(running v' + info.currentVersion + ') — ' +
+						'<a href="' + info.releaseUrl + '" target="_blank" class="alert-link">see what changed</a>.'
+					);
+					showUpdateBanner();
+				});
+			}
+		</script>
+		<% } %>
+
+		<script type="text/javascript">
 			$(document).ready(function(){
 
 				// Set the correct link to active in the top nav bar
@@ -113,33 +120,23 @@
 					}
 				})
 
-				// Set the correct login/logout button, and reveal admin-only nav
-				// items for global admins.
-				app.auth.isLoggedIn(function(error, data){
-					if(data){
+				// Set the correct login/logout button, and reveal the current user's
+				// name once we know who they are. Group-gated nav items are revealed
+				// by app-base.js off the same cached user/me.
+				app.auth.isLoggedIn(function(error, me){
+					if(me){
 						$('#cl-logout-button').show();
-						if(data.username){
-							$('#cl-username-text').text(data.username);
+						let username = me.uid || me.username;
+						if(username){
+							$('#cl-username-text').text(username);
 							$('#cl-username').css('display', '');
 						}
+
+						<% if(ui.updateCheck){ %>
+						if(me.isAdmin) checkForUpdate();
+						<% } %>
 					}else{
 						$('#cl-login-button').show();
-					}
-
-					if(data && data.isAdmin){
-						$('.nav-admin').css('display', '');
-
-						if(!sessionStorage.getItem('update-banner-dismissed')){
-							app.api.get('update-check', function(error, info){
-								if(error || !info || !info.updateAvailable) return;
-								$('#update-banner-text').html(
-									'A newer version of the proxy is available: <b>v' + info.latestVersion + '</b> ' +
-									'(running v' + info.currentVersion + ') — ' +
-									'<a href="' + info.releaseUrl + '" target="_blank" class="alert-link">see what changed</a>.'
-								);
-								showUpdateBanner();
-							});
-						}
 					}
 				});
 
@@ -149,3 +146,4 @@
 
 		<!-- Container -->
 		<div id="spa-shell" class="container-fluid">
+			<div class="actionMessage" style="display:none;"></div>

@@ -69,6 +69,11 @@ app.use(express.json());
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'ejs');
 
+// Per-app values for the shared UI shell (views/top.ejs + views/bottom.ejs).
+// Set as an app local so every res.render has it, including routes that don't
+// spread the routers' `values` object.
+app.locals.ui = require('./utils/ui');
+
 // Per-host SSO endpoints. nginx routes /__proxy_auth/* on every proxied host to
 // the app (see ops/nginx_conf/proxy.conf); these run the OIDC flow and set the
 // per-host session cookie. Mounted before the page router.
