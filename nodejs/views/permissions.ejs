@@ -42,7 +42,7 @@
 
 	function removePermission(id){
 		app.permission.remove(id, function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.Permission.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.Permission.$this, 'danger');
 			// The websocket echo removes the row; drop it locally too for snappiness.
 			$.scope.Permission.remove(id);
 		});
@@ -51,7 +51,7 @@
 	$(document).ready(function(){
 		// Existing permissions.
 		app.permission.list(function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.Permission.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.Permission.$this, 'danger');
 			for(let p of data.results) $.scope.Permission.push(p);
 		});
 

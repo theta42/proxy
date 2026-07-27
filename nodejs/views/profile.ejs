@@ -63,7 +63,7 @@
 
 	$(document).ready(function(){
 		app.api.get('user/me', function(error, data){
-			if(error) return app.util.actionMessage(error, $('#profile-card'), 'danger');
+			if(error) return app.messages.action(error, $('#profile-card'), 'danger');
 			renderProfile(data);
 		});
 	});
@@ -170,7 +170,7 @@
 
 	function tableAJAX(){
 		app.apiToken.list(function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.apiTokenCard.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.apiTokenCard.$this, 'danger');
 			$.scope.apiTokenCard.empty();
 			(data.results || []).forEach(function(token){
 				$.scope.apiTokenCard.push(processToken(token));
@@ -181,7 +181,7 @@
 	function revokeToken(id, name, btn){
 		if(!confirm('Revoke API token "' + name + '"? It stops working immediately.')) return;
 		app.apiToken.remove({id: id}, function(error, data){
-			if(error) return app.util.actionMessage(error, $(btn).closest('.card'), 'danger');
+			if(error) return app.messages.action(error, $(btn).closest('.card'), 'danger');
 			$.scope.apiTokenCard.remove('id', id);
 		});
 	}
@@ -189,7 +189,7 @@
 	function rotateToken(id, name, btn){
 		if(!confirm('Rotate API token "' + name + '"? The old token stops working immediately.')) return;
 		app.apiToken.rotate({id: id}, function(error, data){
-			if(error) return app.util.actionMessage(error, $(btn).closest('.card'), 'danger');
+			if(error) return app.messages.action(error, $(btn).closest('.card'), 'danger');
 			showSecret(data.token);
 			tableAJAX();
 		});

@@ -363,7 +363,7 @@ app.auth = (function(app){
 		}
 
 		if(requiredGroups && !await memberOf(requiredGroups, user)){
-			app.util.actionMessage(
+			app.messages.action(
 				`<h1>
 					<i class="fa-solid fa-triangle-exclamation"></i>
 					<b>You do not have permission to be here.</b>
@@ -520,68 +520,15 @@ app.util = (function(app){
 		return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
 	};
 
-	function actionMessage(message, $targetPassed, type, callback){
-		message = message || '';
-
-		let $target = $targetPassed.closest('div.card').find('.actionMessage');
-		if(!$target.length) $target = $($targetPassed.find('.actionMessage')[0]);
-
-		type = type || 'info';
-		callback = callback || function(){};
-
-		if($target.html() === message) return;
-
-		if($target.html()){
-			$target.slideUp('fast', function(){
-				$target.html('')
-				$target.removeClass (function(index, className){
-					return (className.match (/(^|\s)bg-\S+/g) || []).join(' ');
-				});
-				if(message) return actionMessage(message, $target, type, callback);
-				$target.hide()
-			})
-		}else{
-			if(type) $target.addClass('bg-' + type);
-
-			// Messages that bring their own buttons (actionConfirm) are left
-			// alone; everything else gets the standard dismiss button.
-			if(!message.includes('<button')) message = `
-				<span class="align-middle">${message}</span>
-				<button class="action-close btn btn-sm btn-outline-dark float-end">
-					<i class="fa-solid fa-xmark"></i>
-				</button>
-			`
-			$target.html(message).slideDown('fast');
-		}
-		setTimeout(callback,10)
-	}
-
-	function actionConfirm(message, $target, type, callback){
-		return new Promise((resolve, reject) =>{
-			let id = crypto.randomUUID();
-			message = `
-				<h4 class"align-middle" >
-					<i class="fa-solid fa-triangle-exclamation"></i>
-					<b>${message}</b>
-					<span class="float-end">
-						<button type="button" class="btn btn-success confirm-${id}" data-confirm="true">
-							<i class="fa-solid fa-circle-check"></i>
-							Confirm
-						</button>
-						<button type="button" class="btn btn-danger confirm-${id}">
-							<i class="fa-solid fa-circle-stop"></i>
-							Cancel
-						</button>
-					</span>
-				</h4>
-			`
-			actionMessage(message, $target, type);
-			$("body").on('click', `.confirm-${id}`, function(){
-				actionMessage('', $target, type);
-				resolve(!!$(this).data('confirm'));
-			});
-		});
-
+	// escapeHtml/actionMessage/actionConfirm moved to @simpleworkjs/frontend's
+	// app.util.escapeHtml and app.messages.action/confirm.
+	function escapeHtml(s){
+		return String(s == null ? '' : s)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;');
 	}
 
 	$.fn.serializeObject = function() {
@@ -640,8 +587,7 @@ app.util = (function(app){
 	return {
 		downloadFile: downloadFile,
 		getUrlParameter: getUrlParameter,
-		actionMessage: actionMessage,
-		actionConfirm,
+		escapeHtml: escapeHtml,
 	}
 })(app);
 
@@ -696,9 +642,9 @@ $( document ).ready(async function(){
 		$(this).closest('.card').slideUp('fast');
 	});
 
-	$('.actionMessage').on('click', 'button.action-close', function(event){
-		app.util.actionMessage(null, $(this));
-	});
+	// action-close click handling is wired by @simpleworkjs/frontend's
+	// app.messages.js (delegated on document, so it also covers messages
+	// rendered after this ready handler runs).
 
 	setInterval(()=>{
 		$('.momentFromNow').each((idx, el)=>{
@@ -729,11 +675,11 @@ function formAJAX(btn){
 	var method = ($form.attr('method') || 'post').toLowerCase();
 
 	if($form.validate && !$form.validate()){
-		app.util.actionMessage('Please fix the form errors.', $form, 'danger')
+		app.messages.action('Please fix the form errors.', $form, 'danger')
 		return false;
 	}
 
-	app.util.actionMessage(
+	app.messages.action(
 		`<div class="spinner-border" role="status">
 			<span class="visually-hidden">Loading...</span>
 		</div>`,
@@ -742,7 +688,7 @@ function formAJAX(btn){
 	);
 
 	app.api[method]($form.attr('action'), formData, function(error, data){
-		app.util.actionMessage(data.message, $form, error ? 'danger' : 'success'); //re-populate table
+		app.messages.action(data.message, $form, error ? 'danger' : 'success'); //re-populate table
 		$form.validateClear();
 		if(!error){
 			$form.trigger("reset");
@@ -750,7 +696,7 @@ function formAJAX(btn){
 		}else{
 			console.log('formAJAX res error', error, data)
 			if(data && data.name === 'ObjectValidateError'){
-				app.util.actionMessage('Please fix the form errors', $form, 'danger'); //re-populate table
+				app.messages.action('Please fix the form errors', $form, 'danger'); //re-populate table
 			}
 			if(data && data.keys){
 				console.log('form key errors', data.keys)

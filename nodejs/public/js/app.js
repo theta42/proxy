@@ -91,3 +91,72 @@ app.apiToken = (function(app){
 
 	return {list, get, add, update, remove, rotate};
 })(app);
+
+// Host / target validation, mirrored from the backend (utils/hostname_validate.js):
+// a bare hostname or IPv4 address, no protocol / "/" / ":" / whitespace. The
+// incoming host may be a wildcard ("*.example.com"); the target may not.
+// Proxy-specific, so it's registered here (via @simpleworkjs/frontend's
+// $.validateSettings) rather than in the shared package's generic rule set.
+(function(){
+	var LABEL = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+	// Either one bare label (Docker service names, /etc/hosts entries) or a
+	// dotted hostname with an alphabetic TLD.
+	var HOSTNAME = /^(?=.{1,253}$)(?:(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}|[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)$/i;
+	var FORBIDDEN = /[\s/:]/;
+
+	function isIPv4( value ) {
+		var parts = value.split( '.' );
+		if ( parts.length !== 4 ) return false;
+		return parts.every( function( p ) {
+			return /^(0|[1-9]\d{0,2})$/.test( p ) && Number( p ) <= 255;
+		});
+	}
+
+	// Incoming-host pattern: labels may be normal, "*" (one fragment), or "**"
+	// (any number of fragments, incl. a bare "**" global catch-all).
+	function isHostPattern( value ) {
+		if ( value.length > 253 ) return false;
+		return value.split( '.' ).every( function( l ) {
+			return l === '*' || l === '**' || LABEL.test( l );
+		});
+	}
+
+	function forbidden( value ) {
+		return FORBIDDEN.test( value ) || value.includes( '://' );
+	}
+
+	// Incoming host: IPv4 or a wildcard host pattern.
+	function checkHost( value ) {
+		if ( typeof value !== 'string' || value.length === 0 ) return "Required";
+		if ( forbidden( value ) ) return 'No protocol, "/", or ":"';
+		if ( isIPv4( value ) || isHostPattern( value ) ) return;
+		return "Enter a valid host or wildcard (*, **)";
+	}
+
+	// Downstream target: IPv4 or a strict hostname, no wildcard.
+	function checkTarget( value ) {
+		if ( typeof value !== 'string' || value.length === 0 ) return "Required";
+		if ( forbidden( value ) ) return 'No protocol, "/", or ":"';
+		if ( isIPv4( value ) || HOSTNAME.test( value ) ) return;
+		return "Enter a valid hostname or IP";
+	}
+
+	$.validateSettings({
+		rule:{
+			// Incoming host name — hostname, IPv4, or wildcard pattern (*, **).
+			host: function( value ) {
+				return checkHost( value );
+			},
+
+			// Downstream target — hostname or IPv4, no wildcard.
+			target: function( value ) {
+				return checkTarget( value );
+			},
+
+			// Back-compat alias (no wildcard).
+			hostname: function( value ) {
+				return checkTarget( value );
+			},
+		}
+	});
+})();

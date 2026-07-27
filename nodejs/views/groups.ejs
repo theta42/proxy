@@ -28,14 +28,14 @@
 
 	function removeGroup(name){
 		app.group.remove(name, function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.LocalGroup.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.LocalGroup.$this, 'danger');
 			$.scope.LocalGroup.remove(name);
 		});
 	}
 
 	function removeMember(group, username){
 		app.group.removeMember(group, username, function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.LocalGroup.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.LocalGroup.$this, 'danger');
 			// websocket update echoes the new member list.
 		});
 	}
@@ -47,14 +47,14 @@
 		let username = ($input.val() || '').trim();
 		if(!username) return;
 		app.group.addMember(group, username, function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.LocalGroup.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.LocalGroup.$this, 'danger');
 			$input.val('');
 		});
 	}
 
 	$(document).ready(function(){
 		app.group.list(function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.LocalGroup.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.LocalGroup.$this, 'danger');
 			for(let g of data.results) $.scope.LocalGroup.push(g);
 		});
 

@@ -22,7 +22,7 @@
 
 	function populateUsers(actionMessage){
 		app.user.list(function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.users.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.users.$this, 'danger');
 			for(let user of data.results){
 				$.scope.users.push(user);
 			}
@@ -37,7 +37,7 @@
 
 	function removeUser(username){
 		app.user.remove({username: username}, function(error, data){
-			if(error) return app.util.actionMessage(error, $.scope.users.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.users.$this, 'danger');
 			$.scope.users.remove(username);
 		});
 	}
