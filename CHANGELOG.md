@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-07-27
+
+### Changed
+- **Adopted `@simpleworkjs/frontend`'s `app.messages`, `app.modal`, and `app.validate` modules**, replacing the vendored `app.util.actionMessage`/`actionConfirm` in `public/lib/js/app-base.js` and the vendored `public/lib/js/val.js`. Message content is now HTML-escaped, and `app.messages.action` falls back to a page-wide toast when there's no inline `.actionMessage` target. proxy's `host`/`target`/`hostname` wildcard-DNS validation rules (mirroring `utils/hostname_validate.js`) moved to `public/js/app.js`, registered via `$.validateSettings`, since they're proxy-specific and don't belong in the shared package's generic rule set. `app.api`/`app.auth`/`app.pubsub`/`app.socket` are untouched.
+
 ## [1.4.0] - 2026-07-26
 
 ### Changed
