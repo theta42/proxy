@@ -63,7 +63,7 @@
 
 	function hostPopulate(){
 		app.api.get('host?detail=1&provider=1', function(error, res){
-			if(error) return app.util.actionMessage(error, $.scope.hosts.$this, 'danger');
+			if(error) return app.messages.action(error, $.scope.hosts.$this, 'danger');
 
 			for(let host of res.results){
 				$.scope.hosts.push(hostParseRow(host));
@@ -152,9 +152,9 @@
 				let password = $pass.val();
 				if(!password) return;
 				app.api.put('host/' + encodeURIComponent(host) + '/basicauth-user/' + encodeURIComponent(username), {password}, function(error, data){
-					if(error) return app.util.actionMessage((data && data.message) || 'Failed to update password', $rows, 'danger');
+					if(error) return app.messages.action((data && data.message) || 'Failed to update password', $rows, 'danger');
 					$pass.val('');
-					app.util.actionMessage('Password updated for "' + username + '".', $rows, 'success');
+					app.messages.action('Password updated for "' + username + '".', $rows, 'success');
 				});
 			});
 			// No confirm step, matching this form's existing "Delete" button
@@ -163,7 +163,7 @@
 			let $del = $('<button type="button" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i></button>');
 			$del.on('click', function(){
 				app.api.delete('host/' + encodeURIComponent(host) + '/basicauth-user/' + encodeURIComponent(username), function(error, data){
-					if(error) return app.util.actionMessage((data && data.message) || 'Failed to delete user', $rows, 'danger');
+					if(error) return app.messages.action((data && data.message) || 'Failed to delete user', $rows, 'danger');
 					$tr.remove();
 					$('.basicauth-current').text(Object.keys((data && data.basicauth_users) || {}).join(', ') || 'none');
 				});
@@ -291,7 +291,7 @@
 
 	function hostDownloadCert(host, type){
 		app.host.getCert({host}, function(error, data){
-			if(error) app.util.actionMessage(error.message, $.scope.hosts.$this, 'danger');
+			if(error) app.messages.action(error.message, $.scope.hosts.$this, 'danger');
 			app.util.downloadFile(`${host}-${type}.crt`, data[type])
 		});
 	}
@@ -322,9 +322,9 @@
 		app.host.clearCache(function(error, data){
 			$btn.prop('disabled', false);
 			if(error){
-				return app.util.actionMessage(error.message || error, $.scope.hosts.$this, 'danger');
+				return app.messages.action(error.message || error, $.scope.hosts.$this, 'danger');
 			}
-			app.util.actionMessage(data.message, $.scope.hosts.$this, 'success');
+			app.messages.action(data.message, $.scope.hosts.$this, 'success');
 		});
 	}
 
