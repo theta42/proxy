@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.5.1] - 2026-07-27
+
+### Fixed
+- **Removed native `confirm()` calls in `revokeToken`/`rotateToken`** (`profile.ejs`), replacing them with `app.messages.confirm`. Native `confirm()` blocks all further browser events on the page (discovered live, mid browser-verification of sso-manager-node's equivalent flow, where it froze the tab).
+
 ## [1.5.0] - 2026-07-27
 
 ### Changed
