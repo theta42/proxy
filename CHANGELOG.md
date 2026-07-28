@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-07-28
+
+### Fixed
+- **`formAJAX`'s loading indicator showed literal HTML**, not a spinner — same fix as sso-manager-node's companion release. Replaced with plain text.
+
 ## [1.5.2] - 2026-07-28
 
 ### Added
