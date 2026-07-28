@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-07-28
+
+### Added
+- **Regression test**: a static check across all views/client-side scripts fails CI if any native `alert()`/`confirm()`/`prompt()` call appears — these block all further browser events on the page and were fully removed in 1.5.1.
+
 ## [1.5.1] - 2026-07-27
 
 ### Fixed
