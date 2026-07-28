@@ -6,6 +6,15 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-07-28
+
+### Added
+- **Host modal: footer with created/updated-by/on metadata, linkable `/hosts/{host}` URL** — migrated onto the shared `app.modal` component (`@simpleworkjs/frontend` 0.2.6), continuing the entity-modal standardization started in sso-manager-node. Kept the existing 6-tab layout (General/TLS & Wildcard/Traffic/Headers/Access/Authentication) unchanged.
+
+### Fixed
+- **The Let's-Encrypt challenge-type/wildcard-matching visibility logic could stop reacting to the hostname field after the first Add/Edit** — its `keyup` handler was bound once directly against a selector captured at page load; now delegated so it survives the modal being rebuilt on every open.
+- **The SSO allow-list autocomplete (users/groups) could go empty starting on the second Add/Edit** — its backing `<datalist>`s are rebuilt fresh on every modal open now, so the suggestions are refetched each time too.
+
 ## [1.5.3] - 2026-07-28
 
 ### Fixed
