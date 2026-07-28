@@ -679,13 +679,10 @@ function formAJAX(btn){
 		return false;
 	}
 
-	app.messages.action(
-		`<div class="spinner-border" role="status">
-			<span class="visually-hidden">Loading...</span>
-		</div>`,
-		$form,
-		'info'
-	);
+	// Plain text: app.messages.action HTML-escapes its message (by design,
+	// see @simpleworkjs/frontend), so raw markup like a spinner <div> would
+	// render literally instead of as an element.
+	app.messages.action('Saving…', $form, 'info');
 
 	app.api[method]($form.attr('action'), formData, function(error, data){
 		app.messages.action(data.message, $form, error ? 'danger' : 'success'); //re-populate table
