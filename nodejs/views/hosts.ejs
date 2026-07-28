@@ -61,7 +61,7 @@
 		return host;
 	}
 
-	function hostPopulate(){
+	function hostPopulate(onLoaded){
 		app.api.get('host?detail=1&provider=1', function(error, res){
 			if(error) return app.messages.action(error, $.scope.hosts.$this, 'danger');
 
@@ -75,6 +75,8 @@
 					$el.removeClass('table-success');
 				});
 			};
+
+			if (onLoaded) onLoaded();
 		});
 	}
 
@@ -90,10 +92,341 @@
 
 	// ----- Add / Edit modal --------------------------------------------------
 
-	function hostModal(){
-		return bootstrap.Modal.getOrCreateInstance(document.getElementById('hostModal'));
+	function hostModalClose(){ app.modal.close(); }
+
+	// Built once; injected fresh into app.modal's body on every open() call
+	// (unlike the old always-in-DOM static modal). .actionMessage lives
+	// INSIDE the form (not a sibling, as it was before) because formAJAX's
+	// error/success target resolves via $form.closest('div.card') (which
+	// app.modal's plain, card-less .modal-content never matches) falling
+	// back to $form.find('.actionMessage') -- a descendant search.
+	var hostModalBodyHtml = `
+		<form id="hostForm" method="POST" action="host" onsubmit="formAJAX(this)" evalAJAX="hostModalClose()">
+			<div class="actionMessage m-0" style="display:none"></div>
+
+			<ul class="nav nav-tabs flex-nowrap overflow-x-auto" role="tablist">
+				<li class="nav-item"><button class="nav-link active" id="hostTab-general-btn" data-bs-toggle="tab" data-bs-target="#hostTab-general" type="button" role="tab">General</button></li>
+				<li class="nav-item"><button class="nav-link" id="hostTab-tls-btn" data-bs-toggle="tab" data-bs-target="#hostTab-tls" type="button" role="tab">TLS &amp; Wildcard</button></li>
+				<li class="nav-item"><button class="nav-link" id="hostTab-traffic-btn" data-bs-toggle="tab" data-bs-target="#hostTab-traffic" type="button" role="tab">Traffic</button></li>
+				<li class="nav-item"><button class="nav-link" id="hostTab-headers-btn" data-bs-toggle="tab" data-bs-target="#hostTab-headers" type="button" role="tab">Headers</button></li>
+				<li class="nav-item"><button class="nav-link" id="hostTab-access-btn" data-bs-toggle="tab" data-bs-target="#hostTab-access" type="button" role="tab">Access</button></li>
+				<li class="nav-item"><button class="nav-link" id="hostTab-auth-btn" data-bs-toggle="tab" data-bs-target="#hostTab-auth" type="button" role="tab">Authentication</button></li>
+			</ul>
+
+			<div class="tab-content pt-3">
+
+				<!-- General -->
+				<div class="tab-pane fade show active" id="hostTab-general" role="tabpanel">
+					<div class="form-group">
+						<label for="host" class="form-label">Incoming host name</label>
+						<input type="text" name="host" class="form-control" placeholder="ex: app.example.com, *.example.com, **.example.com, or **" validate="host">
+						<b class="invalid-feedback"></b>
+						<small class="field-help text-muted d-block">
+							The public hostname clients request. Use <code>*.example.com</code>
+							for one subdomain level, <code>**.example.com</code> for any depth,
+							or <code>**</code> as a catch-all.
+						</small>
+						<small id="host-rename-help" class="field-help text-muted d-block" style="display:none">
+							Wildcard hosts, their children, and auto-created subdomain cache
+							entries can't be renamed here — the name is referenced elsewhere
+							(the wildcard's own children, or the cache entry's parent). Delete
+							and recreate instead.
+						</small>
+					</div>
+
+					<div class="form-group">
+						<label class="form-label">Incoming SSL</label>
+						<div class="radio"><label>
+							<input type="radio" name="forcessl" id="forcessl-true" value="true" checked>
+							Force HTTPS <b>(recommended)</b>
+						</label></div>
+						<div class="radio"><label>
+							<input type="radio" name="forcessl" id="forcessl-false" value="false">
+							Allow both HTTP and HTTPS
+						</label></div>
+						<small class="field-help text-muted d-block">Redirect plain HTTP requests to HTTPS.</small>
+					</div>
+
+					<hr>
+
+					<div class="form-group">
+						<label for="ip" class="form-label">Target IP or host name</label>
+						<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10, app.internal.net, or sso-manager" validate="target:3" />
+						<b class="invalid-feedback"></b>
+						<small class="field-help text-muted d-block">Where matching requests are proxied. Hostname or IP only &mdash; no protocol, port, or path.</small>
+					</div>
+
+					<div class="row">
+						<div class="col form-group">
+							<label for="targetPort" class="form-label">Target TCP port</label>
+							<input type="number" name="targetPort" class="form-control" value="80" min="0" max="65535" />
+							<b class="invalid-feedback"></b>
+						</div>
+						<div class="col form-group">
+							<label class="form-label">Target SSL</label>
+							<div class="radio"><label>
+								<input type="radio" name="targetssl" id="targetssl-false" value="false" checked>
+								Proxy to HTTP <b>(recommended)</b>
+							</label></div>
+							<div class="radio"><label>
+								<input type="radio" name="targetssl" id="targetssl-true" value="true">
+								Proxy to HTTPS
+							</label></div>
+							<small class="field-help text-muted d-block">Whether the proxy talks to the target over HTTP or HTTPS. Independent of Incoming SSL above — clients can use HTTPS to reach the proxy while it still talks plain HTTP to the target, or vice versa.</small>
+						</div>
+					</div>
+
+					<hr>
+
+					<div class="form-group">
+						<label for="targets" class="form-label">Additional Targets (Load Balancing)</label>
+						<textarea name="targets" class="form-control" rows="2" placeholder="10.0.0.2:8080&#10;10.0.0.3:8080"></textarea>
+						<small class="field-help text-muted d-block">Add additional targets here (IP:port, one per line) to load balance across them using round-robin. The primary target above is always included.</small>
+					</div>
+				</div>
+
+				<!-- TLS & Wildcard -->
+				<div class="tab-pane fade" id="hostTab-tls" role="tabpanel">
+					<div class="form-group autoSll">
+						<label class="form-label">
+							SSL <a href="https://letsencrypt.org/docs/challenge-types/" target="_blank">validation type</a>
+						</label>
+						<div class="radio" id="challengeType-HTTP-01-container"><label>
+							<input type="radio" name="challengeType" id="challengeType-HTTP-01" value="HTTP-01" checked>
+							HTTP-01
+						</label></div>
+						<div class="radio challengeType-container" id="challengeType-DNS-01-wildcard-container"><label>
+							<input type="radio" name="challengeType" id="challengeType-DNS-01-wildcard" value="DNS-01-wildcard">
+							DNS-01 Wildcard
+						</label></div>
+						<div class="radio challengeType-container" id="challengeType-child-container"><label>
+							<input type="radio" name="challengeType" id="challengeType-wildcardChild" value="wildcardChild">
+							Parent Wildcard from <i id="challengeType-child-relatedHost"></i>
+						</label></div>
+						<small class="field-help text-muted d-block">
+							Options light up based on the host name: wildcard certs need a DNS
+							provider for the domain; child hosts reuse a parent wildcard.
+						</small>
+					</div>
+
+					<div class="form-group challengeType-container" id="wildcard_matchAny-container">
+						<label class="form-label">Wildcard matching</label>
+						<div class="radio"><label>
+							<input type="radio" name="wildcard_matchAny" id="wildcard_matchAny-false" value="false" checked>
+							Match only subdomains defined here <b>(recommended)</b>
+						</label></div>
+						<div class="radio"><label>
+							<input type="radio" name="wildcard_matchAny" id="wildcard_matchAny-true" value="true">
+							Match any subdomain and proxy to this host
+						</label></div>
+						<small class="field-help text-muted d-block">
+							"Recommended" only routes subdomains you've explicitly registered
+							as their own host (optionally as a "Parent Wildcard" child of this
+							one, to reuse this cert). "Match any" auto-creates a temporary
+							route to this host's target for <i>any</i> undefined subdomain the
+							first time it's requested — convenient, but it means every subdomain
+							typo or scan attempt also gets routed here.
+						</small>
+					</div>
+				</div>
+
+				<!-- Traffic -->
+				<div class="tab-pane fade" id="hostTab-traffic" role="tabpanel">
+					<div class="form-group">
+						<label class="form-label">Rate limiting</label>
+						<div class="radio"><label>
+							<input type="radio" name="ratelimit_enabled" id="ratelimit_enabled-false" value="false" checked>
+							Off <b>(recommended)</b>
+						</label></div>
+						<div class="radio"><label>
+							<input type="radio" name="ratelimit_enabled" id="ratelimit_enabled-true" value="true">
+							Limit requests per client IP
+						</label></div>
+					</div>
+					<div class="row">
+						<div class="col form-group">
+							<label for="ratelimit_rate" class="form-label">Requests / sec</label>
+							<input type="number" name="ratelimit_rate" class="form-control" value="10" min="1" max="1000000" />
+						</div>
+						<div class="col form-group">
+							<label for="ratelimit_burst" class="form-label">Burst</label>
+							<input type="number" name="ratelimit_burst" class="form-control" value="20" min="0" max="1000000" />
+						</div>
+					</div>
+					<small class="field-help text-muted d-block mb-3">Token bucket per client IP; bursts above the rate are queued, then rejected with 429.</small>
+
+					<hr>
+
+					<div class="form-group">
+						<label class="form-label">Response caching</label>
+						<div class="radio"><label>
+							<input type="radio" name="respcache_enabled" id="respcache_enabled-false" value="false" checked>
+							Off <b>(recommended)</b>
+						</label></div>
+						<div class="radio"><label>
+							<input type="radio" name="respcache_enabled" id="respcache_enabled-true" value="true">
+							Cache cacheable responses
+						</label></div>
+						<small class="field-help text-muted d-block">Cache upstream responses that declare themselves cacheable.</small>
+					</div>
+
+					<div class="form-group">
+						<label class="form-label">HSTS</label>
+						<div class="radio"><label>
+							<input type="radio" name="hsts_enabled" id="hsts_enabled-false" value="false" checked>
+							Off
+						</label></div>
+						<div class="radio"><label>
+							<input type="radio" name="hsts_enabled" id="hsts_enabled-true" value="true">
+							Send Strict-Transport-Security
+						</label></div>
+						<small class="field-help text-muted d-block">Tells browsers to only use HTTPS for this host. Enable once HTTPS is confirmed working.</small>
+					</div>
+				</div>
+
+				<!-- Headers -->
+				<div class="tab-pane fade" id="hostTab-headers" role="tabpanel">
+					<div class="form-group">
+						<label for="req_headers" class="form-label">Upstream request headers</label>
+						<textarea name="req_headers" class="form-control" rows="3" placeholder="Name: value, one per line"></textarea>
+						<small class="field-help text-muted d-block">Added to each request sent to the target. One <code>Name: value</code> per line.</small>
+					</div>
+					<div class="form-group">
+						<label for="resp_headers" class="form-label">Response headers</label>
+						<textarea name="resp_headers" class="form-control" rows="3" placeholder="Name: value, one per line"></textarea>
+						<small class="field-help text-muted d-block">Added to each response returned to the client.</small>
+					</div>
+				</div>
+
+				<!-- Access -->
+				<div class="tab-pane fade" id="hostTab-access" role="tabpanel">
+					<h6 class="text-muted">IP access</h6>
+					<div class="form-group">
+						<label for="ip_allow" class="form-label">Allow IPs / CIDRs</label>
+						<textarea name="ip_allow" class="form-control" rows="2" placeholder="one per line; if set, only these are allowed"></textarea>
+						<small class="field-help text-muted d-block">If non-empty, only these sources may connect (default-deny).</small>
+					</div>
+					<div class="form-group">
+						<label for="ip_deny" class="form-label">Deny IPs / CIDRs</label>
+						<textarea name="ip_deny" class="form-control" rows="2" placeholder="one per line; these are blocked"></textarea>
+						<small class="field-help text-muted d-block">These sources are always blocked (deny wins over allow).</small>
+					</div>
+				</div>
+
+				<!-- Authentication -->
+				<div class="tab-pane fade" id="hostTab-auth" role="tabpanel">
+					<p class="field-help text-muted">
+						Pick one authentication method for this host &mdash; basic auth and
+						SSO can't both be enabled, to avoid ambiguity about which one
+						actually protected a request. Choose "Off" for a public host.
+					</p>
+
+					<div class="form-group">
+						<div class="radio"><label>
+							<input type="radio" name="auth_mode" id="auth_mode-none" value="none" checked onchange="hostAuthModeChanged('none')">
+							Off (public)
+						</label></div>
+						<div class="radio"><label>
+							<input type="radio" name="auth_mode" id="auth_mode-basic" value="basic" onchange="hostAuthModeChanged('basic')">
+							Basic authentication
+						</label></div>
+						<div class="radio"><label>
+							<input type="radio" name="auth_mode" id="auth_mode-sso" value="sso" onchange="hostAuthModeChanged('sso')">
+							Single sign-on (SSO)
+						</label></div>
+					</div>
+					<!-- Actually-submitted fields; kept in sync with the radios above by
+					     hostAuthModeChanged() so only one can be true at a time. -->
+					<input type="hidden" name="basicauth_enabled" id="basicauth_enabled-hidden" value="false">
+					<input type="hidden" name="sso_enabled" id="sso_enabled-hidden" value="false">
+
+					<div id="hostTab-auth-basicFields" style="display:none">
+						<hr>
+						<h6 class="text-muted">Basic authentication</h6>
+						<div class="form-group">
+							<label for="basicauth_realm" class="form-label">Realm</label>
+							<input type="text" name="basicauth_realm" class="form-control" value="Restricted" placeholder="Restricted" />
+						</div>
+						<div class="form-group">
+							<label for="basicauth_users" class="form-label">Users</label>
+							<textarea name="basicauth_users" class="form-control" rows="2" placeholder="username:password, one per line"></textarea>
+							<small class="field-help text-muted d-block">
+								Current: <span class="basicauth-current">none</span>.
+								Passwords are stored hashed and never shown here. Leave blank to keep
+								the current users; entering any lines replaces the whole list. To
+								manage individual users (delete / change password), use the table
+								below once the host has been saved.
+							</small>
+						</div>
+					</div>
+
+					<div id="hostTab-auth-ssoFields" style="display:none">
+						<hr>
+						<h6 class="text-muted">Single sign-on (SSO)</h6>
+						<p class="field-help text-muted">Gates the site behind the same identity provider the admin app uses. Empty allow-lists below mean any authenticated user is allowed.</p>
+
+						<div class="form-group">
+							<label for="sso_allow_users" class="form-label">Allowed users</label>
+							<div class="input-group mb-1">
+								<input type="text" class="form-control" list="hostSsoUsers" placeholder="type to search users…"
+									onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_users');}">
+								<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_users')">
+									<i class="fa-solid fa-plus"></i> Add
+								</button>
+							</div>
+							<textarea name="sso_allow_users" class="form-control" rows="2" placeholder="one email/username per line; blank = any authenticated user"></textarea>
+						</div>
+						<div class="form-group">
+							<label for="sso_allow_groups" class="form-label">Allowed groups</label>
+							<div class="input-group mb-1">
+								<input type="text" class="form-control" list="hostSsoGroups" placeholder="type to search groups…"
+									onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_groups');}">
+								<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_groups')">
+									<i class="fa-solid fa-plus"></i> Add
+								</button>
+							</div>
+							<textarea name="sso_allow_groups" class="form-control" rows="2" placeholder="one group per line; blank = any authenticated user"></textarea>
+						</div>
+					</div>
+
+					<div id="hostTab-auth-basicUsersMgmt" style="display:none">
+						<hr>
+						<h6 class="text-muted">Manage basic-auth users</h6>
+						<div class="table-responsive">
+							<table class="table table-sm">
+								<thead><tr><th>Username</th><th>New password</th><th></th></tr></thead>
+								<tbody id="basicAuthUserRows"></tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+			</div>
+			<datalist id="hostSsoUsers"></datalist>
+			<datalist id="hostSsoGroups"></datalist>
+		</form>
+	`;
+
+	function openHostModal(title, submitLabel, host){
+		app.modal.open({
+			title: title,
+			size: 'lg',
+			bodyHtml: hostModalBodyHtml,
+			footer: {
+				// created_on/updated_on come back as redis-hash strings, not
+				// numbers -- moment's bare fallback parser mishandles that
+				// (silently "Invalid date"), same reason hostParseRow above
+				// uses the explicit "x" (unix ms) format token.
+				metaHtml: host ? app.modal.formatAudit(host, {formatDate: function(ms){ return moment(ms, 'x').format('YYYY-MM-DD HH:mm'); }}) : '',
+				buttonsHtml: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><i class="fa-solid fa-ban"></i> Cancel</button>'
+					+ '<button type="submit" form="hostForm" class="btn btn-success"><i class="fa-solid fa-floppy-disk"></i> ' + $('<div>').text(submitLabel).html() + '</button>',
+			},
+			url: host ? {path: '/hosts/' + encodeURIComponent(host.host)} : null,
+		});
+		// The datalists were just rebuilt empty -- refill them (cheap re-fetch,
+		// no cache bug here since this function has no cache guard to skip it).
+		hostLoadAuthSuggestions();
 	}
-	function hostModalClose(){ hostModal().hide(); }
 
 	function hostShowTab(id){
 		bootstrap.Tab.getOrCreateInstance(document.getElementById(id)).show();
@@ -206,20 +539,17 @@
 	}
 
 	function hostAddOpen(){
+		openHostModal('Add host', 'Add host', null);
 		hostFormReset();
-		$('#hostModalTitle').text('Add host');
-		$('#hostModalSubmitText').text('Add host');
-		hostModal().show();
 	}
 
 	async function hostEditOpen(host){
-		hostFormReset();
 		let h = $.scope.hosts.getByKey(host);
+		openHostModal('Edit ' + host, 'Save changes', h);
+		hostFormReset();
 		let $f = $('#hostForm');
 
 		$f.attr('method', 'PUT').attr('action', 'host/' + encodeURIComponent(host));
-		$('#hostModalTitle').text('Edit ' + host);
-		$('#hostModalSubmitText').text('Save changes');
 
 		// Scalar fields: booleans drive the matching radio, everything else the
 		// input with that name. Object/array fields are handled as text below.
@@ -285,8 +615,6 @@
 				$('#challengeType-HTTP-01').prop('checked', true);
 			}
 		}
-
-		hostModal().show();
 	}
 
 	function hostDownloadCert(host, type){
@@ -341,41 +669,52 @@
 		}
 	}
 
+	// Determine what Let's Encrypt challenge type the given host name can use.
+	// Delegated (not a direct bind against a captured selector) since
+	// app.modal.open() rebuilds #hostForm from scratch on every call -- a
+	// direct .on('keyup', ...) bind here would silently stop firing after
+	// the first Add/Edit.
+	app.modal.on('keyup', '#hostForm [name=host]', async function(){
+		let $hostField = $(this);
+		// Reset the allowed types on start
+		$('#challengeType-child-container').addClass('challengeType-container');
+		$('#challengeType-DNS-01-wildcard-container').addClass('challengeType-container');
+		$('#wildcard_matchAny-container').addClass('challengeType-container');
+
+		let host = $hostField.val();
+
+		// If it's a wildcard, we must check the domain has a registered provider.
+		if(host.startsWith("*.") && await verifyWildcardRequirements(host)){
+			$('#challengeType-DNS-01-wildcard-container').removeClass('challengeType-container');
+			$('#wildcard_matchAny-container').removeClass('challengeType-container');
+			return;
+		}
+
+		// Check if a wildcard cert is available for the given host. When it is,
+		// make "Parent Wildcard" the default choice (it reuses an existing cert).
+		let wildcardParent = await hostMatchWildcard(host);
+		if(wildcardParent){
+			$('#challengeType-child-container').removeClass('challengeType-container');
+			$('#challengeType-child-relatedHost').text(wildcardParent.host);
+			$('#challengeType-wildcardChild').prop('checked', true);
+			return;
+		}
+
+		// Revert the form to a valid state.
+		$('#challengeType-child-relatedHost').text('');
+		$('#challengeType-HTTP-01').prop('checked', true);
+	});
+
 	$(document).ready(function(){
-		// Populate the host UI table
-		hostPopulate();
-		hostLoadAuthSuggestions();
-
-		// Determine what Let's Encrypt challenge type the given host name can use.
-		let $hostField = $('#hostForm [name=host]');
-		$hostField.on('keyup', async function(){
-			// Reset the allowed types on start
-			$('#challengeType-child-container').addClass('challengeType-container');
-			$('#challengeType-DNS-01-wildcard-container').addClass('challengeType-container');
-			$('#wildcard_matchAny-container').addClass('challengeType-container');
-
-			let host = $hostField.val();
-
-			// If it's a wildcard, we must check the domain has a registered provider.
-			if(host.startsWith("*.") && await verifyWildcardRequirements(host)){
-				$('#challengeType-DNS-01-wildcard-container').removeClass('challengeType-container');
-				$('#wildcard_matchAny-container').removeClass('challengeType-container');
-				return;
+		// Populate the host UI table, then check for a deep-linked host
+		// (e.g. a direct load of /hosts/some-host, or app.modal's url option
+		// having pushed that path) once the table's data is actually loaded.
+		hostPopulate(function(){
+			const slug = app.modal.deepLinkSlug('/hosts');
+			if (slug) {
+				const h = $.scope.hosts.getByKey(decodeURIComponent(slug));
+				if (h) hostEditOpen(h.host);
 			}
-
-			// Check if a wildcard cert is available for the given host. When it is,
-			// make "Parent Wildcard" the default choice (it reuses an existing cert).
-			let wildcardParent = await hostMatchWildcard(host);
-			if(wildcardParent){
-				$('#challengeType-child-container').removeClass('challengeType-container');
-				$('#challengeType-child-relatedHost').text(wildcardParent.host);
-				$('#challengeType-wildcardChild').prop('checked', true);
-				return;
-			}
-
-			// Revert the form to a valid state.
-			$('#challengeType-child-relatedHost').text('');
-			$('#challengeType-HTTP-01').prop('checked', true);
 		});
 
 		$.scope.hosts.take = function($el, item, list){
@@ -548,333 +887,4 @@
 	</div>
 </div>
 
-<!-- Add / Edit host modal ------------------------------------------------- -->
-<div class="modal fade" id="hostModal" tabindex="-1" aria-hidden="true">
-	<div class="modal-dialog modal-lg modal-dialog-scrollable">
-		<div class="modal-content card border-0">
-			<div class="modal-header">
-				<h5 class="modal-title" id="hostModalTitle">Add host</h5>
-				<a href="/docs/hosts" class="text-reset me-2" title="Help"><i class="fa-solid fa-circle-question"></i></a>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-
-			<div class="card-header actionMessage m-0" style="display:none"></div>
-
-			<div class="modal-body">
-				<ul class="nav nav-tabs flex-nowrap overflow-x-auto" role="tablist">
-					<li class="nav-item"><button class="nav-link active" id="hostTab-general-btn" data-bs-toggle="tab" data-bs-target="#hostTab-general" type="button" role="tab">General</button></li>
-					<li class="nav-item"><button class="nav-link" id="hostTab-tls-btn" data-bs-toggle="tab" data-bs-target="#hostTab-tls" type="button" role="tab">TLS &amp; Wildcard</button></li>
-					<li class="nav-item"><button class="nav-link" id="hostTab-traffic-btn" data-bs-toggle="tab" data-bs-target="#hostTab-traffic" type="button" role="tab">Traffic</button></li>
-					<li class="nav-item"><button class="nav-link" id="hostTab-headers-btn" data-bs-toggle="tab" data-bs-target="#hostTab-headers" type="button" role="tab">Headers</button></li>
-					<li class="nav-item"><button class="nav-link" id="hostTab-access-btn" data-bs-toggle="tab" data-bs-target="#hostTab-access" type="button" role="tab">Access</button></li>
-					<li class="nav-item"><button class="nav-link" id="hostTab-auth-btn" data-bs-toggle="tab" data-bs-target="#hostTab-auth" type="button" role="tab">Authentication</button></li>
-				</ul>
-
-				<form class="addHost" id="hostForm" method="POST" action="host" onsubmit="formAJAX(this)" evalAJAX="hostModalClose()">
-					<div class="tab-content pt-3">
-
-						<!-- General -->
-						<div class="tab-pane fade show active" id="hostTab-general" role="tabpanel">
-							<div class="form-group">
-								<label for="host" class="form-label">Incoming host name</label>
-								<input type="text" name="host" class="form-control" placeholder="ex: app.example.com, *.example.com, **.example.com, or **" validate="host">
-								<b class="invalid-feedback"></b>
-								<small class="field-help text-muted d-block">
-									The public hostname clients request. Use <code>*.example.com</code>
-									for one subdomain level, <code>**.example.com</code> for any depth,
-									or <code>**</code> as a catch-all.
-								</small>
-								<small id="host-rename-help" class="field-help text-muted d-block" style="display:none">
-									Wildcard hosts, their children, and auto-created subdomain cache
-									entries can't be renamed here — the name is referenced elsewhere
-									(the wildcard's own children, or the cache entry's parent). Delete
-									and recreate instead.
-								</small>
-							</div>
-
-							<div class="form-group">
-								<label class="form-label">Incoming SSL</label>
-								<div class="radio"><label>
-									<input type="radio" name="forcessl" id="forcessl-true" value="true" checked>
-									Force HTTPS <b>(recommended)</b>
-								</label></div>
-								<div class="radio"><label>
-									<input type="radio" name="forcessl" id="forcessl-false" value="false">
-									Allow both HTTP and HTTPS
-								</label></div>
-								<small class="field-help text-muted d-block">Redirect plain HTTP requests to HTTPS.</small>
-							</div>
-
-							<hr>
-
-							<div class="form-group">
-								<label for="ip" class="form-label">Target IP or host name</label>
-								<input type="text" name="ip" class="form-control" placeholder="ex: 10.10.10.10, app.internal.net, or sso-manager" validate="target:3" />
-								<b class="invalid-feedback"></b>
-								<small class="field-help text-muted d-block">Where matching requests are proxied. Hostname or IP only &mdash; no protocol, port, or path.</small>
-							</div>
-
-							<div class="row">
-								<div class="col form-group">
-									<label for="targetPort" class="form-label">Target TCP port</label>
-									<input type="number" name="targetPort" class="form-control" value="80" min="0" max="65535" />
-									<b class="invalid-feedback"></b>
-								</div>
-								<div class="col form-group">
-									<label class="form-label">Target SSL</label>
-									<div class="radio"><label>
-										<input type="radio" name="targetssl" id="targetssl-false" value="false" checked>
-										Proxy to HTTP <b>(recommended)</b>
-									</label></div>
-									<div class="radio"><label>
-										<input type="radio" name="targetssl" id="targetssl-true" value="true">
-										Proxy to HTTPS
-									</label></div>
-									<small class="field-help text-muted d-block">Whether the proxy talks to the target over HTTP or HTTPS. Independent of Incoming SSL above — clients can use HTTPS to reach the proxy while it still talks plain HTTP to the target, or vice versa.</small>
-								</div>
-							</div>
-
-							<hr>
-
-							<div class="form-group">
-								<label for="targets" class="form-label">Additional Targets (Load Balancing)</label>
-								<textarea name="targets" class="form-control" rows="2" placeholder="10.0.0.2:8080&#10;10.0.0.3:8080"></textarea>
-								<small class="field-help text-muted d-block">Add additional targets here (IP:port, one per line) to load balance across them using round-robin. The primary target above is always included.</small>
-							</div>
-						</div>
-
-						<!-- TLS & Wildcard -->
-						<div class="tab-pane fade" id="hostTab-tls" role="tabpanel">
-							<div class="form-group autoSll">
-								<label class="form-label">
-									SSL <a href="https://letsencrypt.org/docs/challenge-types/" target="_blank">validation type</a>
-								</label>
-								<div class="radio" id="challengeType-HTTP-01-container"><label>
-									<input type="radio" name="challengeType" id="challengeType-HTTP-01" value="HTTP-01" checked>
-									HTTP-01
-								</label></div>
-								<div class="radio challengeType-container" id="challengeType-DNS-01-wildcard-container"><label>
-									<input type="radio" name="challengeType" id="challengeType-DNS-01-wildcard" value="DNS-01-wildcard">
-									DNS-01 Wildcard
-								</label></div>
-								<div class="radio challengeType-container" id="challengeType-child-container"><label>
-									<input type="radio" name="challengeType" id="challengeType-wildcardChild" value="wildcardChild">
-									Parent Wildcard from <i id="challengeType-child-relatedHost"></i>
-								</label></div>
-								<small class="field-help text-muted d-block">
-									Options light up based on the host name: wildcard certs need a DNS
-									provider for the domain; child hosts reuse a parent wildcard.
-								</small>
-							</div>
-
-							<div class="form-group challengeType-container" id="wildcard_matchAny-container">
-								<label class="form-label">Wildcard matching</label>
-								<div class="radio"><label>
-									<input type="radio" name="wildcard_matchAny" id="wildcard_matchAny-false" value="false" checked>
-									Match only subdomains defined here <b>(recommended)</b>
-								</label></div>
-								<div class="radio"><label>
-									<input type="radio" name="wildcard_matchAny" id="wildcard_matchAny-true" value="true">
-									Match any subdomain and proxy to this host
-								</label></div>
-								<small class="field-help text-muted d-block">
-									"Recommended" only routes subdomains you've explicitly registered
-									as their own host (optionally as a "Parent Wildcard" child of this
-									one, to reuse this cert). "Match any" auto-creates a temporary
-									route to this host's target for <i>any</i> undefined subdomain the
-									first time it's requested — convenient, but it means every subdomain
-									typo or scan attempt also gets routed here.
-								</small>
-							</div>
-						</div>
-
-						<!-- Traffic -->
-						<div class="tab-pane fade" id="hostTab-traffic" role="tabpanel">
-							<div class="form-group">
-								<label class="form-label">Rate limiting</label>
-								<div class="radio"><label>
-									<input type="radio" name="ratelimit_enabled" id="ratelimit_enabled-false" value="false" checked>
-									Off <b>(recommended)</b>
-								</label></div>
-								<div class="radio"><label>
-									<input type="radio" name="ratelimit_enabled" id="ratelimit_enabled-true" value="true">
-									Limit requests per client IP
-								</label></div>
-							</div>
-							<div class="row">
-								<div class="col form-group">
-									<label for="ratelimit_rate" class="form-label">Requests / sec</label>
-									<input type="number" name="ratelimit_rate" class="form-control" value="10" min="1" max="1000000" />
-								</div>
-								<div class="col form-group">
-									<label for="ratelimit_burst" class="form-label">Burst</label>
-									<input type="number" name="ratelimit_burst" class="form-control" value="20" min="0" max="1000000" />
-								</div>
-							</div>
-							<small class="field-help text-muted d-block mb-3">Token bucket per client IP; bursts above the rate are queued, then rejected with 429.</small>
-
-							<hr>
-
-							<div class="form-group">
-								<label class="form-label">Response caching</label>
-								<div class="radio"><label>
-									<input type="radio" name="respcache_enabled" id="respcache_enabled-false" value="false" checked>
-									Off <b>(recommended)</b>
-								</label></div>
-								<div class="radio"><label>
-									<input type="radio" name="respcache_enabled" id="respcache_enabled-true" value="true">
-									Cache cacheable responses
-								</label></div>
-								<small class="field-help text-muted d-block">Cache upstream responses that declare themselves cacheable.</small>
-							</div>
-
-							<div class="form-group">
-								<label class="form-label">HSTS</label>
-								<div class="radio"><label>
-									<input type="radio" name="hsts_enabled" id="hsts_enabled-false" value="false" checked>
-									Off
-								</label></div>
-								<div class="radio"><label>
-									<input type="radio" name="hsts_enabled" id="hsts_enabled-true" value="true">
-									Send Strict-Transport-Security
-								</label></div>
-								<small class="field-help text-muted d-block">Tells browsers to only use HTTPS for this host. Enable once HTTPS is confirmed working.</small>
-							</div>
-						</div>
-
-						<!-- Headers -->
-						<div class="tab-pane fade" id="hostTab-headers" role="tabpanel">
-							<div class="form-group">
-								<label for="req_headers" class="form-label">Upstream request headers</label>
-								<textarea name="req_headers" class="form-control" rows="3" placeholder="Name: value, one per line"></textarea>
-								<small class="field-help text-muted d-block">Added to each request sent to the target. One <code>Name: value</code> per line.</small>
-							</div>
-							<div class="form-group">
-								<label for="resp_headers" class="form-label">Response headers</label>
-								<textarea name="resp_headers" class="form-control" rows="3" placeholder="Name: value, one per line"></textarea>
-								<small class="field-help text-muted d-block">Added to each response returned to the client.</small>
-							</div>
-						</div>
-
-						<!-- Access -->
-						<div class="tab-pane fade" id="hostTab-access" role="tabpanel">
-							<h6 class="text-muted">IP access</h6>
-							<div class="form-group">
-								<label for="ip_allow" class="form-label">Allow IPs / CIDRs</label>
-								<textarea name="ip_allow" class="form-control" rows="2" placeholder="one per line; if set, only these are allowed"></textarea>
-								<small class="field-help text-muted d-block">If non-empty, only these sources may connect (default-deny).</small>
-							</div>
-							<div class="form-group">
-								<label for="ip_deny" class="form-label">Deny IPs / CIDRs</label>
-								<textarea name="ip_deny" class="form-control" rows="2" placeholder="one per line; these are blocked"></textarea>
-								<small class="field-help text-muted d-block">These sources are always blocked (deny wins over allow).</small>
-							</div>
-						</div>
-
-						<!-- Authentication -->
-						<div class="tab-pane fade" id="hostTab-auth" role="tabpanel">
-							<p class="field-help text-muted">
-								Pick one authentication method for this host &mdash; basic auth and
-								SSO can't both be enabled, to avoid ambiguity about which one
-								actually protected a request. Choose "Off" for a public host.
-							</p>
-
-							<div class="form-group">
-								<div class="radio"><label>
-									<input type="radio" name="auth_mode" id="auth_mode-none" value="none" checked onchange="hostAuthModeChanged('none')">
-									Off (public)
-								</label></div>
-								<div class="radio"><label>
-									<input type="radio" name="auth_mode" id="auth_mode-basic" value="basic" onchange="hostAuthModeChanged('basic')">
-									Basic authentication
-								</label></div>
-								<div class="radio"><label>
-									<input type="radio" name="auth_mode" id="auth_mode-sso" value="sso" onchange="hostAuthModeChanged('sso')">
-									Single sign-on (SSO)
-								</label></div>
-							</div>
-							<!-- Actually-submitted fields; kept in sync with the radios above by
-							     hostAuthModeChanged() so only one can be true at a time. -->
-							<input type="hidden" name="basicauth_enabled" id="basicauth_enabled-hidden" value="false">
-							<input type="hidden" name="sso_enabled" id="sso_enabled-hidden" value="false">
-
-							<div id="hostTab-auth-basicFields" style="display:none">
-								<hr>
-								<h6 class="text-muted">Basic authentication</h6>
-								<div class="form-group">
-									<label for="basicauth_realm" class="form-label">Realm</label>
-									<input type="text" name="basicauth_realm" class="form-control" value="Restricted" placeholder="Restricted" />
-								</div>
-								<div class="form-group">
-									<label for="basicauth_users" class="form-label">Users</label>
-									<textarea name="basicauth_users" class="form-control" rows="2" placeholder="username:password, one per line"></textarea>
-									<small class="field-help text-muted d-block">
-										Current: <span class="basicauth-current">none</span>.
-										Passwords are stored hashed and never shown here. Leave blank to keep
-										the current users; entering any lines replaces the whole list. To
-										manage individual users (delete / change password), use the table
-										below once the host has been saved.
-									</small>
-								</div>
-							</div>
-
-							<div id="hostTab-auth-ssoFields" style="display:none">
-								<hr>
-								<h6 class="text-muted">Single sign-on (SSO)</h6>
-								<p class="field-help text-muted">Gates the site behind the same identity provider the admin app uses. Empty allow-lists below mean any authenticated user is allowed.</p>
-
-								<div class="form-group">
-									<label for="sso_allow_users" class="form-label">Allowed users</label>
-									<div class="input-group mb-1">
-										<input type="text" class="form-control" list="hostSsoUsers" placeholder="type to search users…"
-											onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_users');}">
-										<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_users')">
-											<i class="fa-solid fa-plus"></i> Add
-										</button>
-									</div>
-									<textarea name="sso_allow_users" class="form-control" rows="2" placeholder="one email/username per line; blank = any authenticated user"></textarea>
-								</div>
-								<div class="form-group">
-									<label for="sso_allow_groups" class="form-label">Allowed groups</label>
-									<div class="input-group mb-1">
-										<input type="text" class="form-control" list="hostSsoGroups" placeholder="type to search groups…"
-											onkeydown="if(event.key==='Enter'){event.preventDefault();allowListAdd(this,'sso_allow_groups');}">
-										<button type="button" class="btn btn-outline-secondary" onclick="allowListAdd(this.previousElementSibling,'sso_allow_groups')">
-											<i class="fa-solid fa-plus"></i> Add
-										</button>
-									</div>
-									<textarea name="sso_allow_groups" class="form-control" rows="2" placeholder="one group per line; blank = any authenticated user"></textarea>
-								</div>
-							</div>
-
-							<div id="hostTab-auth-basicUsersMgmt" style="display:none">
-								<hr>
-								<h6 class="text-muted">Manage basic-auth users</h6>
-								<div class="table-responsive">
-									<table class="table table-sm">
-										<thead><tr><th>Username</th><th>New password</th><th></th></tr></thead>
-										<tbody id="basicAuthUserRows"></tbody>
-									</table>
-								</div>
-							</div>
-						</div>
-
-					</div>
-					<datalist id="hostSsoUsers"></datalist>
-					<datalist id="hostSsoGroups"></datalist>
-				</form>
-			</div>
-
-			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-					<i class="fa-solid fa-ban"></i> Cancel
-				</button>
-				<button type="submit" form="hostForm" class="btn btn-success">
-					<i class="fa-solid fa-floppy-disk"></i>
-					<span id="hostModalSubmitText">Add host</span>
-				</button>
-			</div>
-		</div>
-	</div>
-</div>
 <%- include('bottom') %>
