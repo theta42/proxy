@@ -40,6 +40,15 @@ router.get('/hosts', async function(req, res, next) {
   res.render('hosts', {...values});
 });
 
+// Linkable deep-link to a single host's modal, e.g. from the host modal's
+// app.modal `url` option. No server-side use of :host -- the client reads
+// location.pathname itself and opens the matching host's modal once the
+// page's own data has loaded (same idiom sso-manager-node uses for
+// /directory/:slug).
+router.get('/hosts/:host', async function(req, res, next) {
+  res.render('hosts', {...values});
+});
+
 router.get('/dns', async function(req, res, next) {
   res.render('dns', {...values});
 });

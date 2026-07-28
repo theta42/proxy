@@ -23,7 +23,7 @@
     "@popperjs/core": "^2.11.8",
     "@simpleworkjs/app-stack": "^1.0.0",
     "@simpleworkjs/conf": "^1.2.0",
-    "@simpleworkjs/frontend": "^0.2.5",
+    "@simpleworkjs/frontend": "^0.2.6",
     "@simpleworkjs/ldap": "^1.0.0",
     "@simpleworkjs/oidc-client": "^1.0.0",
     "acme-client": "^5.4.0",
