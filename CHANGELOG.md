@@ -6,6 +6,14 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-07-28
+
+### Added
+- **API tokens: "+ New Token" modal button (replacing the always-visible inline create-form card) and a new Edit modal** — continues the cross-app API-token UI unification started in jump-host. The Edit modal's footer shows real created-by/on data; the `PUT /api-token/:id` route already fully supported editing, so no backend change was needed.
+
+### Fixed
+- **Creating an API token didn't show the "save this secret now" reveal modal** — the create flow called `app.modal.close()` immediately before `app.modal.open()` (to show the secret) in the same tick; since `app.modal` is a singleton, that collided with Bootstrap's hide-transition guard and the reveal modal silently never appeared.
+
 ## [1.6.0] - 2026-07-28
 
 ### Added
