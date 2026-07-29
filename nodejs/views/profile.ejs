@@ -102,43 +102,33 @@
 	</div>
 </div>
 
-<!-- Token modal (shown once on create/rotate) -->
-<div class="modal fade" id="secretModal" tabindex="-1">
-	<div class="modal-dialog">
-		<div class="modal-content">
-			<div class="modal-header">
-				<h5 class="modal-title"><i class="fa-solid fa-key"></i> API Token</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-			</div>
-			<div class="modal-body">
-				<p class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Save this token now — it will <strong>not</strong> be shown again.</p>
-				<div class="input-group">
-					<input type="text" id="secretValue" class="form-control font-monospace" readonly>
-					<button class="btn btn-outline-secondary" onclick="copyToken()" title="Copy">
-						<i class="fa-solid fa-copy"></i>
-					</button>
-				</div>
-				<p class="mt-3 mb-0 text-muted small">Use it as a bearer token:<br><code>Authorization: Bearer &lt;token&gt;</code></p>
-			</div>
-			<div class="modal-footer">
-				<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Done</button>
-			</div>
-		</div>
-	</div>
-</div>
 
 <script type="text/javascript">
-	var secretModal = new bootstrap.Modal(document.getElementById('secretModal'));
 	var tokensById = {};
 
-	function showSecret(secret){
-		document.getElementById('secretValue').value = secret;
-		secretModal.show();
+	// Shared "reveal secret once" display -- same pattern as jump-host's
+	// showToken(), which sso-manager-node also uses.
+	function showToken(title, token){
+		app.modal.open({title: title, bodyHtml:
+			'<p class="text-danger"><i class="fa-solid fa-triangle-exclamation"></i> Save this token now — it will <strong>not</strong> be shown again.</p>'
+			+ '<div class="input-group"><input type="text" class="form-control font-monospace" id="revealed-token" readonly value="' + app.util.escapeHtml(token) + '">'
+			+   '<button class="btn btn-outline-secondary" onclick="copyFieldValue(\'#revealed-token\')" title="Copy"><i class="fa-solid fa-copy"></i></button></div>'
+			+ '<p class="mt-3 mb-0 text-muted small">Use it as a bearer token:<br><code>Authorization: Bearer ' + app.util.escapeHtml(token) + '</code></p>'
+		});
 	}
-	function copyToken(){
-		var el = document.getElementById('secretValue');
-		el.select(); el.setSelectionRange(0, 99999);
-		try { document.execCommand('copy'); } catch(_){}
+	// Not the checkmark-flash technique some of this codebase's other copy
+	// buttons use -- FontAwesome replaces <i> icons with inline <svg>, so
+	// swapping the <i>'s class silently no-ops. A toast doesn't have that
+	// problem.
+	function copyFieldValue(sel){
+		var $el = $(sel);
+		var text = $el.val();
+		if(!text) return;
+		navigator.clipboard.writeText(text).then(function(){
+			app.messages.toast('Copied to clipboard', 'success');
+		}, function(){
+			app.messages.toast('Could not copy — select and copy manually', 'danger');
+		});
 	}
 
 	function fmtTime(ms){
@@ -171,10 +161,12 @@
 	function tableAJAX(){
 		app.apiToken.list(function(error, data){
 			if(error) return app.messages.action(error, $.scope.apiTokenCard.$this, 'danger');
+			var tokens = data.results || [];
 			$.scope.apiTokenCard.empty();
-			(data.results || []).forEach(function(token){
+			tokens.forEach(function(token){
 				$.scope.apiTokenCard.push(processToken(token));
 			});
+			$('#api-tokens-empty').toggle(tokens.length === 0);
 		});
 	}
 
@@ -192,72 +184,135 @@
 		if(!ok) return;
 		app.apiToken.rotate({id: id}, function(error, data){
 			if(error) return app.messages.action(error, $(btn).closest('.card'), 'danger');
-			showSecret(data.token);
+			showToken('API Token Rotated', data.token);
+			tableAJAX();
+		});
+	}
+
+	// Create is a native <form>+formAJAX submission (matching this app's own
+	// hostModal convention) rather than a JS-built payload -- the form now
+	// lives inside app.modal's body, rebuilt fresh on every open(), so
+	// .actionMessage must be a descendant of the form (not a sibling, as the
+	// old static create-form card had it) for formAJAX's error/success
+	// targeting to resolve correctly (it falls back to searching descendants
+	// of the form once app.modal's card-less .modal-content fails the
+	// closest('div.card') check).
+	function createApiToken(){
+		var $body = app.modal.open({
+			title: 'New API Token',
+			bodyHtml:
+				'<div class="actionMessage mb-3" style="display:none"></div>'
+				// Deliberately does NOT call app.modal.close() before showToken() --
+				// app.modal is a singleton, and close() immediately followed by
+				// open() in the same synchronous tick collides with Bootstrap's
+				// hide-transition guard (show() silently no-ops while _isTransitioning
+				// is still true from the just-started hide()). open() alone already
+				// overwrites the (already-visible) modal's content in place.
+				+ '<form id="newTokenForm" action="api-token/" method="post" onsubmit="formAJAX(this)" evalAJAX="showToken(\'API Token Created\', data.token); tableAJAX();">'
+				+   '<div class="mb-3">'
+				+     '<label class="form-label">Name</label>'
+				+     '<input type="text" class="form-control" name="name" placeholder="CI host sync" required>'
+				+   '</div>'
+				+   '<div class="mb-3">'
+				+     '<label class="form-label">Description</label>'
+				+     '<input type="text" class="form-control" name="description" placeholder="Used by the nightly sync job">'
+				+   '</div>'
+				+   '<div class="mb-3">'
+				+     '<label class="form-label">Expires in (days) <small class="text-muted">(0 = never)</small></label>'
+				+     '<input type="number" class="form-control" name="expires_in_days" value="0" min="0">'
+				+   '</div>'
+				+ '</form>',
+			footer: {
+				buttonsHtml: '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>'
+					+ '<button type="submit" form="newTokenForm" class="btn btn-outline-dark"><i class="fa-solid fa-plus"></i> Create</button>',
+			},
+		});
+		$body.find('[name=name]').focus();
+	}
+
+	function editToken(id){
+		var t = tokensById[id]; if(!t) return;
+		app.modal.open({
+			title: 'Edit Token',
+			bodyHtml:
+				'<input type="hidden" id="edit-token-id" value="' + app.util.escapeHtml(id) + '">'
+				+ '<div class="mb-3">'
+				+   '<label class="form-label">Name</label>'
+				+   '<input type="text" class="form-control" id="edit-token-name" value="' + app.util.escapeHtml(t.name || '') + '">'
+				+ '</div>'
+				+ '<div class="mb-3">'
+				+   '<label class="form-label">Description</label>'
+				+   '<input type="text" class="form-control" id="edit-token-description" value="' + app.util.escapeHtml(t.description || '') + '">'
+				+ '</div>'
+				+ '<div class="mb-3">'
+				+   '<label class="form-label">Expires in (days, blank = keep as-is, 0 = never)</label>'
+				+   '<input type="number" class="form-control" id="edit-token-days" min="0">'
+				+ '</div>',
+			footer: {
+				metaHtml: 'Created by ' + app.util.escapeHtml(t.created_by || '—') + ' on ' + fmtTime(t.created_on),
+				buttonsHtml: app.modal.footerButtons({onSave: 'saveEditToken()', saveLabel: 'Save'}),
+			},
+		});
+	}
+
+	function saveEditToken(){
+		var payload = {
+			id: $('#edit-token-id').val(),
+			name: $('#edit-token-name').val(),
+			description: $('#edit-token-description').val(),
+			expires_in_days: $('#edit-token-days').val(),
+		};
+		app.apiToken.update(payload, function(error, data){
+			if(error) return app.messages.action((data && data.message) || 'Failed to update token', app.modal.body(), 'danger');
+			app.modal.close();
 			tableAJAX();
 		});
 	}
 
 	$(document).ready(function(){
 		tableAJAX();
-		// After a successful create, show the raw token once + refresh the list.
-		$('form[action="api-token/"]').attr('evalAJAX',
-			'showSecret(data.token); tableAJAX(); $form.trigger("reset");'
-		);
 	});
 </script>
 
-<div class="row mt-3">
-	<div class="col-md-4">
-		<div class="card shadow-lg">
-			<div class="card-header"><i class="fa-solid fa-plus"></i> New API Token
-				<a href="/docs/api-tokens" class="text-reset float-end" title="Help"><i class="fa-solid fa-circle-question"></i></a>
-			</div>
-			<div class="card-header actionMessage" style="display:none"></div>
-			<div class="card-body">
-				<p class="text-muted small">A personal access token lets scripts and services call the proxy management API as you, with your permissions. Treat it like a password.</p>
-				<form action="api-token/" method="post" onsubmit="formAJAX(this)">
-					<div class="mb-3">
-						<label class="form-label">Name</label>
-						<input type="text" class="form-control" name="name" placeholder="CI host sync" required>
-					</div>
-					<div class="mb-3">
-						<label class="form-label">Description</label>
-						<input type="text" class="form-control" name="description" placeholder="Used by the nightly sync job">
-					</div>
-					<div class="mb-3">
-						<label class="form-label">Expires in (days) <small class="text-muted">(0 = never)</small></label>
-						<input type="number" class="form-control" name="expires_in_days" value="0" min="0">
-					</div>
-					<button type="submit" class="btn btn-outline-dark"><i class="fa-solid fa-plus"></i> Create</button>
-				</form>
-			</div>
-		</div>
-	</div>
+<div class="row mt-3 justify-content-center">
 	<div class="col-md-8">
-		<div class="card-header actionMessage" style="display:none"></div>
-
-		<div jq-repeat="apiTokenCard" jq-index-key="id" id="apitoken-card-{{id}}" class="card shadow mb-3">
-			<div class="card-header">
-				<h5><i class="fa-solid fa-key"></i> {{ name }}</h5>
-				<small class="text-muted font-monospace">{{ id_short }}</small>
+		<div class="card shadow-lg">
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<span><i class="fa-solid fa-key me-1"></i> API Tokens</span>
+				<span>
+					<a href="/docs/api-tokens" class="text-reset me-2" title="Help"><i class="fa-solid fa-circle-question"></i></a>
+					<button class="btn btn-sm btn-primary" onclick="createApiToken()"><i class="fa-solid fa-plus"></i> New token</button>
+				</span>
 			</div>
 			<div class="card-header actionMessage" style="display:none"></div>
+			<p class="text-muted small px-3 pt-3 mb-0">A personal access token lets scripts and services call the proxy management API as you, with your permissions. Treat it like a password.</p>
 			<div class="card-body">
-				{{ #description }}<p>{{ description }}</p>{{ /description }}
-				<dl class="row mb-0">
-					<dt class="col-sm-3">Token ID</dt>
-					<dd class="col-sm-9"><code>{{ id_short }}</code></dd>
-					<dt class="col-sm-3">Created</dt>
-					<dd class="col-sm-9">{{{ created_display }}}</dd>
-					<dt class="col-sm-3">Last used</dt>
-					<dd class="col-sm-9">{{{ last_used_display }}}</dd>
-					<dt class="col-sm-3">Expires</dt>
-					<dd class="col-sm-9">{{{ expires_display }}}</dd>
-				</dl>
-			</div>
-			<div class="card-footer">
-				<button type="button" onclick="rotateToken('{{id}}', '{{name}}', this)" class="btn btn-warning btn-sm"><i class="fa-solid fa-arrows-rotate"></i> Rotate</button>
-				<button type="button" onclick="revokeToken('{{id}}', '{{name}}', this)" class="btn btn-danger btn-sm float-end"><i class="fa-solid fa-trash"></i> Revoke</button>
+				<p id="api-tokens-empty" class="text-muted mb-0" style="display:none">No API tokens.</p>
+				<div jq-repeat="apiTokenCard" jq-index-key="id" id="apitoken-card-{{id}}" class="card shadow mb-3">
+					<div class="card-header">
+						<h5><i class="fa-solid fa-key"></i> {{ name }}</h5>
+						<small class="text-muted font-monospace">{{ id_short }}</small>
+					</div>
+					<div class="card-header actionMessage" style="display:none"></div>
+					<div class="card-body">
+						{{ #description }}<p>{{ description }}</p>{{ /description }}
+						<dl class="row mb-0">
+							<dt class="col-sm-3">Token ID</dt>
+							<dd class="col-sm-9"><code>{{ id_short }}</code></dd>
+							<dt class="col-sm-3">Created</dt>
+							<dd class="col-sm-9">{{{ created_display }}}</dd>
+							<dt class="col-sm-3">Last used</dt>
+							<dd class="col-sm-9">{{{ last_used_display }}}</dd>
+							<dt class="col-sm-3">Expires</dt>
+							<dd class="col-sm-9">{{{ expires_display }}}</dd>
+						</dl>
+					</div>
+					<div class="card-footer">
+						<button type="button" onclick="editToken('{{id}}')" class="btn btn-primary btn-sm"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+						<button type="button" onclick="rotateToken('{{id}}', '{{name}}', this)" class="btn btn-warning btn-sm"><i class="fa-solid fa-arrows-rotate"></i> Rotate</button>
+						<button type="button" onclick="revokeToken('{{id}}', '{{name}}', this)" class="btn btn-danger btn-sm float-end"><i class="fa-solid fa-trash"></i> Revoke</button>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>
