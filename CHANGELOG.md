@@ -6,6 +6,15 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-07-30
+
+### Added
+- **`app_super_admin` cross-app group** recognized as a global admin (`conf.auth.adminGroups`), same group also recognized by sso-manager-node and jump-host, and by `ldap-client`'s SSSD access filter (SSH login on every host).
+
+### Changed
+- **Users and Permissions pages**: the always-visible sidebar "Add" forms are now an "Add User"/"Add Permission" button in the list header that opens an `app.modal` dialog, matching the hosts.ejs convention.
+- **Let's Encrypt ACME account key** now defaults to the already-persisted `/data` volume instead of a CWD-relative path (`./le_key.cert` -> `/app/le_key.cert` in the container), which was lost on every image rebuild.
+
 ## [1.8.0] - 2026-07-28
 
 ### Added
