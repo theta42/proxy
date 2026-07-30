@@ -6,6 +6,17 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-07-28
+
+### Added
+- **Users backed by SSO/OIDC login are now marked "External (SSO)"** and read-only: their password-change control is hidden, and `PUT /password/:username` rejects with 403 server-side. Deletion stays allowed. Redis user-backend only.
+- **`app.util.revealItem()`** (shared `app-base.js`): scrolls a just-added/-edited element into view and flashes its background. Wired into the Users/Permissions create flows.
+
+### Changed
+- **All pages now wrap their content in a standard-width container**, matching sso-manager-node instead of rendering full-bleed.
+- **Users and Permissions pages converted from bare `<table>`s to the card-grid convention** already used on the Groups page.
+- `@simpleworkjs/frontend` bumped to `^0.2.7`.
+
 ## [1.7.0] - 2026-07-28
 
 ### Added
