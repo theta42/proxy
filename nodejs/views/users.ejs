@@ -20,11 +20,16 @@
 <script type="text/javascript">
 
 
+	function processUser(user){
+		user.isExternal = user.backing === 'oidc';
+		return user;
+	}
+
 	function populateUsers(actionMessage){
 		app.user.list(function(error, data){
 			if(error) return app.messages.action(error, $.scope.users.$this, 'danger');
 			for(let user of data.results){
-				$.scope.users.push(user);
+				$.scope.users.push(processUser(user));
 			}
 			$.scope.users.__put = function($el, item, list){
 				$el.addClass('bg-success');
@@ -54,6 +59,7 @@
 
 	});
 </script>
+<div class="container mt-4">
 <div class="row" style="display:none">
 	<div class="col-md-4">
 		<div class="card shadow-lg">
@@ -74,7 +80,8 @@
 			<div class="card-header actionMessage" style="display:none"></div>
 			<div class="card-body">
 				<form action="user/" onsubmit="formAJAX(this)" evalAJAX="
-					$.scope.users.splice(0, 0, data);
+					$.scope.users.splice(0, 0, processUser(data));
+					setTimeout(function(){ app.util.revealItem($('#user-row-' + data.username)); }, 100);
 				">
 					<input type="hidden" class="form-control" name="delete" value="false" />
 					<div class="form-group">
@@ -114,37 +121,42 @@
 			</div>
 
 			<div class="card-header actionMessage" style="display:none"></div>
-			<div class="table-responsive">
-			<table class="card-body table table-striped" style="margin-bottom:0">
-				<thead>
-					<th>Name</th>
-					<th>Password</th>
-					<th>Delete</th>
-				</thead>
-				<tbody>
-					<tr jq-repeat="users" jq-repeat-index="username" style="display:none" >
-						<td class="align-middle">
-							{{ username }}
-						</td>
-						<td>
+			<div class="card-body">
+			<div class="row row-cols-1 row-cols-lg-2 g-3" id="user-cards">
+				<div class="col" jq-repeat="users" jq-repeat-index="username" id="user-row-{{username}}" style="display:none">
+					<div class="card shadow-sm h-100">
+						<div class="card-body">
+							<h6 class="d-flex align-items-center mb-2">
+								<i class="fa-solid fa-user me-2"></i>
+								{{ username }}
+								{{#isExternal}}
+								<span class="badge text-bg-secondary ms-2" title="Provisioned via SSO login; no local password to manage here.">
+									<i class="fa-solid fa-cloud"></i> External (SSO)
+								</span>
+								{{/isExternal}}
+							</h6>
 
-							<form class="input-group" action="user/password/{{ username }}" method="put" onsubmit="formAJAX(this)">
-							  <input type="password" name="password" class="form-control" placeholder="Change {{ username }} password" aria-label="Update password">
+							{{^isExternal}}
+							<form class="input-group input-group-sm mb-2" action="user/password/{{ username }}" method="put" onsubmit="formAJAX(this)">
+							  <input type="password" name="password" class="form-control" placeholder="Change password" aria-label="Update password">
 							  <button class="btn btn-warning" type="submit">Change</button>
 							</form>
+							{{/isExternal}}
+							{{#isExternal}}
+							<p class="text-muted small mb-2">Authenticates via SSO -- cannot be edited here.</p>
+							{{/isExternal}}
 
-						</td>
-						<td class="align-middle">
-							<button type="button" class="btn btn-danger" onclick="removeUser('{{username}}')">
+							<button type="button" class="btn btn-sm btn-danger" onclick="removeUser('{{username}}')">
 								<i class="fa-solid fa-user-slash"></i>
 								Delete
 							</button>
-						</td>
-					</tr>
-				</tbody>
-			</table>
+						</div>
+					</div>
+				</div>
+			</div>
 			</div>
 		</div>
 	</div>
+</div>
 </div>
 <%- include('bottom') %>

@@ -66,6 +66,7 @@
 		app.subscribe(/^model:Permission:create/, function(data){
 			$.scope.Permission.remove(data.id);
 			$.scope.Permission.unshift(data);
+			setTimeout(function(){ app.util.revealItem($('#permission-row-' + data.id)); }, 100);
 		});
 		app.subscribe(/^model:Permission:remove/, function(data, topic){
 			$.scope.Permission.remove(topic.split(':')[3]);
@@ -73,6 +74,7 @@
 	});
 </script>
 
+<div class="container mt-4">
 <datalist id="subjectUsers"></datalist>
 <datalist id="subjectGroups"></datalist>
 
@@ -145,34 +147,31 @@
 			</div>
 
 			<div class="card-header actionMessage" style="display:none"></div>
-			<div class="table-responsive">
-			<table class="card-body table table-striped" style="margin-bottom:0">
-				<thead>
-					<th>Type</th>
-					<th>Subject</th>
-					<th>Scope</th>
-					<th>Domain</th>
-					<th>Role</th>
-					<th>Delete</th>
-				</thead>
-				<tbody>
-					<tr jq-repeat="Permission" jq-repeat-index="id" style="display:none">
-						<td class="align-middle">{{ subjectType }}</td>
-						<td class="align-middle">{{ subject }}</td>
-						<td class="align-middle">{{ scope }}</td>
-						<td class="align-middle">{{ domain }}</td>
-						<td class="align-middle">{{ role }}</td>
-						<td class="align-middle">
-							<button type="button" class="btn btn-danger" onclick="removePermission('{{id}}')">
+			<div class="card-body">
+			<div class="row row-cols-1 row-cols-lg-2 g-3" id="permission-cards">
+				<div class="col" jq-repeat="Permission" jq-repeat-index="id" id="permission-row-{{id}}" style="display:none">
+					<div class="card shadow-sm h-100">
+						<div class="card-body">
+							<h6 class="mb-2">
+								<span class="badge text-bg-secondary">{{ subjectType }}</span>
+								{{ subject }}
+							</h6>
+							<dl class="row mb-2 small">
+								<dt class="col-4">Scope</dt><dd class="col-8">{{ scope }}</dd>
+								<dt class="col-4">Domain</dt><dd class="col-8">{{ domain }}</dd>
+								<dt class="col-4">Role</dt><dd class="col-8">{{ role }}</dd>
+							</dl>
+							<button type="button" class="btn btn-sm btn-danger" onclick="removePermission('{{id}}')">
 								<i class="fa-solid fa-trash"></i>
 								Delete
 							</button>
-						</td>
-					</tr>
-				</tbody>
-			</table>
+						</div>
+					</div>
+				</div>
+			</div>
 			</div>
 		</div>
 	</div>
+</div>
 </div>
 <%- include('bottom') %>

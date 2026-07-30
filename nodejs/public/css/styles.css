@@ -7,6 +7,12 @@ body {
 	display: flex;
 	flex-direction: column;
 	min-height: 100vh;
+	/* Height of the fixed navbar (plus the update banner, while shown --
+	   see top.ejs's showUpdateBanner/dismissUpdateBanner). Lets an in-page
+	   sticky element offset itself below both fixed elements via
+	   `top: var(--sw-content-offset)` instead of colliding with them at the
+	   viewport's true top:0. */
+	--sw-content-offset: 4.5rem;
 }
 
 #spa-shell {

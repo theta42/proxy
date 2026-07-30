@@ -584,10 +584,31 @@ app.util = (function(app){
 		document.body.removeChild(element);
 	}
 
+	// Scroll a just-added/-edited element into view and flash its
+	// background, so the user's eye lands on the row that changed instead of
+	// it silently appearing/updating somewhere off-screen. Takes a jQuery
+	// object or a raw DOM node (e.g. jq-repeat's `item.__jq_$el`).
+	function revealItem(el){
+		var node = el && el.jquery ? el[0] : el;
+		if (!node) return;
+		if (typeof node.scrollIntoView === 'function') {
+			node.scrollIntoView({behavior: 'smooth', block: 'center'});
+		}
+		var prevTransition = node.style.transition;
+		var prevBg = node.style.backgroundColor;
+		node.style.transition = 'background-color 1.5s ease';
+		node.style.backgroundColor = 'var(--bs-success-bg-subtle, #d1e7dd)';
+		setTimeout(function(){
+			node.style.backgroundColor = prevBg;
+			setTimeout(function(){ node.style.transition = prevTransition; }, 1500);
+		}, 300);
+	}
+
 	return {
 		downloadFile: downloadFile,
 		getUrlParameter: getUrlParameter,
 		escapeHtml: escapeHtml,
+		revealItem: revealItem,
 	}
 })(app);
 
