@@ -49,7 +49,8 @@ module.exports = {
 	// Per-user overrides are Grant records managed in the app.
 	auth: {
 		// Members of these SSO/LDAP groups are always global admins.
-		adminGroups: [],
+		// app_super_admin is the cross-app super admin group (sso, proxy, jump-host).
+		adminGroups: ['app_super_admin'],
 		// Optional default role mapping for groups, e.g.
 		//   { 'dns-team': { role: 'manager', scope: 'domain', domain: 'foo.com' } }
 		//   { 'proxy-viewers': { role: 'viewer', scope: 'global' } }

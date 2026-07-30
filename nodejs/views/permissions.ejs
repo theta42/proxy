@@ -40,6 +40,50 @@
 		}
 	}
 
+	function permissionAddOpen(){
+		app.modal.open({title: 'Add Permission', bodyHtml:
+			'<form action="permission/" onsubmit="formAJAX(this)" evalAJAX="app.modal.close();">'
+			+   '<div class="form-group">'
+			+     '<label class="control-label">Subject type</label>'
+			+     '<select class="form-control" name="subjectType" onchange="subjectTypeChanged(this)">'
+			+       '<option value="user">User</option>'
+			+       '<option value="group">Group</option>'
+			+     '</select>'
+			+   '</div>'
+			+   '<div class="form-group">'
+			+     '<label class="control-label">Subject (username or group)</label>'
+			+     '<input type="text" class="form-control" name="subject" list="subjectUsers" placeholder="alice" autocomplete="off" />'
+			+   '</div>'
+			+   '<div class="form-group">'
+			+     '<label class="control-label">Scope</label>'
+			+     '<select class="form-control" name="scope">'
+			+       '<option value="domain">Domain</option>'
+			+       '<option value="global">Global</option>'
+			+     '</select>'
+			+   '</div>'
+			+   '<div class="form-group">'
+			+     '<label class="control-label">Domain (for domain scope)</label>'
+			+     '<input type="text" class="form-control" name="domain" placeholder="example.com" autocomplete="off" />'
+			+     '<div class="field-hint text-muted">'
+			+       'Wildcards: <code>*.example.com</code> matches one label, '
+			+       '<code>**.example.com</code> matches any depth (incl. the apex), '
+			+       '<code>**</code> matches every domain.'
+			+     '</div>'
+			+   '</div>'
+			+   '<div class="form-group">'
+			+     '<label class="control-label">Role</label>'
+			+     '<select class="form-control" name="role">'
+			+       '<option value="viewer">Viewer (read)</option>'
+			+       '<option value="manager">Manager (full over domain)</option>'
+			+       '<option value="admin">Admin (global only)</option>'
+			+     '</select>'
+			+   '</div>'
+			+   '<hr />'
+			+   '<button type="submit" class="btn btn-info">Add Permission</button>'
+			+ '</form>',
+		});
+	}
+
 	function removePermission(id){
 		app.permission.remove(id, function(error, data){
 			if(error) return app.messages.action(error, $.scope.Permission.$this, 'danger');
@@ -79,63 +123,7 @@
 <datalist id="subjectGroups"></datalist>
 
 <div class="row" style="display:none">
-	<div class="col-md-4">
-		<div class="card shadow-lg">
-
-			<div class="card-header text-center">
-				<span class="card-icon float-start">
-					<i class="fa-solid fa-user-shield"></i>
-				</span>
-				<span class="card-title">Add Permission</span>
-				<a href="/docs/access" class="text-reset float-end" title="Help"><i class="fa-solid fa-circle-question"></i></a>
-			</div>
-
-			<div class="card-header actionMessage" style="display:none"></div>
-			<div class="card-body">
-				<form action="permission/" onsubmit="formAJAX(this)">
-					<div class="form-group">
-						<label class="control-label">Subject type</label>
-						<select class="form-control" name="subjectType" onchange="subjectTypeChanged(this)">
-							<option value="user">User</option>
-							<option value="group">Group</option>
-						</select>
-					</div>
-					<div class="form-group">
-						<label class="control-label">Subject (username or group)</label>
-						<input type="text" class="form-control" name="subject" list="subjectUsers" placeholder="alice" autocomplete="off" />
-					</div>
-					<div class="form-group">
-						<label class="control-label">Scope</label>
-						<select class="form-control" name="scope">
-							<option value="domain">Domain</option>
-							<option value="global">Global</option>
-						</select>
-					</div>
-					<div class="form-group">
-						<label class="control-label">Domain (for domain scope)</label>
-						<input type="text" class="form-control" name="domain" placeholder="example.com" autocomplete="off" />
-						<div class="field-hint text-muted">
-							Wildcards: <code>*.example.com</code> matches one label,
-							<code>**.example.com</code> matches any depth (incl. the apex),
-							<code>**</code> matches every domain.
-						</div>
-					</div>
-					<div class="form-group">
-						<label class="control-label">Role</label>
-						<select class="form-control" name="role">
-							<option value="viewer">Viewer (read)</option>
-							<option value="manager">Manager (full over domain)</option>
-							<option value="admin">Admin (global only)</option>
-						</select>
-					</div>
-					<hr />
-					<button type="submit" class="btn btn-info">Add Permission</button>
-				</form>
-			</div>
-		</div>
-	</div>
-
-	<div class="col-md-8">
+	<div class="col-12">
 		<div class="card shadow-lg">
 
 			<div class="card-header text-center">
@@ -143,7 +131,13 @@
 					<i class="fa-solid fa-list-check"></i>
 				</span>
 				<span class="card-title">Permissions</span>
-				<a href="/docs/access" class="text-reset float-end" title="Help"><i class="fa-solid fa-circle-question"></i></a>
+				<span class="float-end">
+					<a href="/docs/access" class="text-reset me-2" title="Help"><i class="fa-solid fa-circle-question"></i></a>
+					<button type="button" class="btn btn-sm btn-success" onclick="permissionAddOpen()">
+						<i class="fa-solid fa-user-shield"></i>
+						Add Permission
+					</button>
+				</span>
 			</div>
 
 			<div class="card-header actionMessage" style="display:none"></div>
