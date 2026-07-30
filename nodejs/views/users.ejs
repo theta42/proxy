@@ -47,6 +47,32 @@
 		});
 	}
 
+	function userAddOpen(){
+		app.modal.open({title: 'Add New User', bodyHtml:
+			'<form action="user/" onsubmit="formAJAX(this)" evalAJAX="'
+			+ '$.scope.users.splice(0, 0, processUser(data));'
+			+ 'setTimeout(function(){ app.util.revealItem($(\'#user-row-\' + data.username)); }, 100);'
+			+ 'app.modal.close();'
+			+ '">'
+			+   '<input type="hidden" class="form-control" name="delete" value="false" />'
+			+   '<div class="form-group">'
+			+     '<label class="control-label">User-name</label>'
+			+     '<input type="text" class="form-control" name="username" placeholder="Letter, numbers, -, _, . and @ only" validate="user:3" />'
+			+   '</div>'
+			+   '<div class="form-group">'
+			+     '<label class="control-label">Password</label>'
+			+     '<input type="password" class="form-control" name="password" placeholder="8+ chars; mix upper/lower/number/symbol (or 12+)" validate="password"/>'
+			+   '</div>'
+			+   '<div class="form-group">'
+			+     '<label class="control-label">Again</label>'
+			+     '<input type="password" class="form-control" name="passwordMatch" placeholder="Retype password" validate="eq:password"/>'
+			+   '</div>'
+			+   '<hr />'
+			+   '<button type="submit" class="btn btn-info">Add</button>'
+			+ '</form>',
+		});
+	}
+
 	$(document).ready(function(){
 		populateUsers(); //populate the table
 
@@ -61,50 +87,7 @@
 </script>
 <div class="container mt-4">
 <div class="row" style="display:none">
-	<div class="col-md-4">
-		<div class="card shadow-lg">
-
-			<div class="card-header text-center">
-				<span class="card-icon float-start">
-					<i class="fa-solid fa-user-plus"></i>
-				</span>
-				<span class="card-title">
-					Add New User
-				</span>
-				<span class="float-end">
-					<a href="/docs/access" class="text-reset me-2" title="Help"><i class="fa-solid fa-circle-question"></i></a>
-					<i class="fa-solid fa-circle-minus"></i>
-				</span>
-			</div>
-
-			<div class="card-header actionMessage" style="display:none"></div>
-			<div class="card-body">
-				<form action="user/" onsubmit="formAJAX(this)" evalAJAX="
-					$.scope.users.splice(0, 0, processUser(data));
-					setTimeout(function(){ app.util.revealItem($('#user-row-' + data.username)); }, 100);
-				">
-					<input type="hidden" class="form-control" name="delete" value="false" />
-					<div class="form-group">
-						<label class="control-label">User-name</label>
-						<input type="text" class="form-control" name="username" placeholder="Letter, numbers, -, _, . and @ only" validate="user:3" />
-					</div>
-					<div class="form-group">
-						<label class="control-label">Password</label>
-						<input type="password" class="form-control" name="password" placeholder="8+ chars; mix upper/lower/number/symbol (or 12+)" validate="password"/>
-					</div>
-					<div class="form-group">
-						<label class="control-label">Again</label>
-						<input type="password" class="form-control" name="passwordMatch" placeholder="Retype password" validate="eq:password"/>
-					</div>
-					<hr />
-					<button type="submit" class="btn btn-info">
-						Add
-					</button>
-				</form>
-			</div>
-		</div>
-	</div>
-	<div class="col-md-8">
+	<div class="col-12">
 		<div class="card shadow-lg">
 
 			<div class="card-header text-center">
@@ -116,7 +99,10 @@
 				</span>
 				<span class="float-end">
 					<a href="/docs/access" class="text-reset me-2" title="Help"><i class="fa-solid fa-circle-question"></i></a>
-					<i class="fa-solid fa-circle-minus"></i>
+					<button type="button" class="btn btn-sm btn-success" onclick="userAddOpen()">
+						<i class="fa-solid fa-user-plus"></i>
+						Add User
+					</button>
 				</span>
 			</div>
 

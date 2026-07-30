@@ -9,10 +9,23 @@ const tldExtract = require('tld-extract').parse_host;
 const LetsEncrypt = require('../utils/letsencrypt');
 const conf = require('@simpleworkjs/conf');
 
+const fs = require('fs');
+const path = require('path');
+
+// Defaults to the same persisted volume Redis uses (/data, see
+// docker-entrypoint.sh's REDIS_DATA_DIR) instead of the old CWD-relative
+// default (./le_key.cert -> /app/le_key.cert), which lives in the
+// container's writable layer and was lost on every rebuild. Falls back to
+// the old relative path when /data isn't present (e.g. local dev outside
+// docker), so it stays writable there too.
+const dataDir = process.env.REDIS_DATA_DIR || '/data';
+const accountKeyPath = fs.existsSync(dataDir) ? path.join(dataDir, 'le_key.cert') : './le_key.cert';
+
 const letsEncrypt = new LetsEncrypt({
 	directoryUrl: conf.environment === "production" ?
 		LetsEncrypt.AcmeClient.directory.letsencrypt.production :
 		LetsEncrypt.AcmeClient.directory.letsencrypt.staging,
+	accountKeyPath,
 });
 
 class Host extends Table{
