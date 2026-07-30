@@ -81,11 +81,20 @@ router.put('/password', async function(req, res, next){
 	}
 });
 
-// Admin: reset another user's password.
+// Admin: reset another user's password. Blocked for SSO/OIDC-provisioned
+// accounts (backing === 'oidc') -- they authenticate through the IdP, not a
+// local password, so resetting one here would be a no-op at best and a
+// false sense of control at worst. Only applies to the redis user backend;
+// LDAP/PAM-backed deployments have no per-record marker for this.
 router.put('/password/:username', authz.requireAdmin, async function(req, res, next){
 	try{
 		validatePassword(req.body.password);
 		let user = await User.get(req.params.username);
+		if(user.backing === 'oidc'){
+			let e = new Error('Cannot set a password for an SSO-authenticated user.');
+			e.status = 403;
+			throw e;
+		}
 		return res.json({results: await user.setPassword(req.body)});
 	}catch(error){
 		next(error);

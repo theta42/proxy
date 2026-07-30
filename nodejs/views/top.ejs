@@ -82,16 +82,24 @@
 		</div>
 
 		<script type="text/javascript">
+			// --sw-content-offset tracks the same height as #spa-shell's margin-top
+			// (fixed navbar, plus the update banner while it's shown), so any
+			// in-page sticky element (e.g. a sticky search/sort bar) can offset
+			// itself below both fixed elements via `top: var(--sw-content-offset)`
+			// instead of colliding with them at the viewport's true top:0.
 			function showUpdateBanner(){
 				let $nav = $('nav.fixed-top');
 				let $banner = $('#update-banner');
 				$banner.css('top', $nav.outerHeight() + 'px').show();
-				$('#spa-shell').css('margin-top', ($nav.outerHeight() + $banner.outerHeight()) + 'px');
+				let offset = $nav.outerHeight() + $banner.outerHeight();
+				$('#spa-shell').css('margin-top', offset + 'px');
+				document.documentElement.style.setProperty('--sw-content-offset', offset + 'px');
 			}
 
 			function dismissUpdateBanner(){
 				$('#update-banner').hide();
 				$('#spa-shell').css('margin-top', '');
+				document.documentElement.style.setProperty('--sw-content-offset', $('nav.fixed-top').outerHeight() + 'px');
 				sessionStorage.setItem('update-banner-dismissed', '1');
 			}
 
