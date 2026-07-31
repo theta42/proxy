@@ -33,6 +33,14 @@
 		});
 	}
 
+	function refreshGroups(){
+		$.scope.LocalGroup.empty();
+		app.group.list(function(error, data){
+			if(error) return app.messages.action(error, $.scope.LocalGroup.$this, 'danger');
+			for(let g of data.results) $.scope.LocalGroup.push(g);
+		});
+	}
+
 	function removeMember(group, username){
 		app.group.removeMember(group, username, function(error, data){
 			if(error) return app.messages.action(error, $.scope.LocalGroup.$this, 'danger');
@@ -68,12 +76,16 @@
 		app.subscribe(/^model:LocalGroup:create/, function(data){
 			$.scope.LocalGroup.remove(data.name);
 			$.scope.LocalGroup.unshift(data);
-		});
-		app.subscribe(/^model:LocalGroup:update/, function(data, topic){
-			$.scope.LocalGroup.update(topic.split(':')[3], data);
+			// Also refresh to ensure the full list is up to date
+			setTimeout(refreshGroups, 500);
 		});
 		app.subscribe(/^model:LocalGroup:remove/, function(data, topic){
 			$.scope.LocalGroup.remove(topic.split(':')[3]);
+			// Also refresh to ensure the full list is up to date
+			setTimeout(refreshGroups, 500);
+		});
+		app.subscribe(/^model:LocalGroup:update/, function(data, topic){
+			$.scope.LocalGroup.update(topic.split(':')[3], data);
 		});
 	});
 </script>

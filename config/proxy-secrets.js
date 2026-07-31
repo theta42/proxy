@@ -1,0 +1,86 @@
+'use strict';
+
+// Example secrets configuration for the theta42/proxy.
+//
+// The proxy is an OIDC client of an SSO Manager (or any OIDC provider) AND a
+// direct LDAP client for user lookups. This file supplies that wiring.
+//
+// Docker / unified stack: place at ./config/proxy-secrets.js and bind-mount
+// ./config at /config (see docker-compose.yml); docker-entrypoint.sh points the
+// CONF_SECRETS env var at it so @simpleworkjs/conf reads it. No app_* env
+// should be passed — app_* env beats this file in @simpleworkjs/conf, so the
+// file is authoritative only if the matching app_* env is absent.
+//
+// Bare-metal: ops/install.sh seeds this file at /etc/proxy/secrets.js on first
+// run (with placeholders for the values it can't guess) and points the
+// systemd unit's CONF_SECRETS env var at it. Fill in your values, then
+// `sudo systemctl restart proxy`. Values here override conf/base.js and win
+// over <environment>.js.
+//
+// Only the keys the app reads are listed below. The `stack` key is read by the
+// theta-env orchestrator (setup.sh) and ignored by the app.
+
+module.exports = {
+    name: 'Dynamic Proxy',                // shown in the UI
+    logo: '/static/img/theta42.svg',      // nav image; point at your own file under public/ to white-label
+
+    // OpenID Connect — point at your SSO Manager. Issuer + authorization/
+    // endSession are browser-facing URLs; token/userinfo can be the internal
+    // URL if the SSO is on the same docker network (avoids a TLS hairpin).
+    oidc: {
+        enabled: true,
+        issuer: 'https://sso.example.com',
+        authorizationEndpoint: 'https://sso.example.com/oauth/authorize',
+        tokenEndpoint: 'http://sso-manager:3001/oauth/token',
+        userinfoEndpoint: 'http://sso-manager:3001/oauth/userinfo',
+        endSessionEndpoint: 'https://sso.example.com/oauth/logout',
+        clientId: '391136c8-9631-47c4-aac6-d6b760b7a9ae',   // registered on the SSO
+        clientSecret: 'b29cce9c-de0c-4acc-b76a-494168f0381d', // from the SSO client record
+        redirectUri: 'https://proxy.example.com/api/auth/oidc/callback',
+        scopes: ['openid', 'profile', 'email', 'groups'],
+        groupsClaim: 'groups',
+        usernameClaim: 'preferred_username',
+    },
+
+    // Direct LDAP user lookups. ldaps:// + rejectUnauthorized:false for a
+    // self-signed cert (the SSO's default), or set tlsOptions.ca to a CA path
+    // for strict verification. bindPassword MUST match the
+    // serviceAccountPass in the SSO's sso-secrets.js (the proxy binds as that
+    // service account).
+    ldap: {
+        url: 'ldaps://sso-manager:636',
+        bindDN: 'cn=ldapclient,ou=people,dc=example,dc=com',
+        bindPassword: 'proxy-service-pass',
+        searchBase: 'ou=people,dc=example,dc=com',
+        userFilter: '(objectClass=inetOrgPerson)',
+        userNameAttribute: 'uid',
+        tlsOptions: {
+            rejectUnauthorized: false,            // true + ca for a CA-signed cert
+        },
+    },
+
+    // Authorization. adminUsers is the local anti-lockout admin (matches
+    // auth.adminUsers in conf/base.js). adminGroups: SSO/LDAP groups whose
+    // members are always global admins.
+    auth: {
+        adminGroups: [],
+        adminUsers: ['proxyadmin'],
+        groupRoleMap: {},
+        // Optional: the local anti-lockout admin's initial password, used
+        // ONLY the first time that account is created. Leave unset and it
+        // defaults to the username itself ("proxyadmin2") — fine for a quick
+        // local test, but change it (or set this) before exposing the proxy
+        // publicly. Once the account exists, this key is never read again;
+        // change the password via the app itself (or delete the Redis user
+        // to force it to be re-bootstrapped with a new value here).
+        localAdminPass: 'proxyadmin-test-pass',
+    },
+
+    // ── Orchestrator-only (ignored by the app) ───────────────────────────────
+    // Read by the theta-env setup.sh (e.g. to seed the OAuth client). Omit for
+    // bare-metal use.
+    stack: {
+        ssoHost: 'sso.example.com',               // public SSO hostname
+        proxyHost: 'proxy.example.com',            // public proxy hostname
+    },
+};

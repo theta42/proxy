@@ -58,18 +58,38 @@
 			+   '<div class="form-group">'
 			+     '<label class="control-label">User-name</label>'
 			+     '<input type="text" class="form-control" name="username" placeholder="Letter, numbers, -, _, . and @ only" validate="user:3" />'
+			+     '<div class="invalid-feedback d-none" data-field-error="username"></div>'
 			+   '</div>'
 			+   '<div class="form-group">'
 			+     '<label class="control-label">Password</label>'
 			+     '<input type="password" class="form-control" name="password" placeholder="8+ chars; mix upper/lower/number/symbol (or 12+)" validate="password"/>'
+			+     '<div class="invalid-feedback d-none" data-field-error="password"></div>'
 			+   '</div>'
 			+   '<div class="form-group">'
 			+     '<label class="control-label">Again</label>'
 			+     '<input type="password" class="form-control" name="passwordMatch" placeholder="Retype password" validate="eq:password"/>'
+			+     '<div class="invalid-feedback d-none" data-field-error="passwordMatch"></div>'
 			+   '</div>'
 			+   '<hr />'
 			+   '<button type="submit" class="btn btn-info">Add</button>'
 			+ '</form>',
+		onValidationError: function(errors){
+			// Clear all field errors first
+			$('[data-field-error]').addClass('d-none').text('');
+			$('.form-control.is-invalid').removeClass('is-invalid');
+
+			// Show action message at top
+			let errorMsg = 'Please fix the following errors:';
+			for(let field in errors){
+				let $field = $('[name="' + field + '"]');
+				$field.addClass('is-invalid');
+				$field.siblings('[data-field-error]').removeClass('d-none').text(errors[field]);
+				errorMsg += ' ' + field + ': ' + errors[field] + ';';
+			}
+			$('.modal-body .actionMessage').first().length ?
+				$('.modal-body .actionMessage').first().text(errorMsg).removeClass('d-none').addClass('alert alert-danger') :
+				app.messages.action(errorMsg, $('.modal-body'), 'danger');
+		}
 		});
 	}
 
@@ -108,38 +128,52 @@
 
 			<div class="card-header actionMessage" style="display:none"></div>
 			<div class="card-body">
-			<div class="row row-cols-1 row-cols-lg-2 g-3" id="user-cards">
-				<div class="col" jq-repeat="users" jq-repeat-index="username" id="user-row-{{username}}" style="display:none">
-					<div class="card shadow-sm h-100">
-						<div class="card-body">
-							<h6 class="d-flex align-items-center mb-2">
-								<i class="fa-solid fa-user me-2"></i>
-								{{ username }}
-								{{#isExternal}}
-								<span class="badge text-bg-secondary ms-2" title="Provisioned via SSO login; no local password to manage here.">
-									<i class="fa-solid fa-cloud"></i> External (SSO)
-								</span>
-								{{/isExternal}}
-							</h6>
-
-							{{^isExternal}}
-							<form class="input-group input-group-sm mb-2" action="user/password/{{ username }}" method="put" onsubmit="formAJAX(this)">
-							  <input type="password" name="password" class="form-control" placeholder="Change password" aria-label="Update password">
-							  <button class="btn btn-warning" type="submit">Change</button>
-							</form>
-							{{/isExternal}}
-							{{#isExternal}}
-							<p class="text-muted small mb-2">Authenticates via SSO -- cannot be edited here.</p>
-							{{/isExternal}}
-
-							<button type="button" class="btn btn-sm btn-danger" onclick="removeUser('{{username}}')">
-								<i class="fa-solid fa-user-slash"></i>
-								Delete
-							</button>
-						</div>
-					</div>
+				<div class="table-responsive">
+					<table class="table table-striped mb-0">
+						<thead>
+							<tr>
+								<th>Username</th>
+								<th>Auth Type</th>
+								<th>Password</th>
+								<th>Actions</th>
+							</tr>
+						</thead>
+						<tbody id="user-cards">
+							<tr jq-repeat="users" jq-repeat-index="username" id="user-row-{{username}}" style="display:none">
+								<td>
+									<strong>{{ username }}</strong>
+								</td>
+								<td>
+									{{#isExternal}}
+									<span class="badge text-bg-secondary" title="Provisioned via SSO login; no local password to manage here.">
+										<i class="fa-solid fa-cloud"></i> External (SSO)
+									</span>
+									{{/isExternal}}
+									{{^isExternal}}
+									<span class="badge text-bg-primary">Local</span>
+									{{/isExternal}}
+								</td>
+								<td>
+									{{^isExternal}}
+									<form class="input-group input-group-sm" style="max-width: 350px;" action="user/password/{{ username }}" method="put" onsubmit="formAJAX(this)">
+									  <input type="password" name="password" class="form-control" placeholder="Change password" aria-label="Update password">
+									  <button class="btn btn-warning" type="submit">Change</button>
+									</form>
+									{{/isExternal}}
+									{{#isExternal}}
+									<span class="text-muted">Authenticates via SSO — cannot be edited here.</span>
+									{{/isExternal}}
+								</td>
+								<td>
+									<button type="button" class="btn btn-sm btn-danger" onclick="removeUser('{{username}}')">
+										<i class="fa-solid fa-user-slash"></i>
+										Delete
+									</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
-			</div>
 			</div>
 		</div>
 	</div>

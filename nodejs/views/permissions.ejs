@@ -9,12 +9,9 @@
 		font-weight: bold;
 		margin-bottom: 1px;
 	}
-	.card-title{
-		font-weight: bold;
-	}
-	.field-hint{
-		font-size: .8rem;
-	}
+	.card-title{ font-weight: bold; }
+	.member-pill{ cursor: default; }
+	.member-pill i{ cursor: pointer; }
 </style>
 
 <script type="text/javascript">
@@ -142,27 +139,36 @@
 
 			<div class="card-header actionMessage" style="display:none"></div>
 			<div class="card-body">
-			<div class="row row-cols-1 row-cols-lg-2 g-3" id="permission-cards">
-				<div class="col" jq-repeat="Permission" jq-repeat-index="id" id="permission-row-{{id}}" style="display:none">
-					<div class="card shadow-sm h-100">
-						<div class="card-body">
-							<h6 class="mb-2">
-								<span class="badge text-bg-secondary">{{ subjectType }}</span>
-								{{ subject }}
-							</h6>
-							<dl class="row mb-2 small">
-								<dt class="col-4">Scope</dt><dd class="col-8">{{ scope }}</dd>
-								<dt class="col-4">Domain</dt><dd class="col-8">{{ domain }}</dd>
-								<dt class="col-4">Role</dt><dd class="col-8">{{ role }}</dd>
-							</dl>
-							<button type="button" class="btn btn-sm btn-danger" onclick="removePermission('{{id}}')">
-								<i class="fa-solid fa-trash"></i>
-								Delete
-							</button>
-						</div>
-					</div>
+				<div class="table-responsive">
+					<table class="table table-striped mb-0">
+						<thead>
+							<tr>
+								<th>Subject</th>
+								<th>Scope</th>
+								<th>Domain</th>
+								<th>Role</th>
+								<th class="text-end">Actions</th>
+							</tr>
+						</thead>
+						<tbody id="permission-cards">
+							<tr jq-repeat="Permission" jq-repeat-index="id" id="permission-row-{{id}}" style="display:none">
+								<td>
+									<span class="badge text-bg-secondary">{{ subjectType }}</span>
+									{{ subject }}
+								</td>
+								<td>{{ scope }}</td>
+								<td>{{ domain }}</td>
+								<td>{{ role }}</td>
+								<td class="text-end">
+									<button type="button" class="btn btn-sm btn-danger" onclick="removePermission('{{id}}')">
+										<i class="fa-solid fa-trash"></i>
+										Delete
+									</button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
 				</div>
-			</div>
 			</div>
 		</div>
 	</div>
