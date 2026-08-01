@@ -6,6 +6,12 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-08-01
+
+### Changed
+- Bumped `body-parser` 2.2.2 → 2.3.0 (Dependabot #175).
+- Bumped `ejs` and `brace-expansion` (Dependabot #179, security maintenance).
+
 ## [1.12.0] - 2026-08-01
 
 ### Fixed
