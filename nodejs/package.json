@@ -1,6 +1,6 @@
 {
   "name": "proxy-api",
-  "version": "1.9.0",
+  "version": "1.13.0",
   "author": [
     {
       "name": "William Mantly",
@@ -22,6 +22,7 @@
     "@fortawesome/fontawesome-free": "^7.3.0",
     "@popperjs/core": "^2.11.8",
     "@simpleworkjs/app-stack": "^1.0.0",
+    "@simpleworkjs/bao-conf": "^1.0.0",
     "@simpleworkjs/conf": "^1.2.0",
     "@simpleworkjs/frontend": "^0.2.7",
     "@simpleworkjs/ldap": "^1.0.0",

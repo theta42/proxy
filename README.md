@@ -162,6 +162,23 @@ docker compose exec proxy tail -f /var/log/nginx/error.log
 docker compose logs --tail=200 --since=10m proxy
 ```
 
+## Secrets
+
+Secrets are loaded from **OpenBao** at boot via
+[@simpleworkjs/bao-conf](https://simpleworkjs.github.io/bao-conf/), which
+deep-merges `secret/proxy/conf` over the file-loaded config. The proxy's OIDC
+`clientSecret` is captured at require time (inside `createOidcClient` during
+`require('../models')`), so `bin/www` runs `bao-conf.init()` **before**
+`require('../app')` (which transitively loads models). Fail-soft: if OpenBao is
+unreachable, boot continues from `CONF_SECRETS`. The proxy authenticates to
+OpenBao with the scoped `VAULT_TOKEN` (env, policy `proxy` — read only
+`secret/proxy/conf`), never the root token.
+
+The `config/proxy-secrets.js` file is an operator-edit seed artifact
+(gitignored); the bootstrap writes the generated OAuth client creds into
+OpenBao, which is authoritative. For the full architecture see theta-env's
+**[Secrets docs](https://theta42.github.io/theta-env/secrets/)**.
+
 ## Manual Installation
 
 For manual installation or other distributions, see the detailed steps below.

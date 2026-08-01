@@ -4,34 +4,91 @@
  * Module dependencies.
  */
 
-var app = require('../app');
-var debug = require('debug')('proxy-api:server');
-var http = require('http');
 const conf = require('@simpleworkjs/conf');
+const debug = require('debug')('proxy-api:server');
+const http = require('http');
 
-/**
- * Get port from environment and store in Express.
- */
+// @simpleworkjs/conf loads ./config/proxy-secrets.js synchronously, then
+// @simpleworkjs/bao-conf deep-merges secret/proxy/conf from OpenBao over it.
+// The OIDC clientSecret is captured at require time inside models (via
+// createOidcClient), and require('../app') transitively loads models, so the
+// OpenBao fetch MUST resolve before require('../app'). Fail-soft: if OpenBao
+// is unreachable, init() leaves conf as the file-loaded fallback and boot
+// continues from ./config/proxy-secrets.js.
+require('@simpleworkjs/bao-conf').init({ path: 'proxy', conf }).then(() => {
+  var app = require('../app');   // models + createOidcClient now see merged conf
 
-var port = normalizePort(process.env.NODE_PORT || conf.port || '3000');
-app.set('port', port);
+  /**
+   * Get port from environment and store in Express.
+   */
 
-/**
- * Create HTTP server.
- */
+  var port = normalizePort(process.env.NODE_PORT || conf.port || '3000');
+  app.set('port', port);
 
-var server = http.createServer(app);
+  /**
+   * Create HTTP server.
+   */
 
-var io = require('socket.io')(server);
-app.io = io;
+  var server = http.createServer(app);
 
-/**
- * Listen on provided port, on all network interfaces.
- */
+  var io = require('socket.io')(server);
+  app.io = io;
 
-server.listen(port);
-server.on('error', onError);
-server.on('listening', onListening);
+  /**
+   * Listen on provided port, on all network interfaces.
+   */
+
+  server.listen(port);
+  server.on('error', onError);
+  server.on('listening', onListening);
+
+  /**
+   * Event listener for HTTP server "error" event.
+   */
+
+  function onError(error) {
+    if (error.syscall !== 'listen') {
+      throw error;
+    }
+
+    var bind = typeof port === 'string'
+      ? 'Pipe ' + port
+      : 'Port ' + port;
+
+    // handle specific listen errors with friendly messages
+    switch (error.code) {
+      case 'EACCES':
+        console.error(bind + ' requires elevated privileges');
+        process.exit(1);
+        break;
+      case 'EADDRINUSE':
+        console.error(bind + ' is already in use');
+        process.exit(1);
+        break;
+      default:
+        throw error;
+    }
+  }
+
+  /**
+   * Event listener for HTTP server "listening" event.
+   */
+
+  function onListening() {
+    var addr = server.address();
+    var bind = typeof addr === 'string'
+      ? 'pipe ' + addr
+      : 'port ' + addr.port;
+    console.log('Listening on ' + bind);
+
+    for(let listener of app.onListen){
+      listener()
+    }
+  }
+}).catch(err => {
+  console.error('boot failed:', err);
+  process.exit(1);
+});
 
 /**
  * Normalize a port into a number, string, or false.
@@ -51,48 +108,4 @@ function normalizePort(val) {
   }
 
   return false;
-}
-
-/**
- * Event listener for HTTP server "error" event.
- */
-
-function onError(error) {
-  if (error.syscall !== 'listen') {
-    throw error;
-  }
-
-  var bind = typeof port === 'string'
-    ? 'Pipe ' + port
-    : 'Port ' + port;
-
-  // handle specific listen errors with friendly messages
-  switch (error.code) {
-    case 'EACCES':
-      console.error(bind + ' requires elevated privileges');
-      process.exit(1);
-      break;
-    case 'EADDRINUSE':
-      console.error(bind + ' is already in use');
-      process.exit(1);
-      break;
-    default:
-      throw error;
-  }
-}
-
-/**
- * Event listener for HTTP server "listening" event.
- */
-
-function onListening() {
-  var addr = server.address();
-  var bind = typeof addr === 'string'
-    ? 'pipe ' + addr
-    : 'port ' + addr.port;
-  console.log('Listening on ' + bind);
-
-  for(let listener of app.onListen){
-    listener()
-  }
 }
