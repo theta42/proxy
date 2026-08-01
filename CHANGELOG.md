@@ -6,6 +6,11 @@ correspond to git tags (`vX.Y.Z`) and `nodejs/package.json`'s `version`.
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-08-01
+
+### Fixed
+- Changed UNIX socket permission in `unix_socket_json.js` to `666` so OpenResty Nginx workers running as `nobody` can resolve targets properly.
+
 ## [1.9.0] - 2026-07-30
 
 ### Added
