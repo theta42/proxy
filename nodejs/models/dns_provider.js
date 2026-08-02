@@ -3,6 +3,7 @@
 const crypto = require("crypto");
 
 const conf = require('@simpleworkjs/conf');
+const baoConf = require('@simpleworkjs/bao-conf');
 const Table = require('.');
 const ModelPs = require('../utils/model_pubsub');
 
@@ -139,11 +140,26 @@ class DnsProvider extends Table{
 			let __intraModel = this.__intraModel(data.dnsProvider);
 			Provider = __intraModel.Provider;
 
+			if (!data.id) data.id = crypto.randomBytes(8).toString("hex");
+
+			let secrets = {};
+			for (let key in Provider._keyMap) {
+				if (Provider._keyMap[key].isPrivate && data[key] !== undefined) {
+					secrets[key] = data[key];
+				}
+			}
+
 			// This is here test if the given API key is valid
 			let provider = new __intraModel.Provider(data, ...args);
 			let domains = await provider.listDomains();
 
+			for (let key in secrets) data[key] = '********';
+
 			let instance = await super.create.call(__intraModel, data, ...args);
+			
+			if (Object.keys(secrets).length > 0) {
+				await baoConf.set(`proxy/dns-providers/${instance.id}`, secrets);
+			}
 			try{
 				await instance.updateDomains(domains);
 			}catch(updateError){
@@ -189,7 +205,63 @@ class DnsProvider extends Table{
 		let instance = await super.get(data, ...args);
 		let __intraModel = this.__intraModel(instance.dnsProvider);
 
-		return await super.get.call(__intraModel, data, ...args);
+		let resolved = await super.get.call(__intraModel, data, ...args);
+		try {
+			let secrets = await baoConf.get(`proxy/dns-providers/${resolved.id}`);
+			if (secrets) Object.assign(resolved, secrets);
+		} catch(e) {}
+		return resolved;
+	}
+
+	static async findall(...args){
+		let instances = await super.findall(...args);
+		for (let inst of instances) {
+			try {
+				let secrets = await baoConf.get(`proxy/dns-providers/${inst.id}`);
+				if (secrets) Object.assign(inst, secrets);
+			} catch(e) {}
+		}
+		return instances;
+	}
+
+	static async find(...args){
+		let instances = await super.find(...args);
+		for (let inst of instances) {
+			try {
+				let secrets = await baoConf.get(`proxy/dns-providers/${inst.id}`);
+				if (secrets) Object.assign(inst, secrets);
+			} catch(e) {}
+		}
+		return instances;
+	}
+
+	async update(data){
+		let Provider = this.constructor.Provider || providers[this.dnsProvider];
+		let secrets = {};
+		if (Provider) {
+			for (let key in Provider._keyMap) {
+				if (Provider._keyMap[key].isPrivate && data[key] !== undefined && data[key] !== '********') {
+					secrets[key] = data[key];
+					data[key] = '********';
+				} else if (Provider._keyMap[key].isPrivate && data[key] === '********') {
+					delete data[key]; // Do not update the masked value if it's sent back
+				}
+			}
+		}
+
+		let res = await super.update(data);
+		
+		if (Object.keys(secrets).length > 0) {
+			let existing = await baoConf.get(`proxy/dns-providers/${this.id}`) || {};
+			await baoConf.set(`proxy/dns-providers/${this.id}`, { ...existing, ...secrets });
+			Object.assign(this, secrets);
+		}
+		return res;
+	}
+
+	async remove(...args){
+		await baoConf.request('DELETE', `proxy/dns-providers/${this.id}`).catch(()=>{});
+		return await super.remove(...args);
 	}
 
 	static listProviders(){
