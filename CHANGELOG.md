@@ -1,3 +1,6 @@
+# v1.13.2
+- chore: Update CI pipeline integration
+
 # Changelog
 
 All notable changes to this project are documented here. Format loosely
