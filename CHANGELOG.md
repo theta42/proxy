@@ -1,4 +1,7 @@
-# v1.13.2
+## v1.13.3
+- fix: remove missing DEPLOYMENT.md and docs/ from Docker build context
+
+## v1.13.2
 - chore: Update CI pipeline integration
 
 # Changelog
