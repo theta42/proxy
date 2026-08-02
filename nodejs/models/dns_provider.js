@@ -153,7 +153,7 @@ class DnsProvider extends Table{
 			let provider = new __intraModel.Provider(data, ...args);
 			let domains = await provider.listDomains();
 
-			for (let key in secrets) delete data[key];
+			for (let key in secrets) data[key] = '********';
 
 			let instance = await super.create.call(__intraModel, data, ...args);
 			
@@ -240,9 +240,11 @@ class DnsProvider extends Table{
 		let secrets = {};
 		if (Provider) {
 			for (let key in Provider._keyMap) {
-				if (Provider._keyMap[key].isPrivate && data[key] !== undefined) {
+				if (Provider._keyMap[key].isPrivate && data[key] !== undefined && data[key] !== '********') {
 					secrets[key] = data[key];
-					delete data[key];
+					data[key] = '********';
+				} else if (Provider._keyMap[key].isPrivate && data[key] === '********') {
+					delete data[key]; // Do not update the masked value if it's sent back
 				}
 			}
 		}
