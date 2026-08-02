@@ -115,8 +115,8 @@ COPY nodejs/api.md ./api.md
 # docs/ mirrors the repo's own top-level docs/ folder.
 COPY README.md /README.md
 COPY CHANGELOG.md /CHANGELOG.md
-COPY DEPLOYMENT.md /DEPLOYMENT.md
-COPY docs /docs
+
+
 
 # Baked commit hash from the gitinfo stage (see build_info.js).
 COPY --from=gitinfo /commit.txt ./.build_commit
