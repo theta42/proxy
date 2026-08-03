@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+  <defs>
+    <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C59341" />
+      <stop offset="20%" stop-color="#E4B869" />
+      <stop offset="40%" stop-color="#FBF0B9" />
+      <stop offset="60%" stop-color="#DFB260" />
+      <stop offset="80%" stop-color="#BC8837" />
+      <stop offset="100%" stop-color="#A36F28" />
+    </linearGradient>
+
+    <linearGradient id="text-grad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#FFFFFF" />
+      <stop offset="40%" stop-color="#F5E3B5" />
+      <stop offset="70%" stop-color="#D4A343" />
+      <stop offset="100%" stop-color="#8A5A16" />
+    </linearGradient>
+
+    <filter id="drop-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000000" flood-opacity="0.4"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#drop-shadow)">
+    <g fill="url(#gold-grad)">
+      <path d="M 200,40 
+               C 290,40 350,110 350,200 
+               C 350,290 290,360 200,360 
+               C 110,360 50,290 50,200 
+               C 50,110 110,40 200,40 Z 
+               M 200,75 
+               C 130,75 88,130 88,200 
+               C 88,270 130,325 200,325 
+               C 270,325 312,270 312,200 
+               C 312,130 270,75 200,75 Z" 
+            fill-rule="evenodd" />
+      
+      <path d="M 88,190 L 140,190 C 140,190 142,210 140,210 L 88,210 Z" />
+      
+      <path d="M 260,190 L 312,190 C 312,190 310,210 260,210 Z" />
+    </g>
+
+    <text x="200" y="222" 
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" 
+          font-size="78" 
+          font-weight="900" 
+          fill="url(#text-grad)" 
+          text-anchor="middle"
+          letter-spacing="-2">42</text>
+  </g>
+</svg>
