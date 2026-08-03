@@ -55,7 +55,7 @@ router.get('/dns', async function(req, res, next) {
 
 
 router.get('/users', async function(req, res, next) {
-  res.render('users', {...values});
+  res.redirect(301, '/hosts');
 });
 
 router.get('/permissions', async function(req, res, next) {

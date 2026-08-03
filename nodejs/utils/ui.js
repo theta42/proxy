@@ -38,7 +38,6 @@ module.exports = {
 	nav: [
 		{href: '/hosts', icon: 'fa-solid fa-network-wired', label: 'Hosts', groups: []},
 		{href: '/dns', icon: 'fa-solid fa-record-vinyl', label: 'DNS', groups: []},
-		{href: '/users', icon: 'fa-solid fa-users', label: 'Users', groups: ['admin']},
 		{href: '/permissions', icon: 'fa-solid fa-user-shield', label: 'Permissions', groups: ['admin']},
 		{href: '/groups', icon: 'fa-solid fa-users-gear', label: 'Groups', groups: ['admin']},
 	],

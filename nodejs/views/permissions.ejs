@@ -4,20 +4,15 @@
 	app.auth.forceLogin();
 </script>
 
-<style type="text/css">
-	label.control-label{
-		font-weight: bold;
-		margin-bottom: 1px;
-	}
-	.card-title{
-		font-weight: bold;
-	}
-	.field-hint{
-		font-size: .8rem;
-	}
-</style>
-
 <script type="text/javascript">
+
+	function loadPermissions() {
+		app.permission.list(function(error, data){
+			if(error) return app.messages.action(error, $('#permissions-list'), 'danger');
+			$.scope.Permission.empty();
+			for(let p of (data.results || [])) $.scope.Permission.push(p);
+		});
+	}
 
 	// Fill the username/group datalists that back the Subject autocomplete.
 	function loadSubjectSuggestions(){
@@ -42,63 +37,61 @@
 
 	function permissionAddOpen(){
 		app.modal.open({title: 'Add Permission', bodyHtml:
-			'<form action="permission/" onsubmit="formAJAX(this)" evalAJAX="app.modal.close();">'
-			+   '<div class="form-group">'
-			+     '<label class="control-label">Subject type</label>'
-			+     '<select class="form-control" name="subjectType" onchange="subjectTypeChanged(this)">'
+			'<form action="permission/" onsubmit="formAJAX(this)" evalAJAX="app.modal.close(); loadPermissions();">'
+			+   '<div class="mb-3">'
+			+     '<label class="form-label fw-bold">Subject type</label>'
+			+     '<select class="form-select" name="subjectType" onchange="subjectTypeChanged(this)">'
 			+       '<option value="user">User</option>'
 			+       '<option value="group">Group</option>'
 			+     '</select>'
 			+   '</div>'
-			+   '<div class="form-group">'
-			+     '<label class="control-label">Subject (username or group)</label>'
+			+   '<div class="mb-3">'
+			+     '<label class="form-label fw-bold">Subject (username or group)</label>'
 			+     '<input type="text" class="form-control" name="subject" list="subjectUsers" placeholder="alice" autocomplete="off" />'
 			+   '</div>'
-			+   '<div class="form-group">'
-			+     '<label class="control-label">Scope</label>'
-			+     '<select class="form-control" name="scope">'
+			+   '<div class="mb-3">'
+			+     '<label class="form-label fw-bold">Scope</label>'
+			+     '<select class="form-select" name="scope">'
 			+       '<option value="domain">Domain</option>'
 			+       '<option value="global">Global</option>'
 			+     '</select>'
 			+   '</div>'
-			+   '<div class="form-group">'
-			+     '<label class="control-label">Domain (for domain scope)</label>'
+			+   '<div class="mb-3">'
+			+     '<label class="form-label fw-bold">Domain (for domain scope)</label>'
 			+     '<input type="text" class="form-control" name="domain" placeholder="example.com" autocomplete="off" />'
-			+     '<div class="field-hint text-muted">'
+			+     '<div class="form-text text-muted">'
 			+       'Wildcards: <code>*.example.com</code> matches one label, '
 			+       '<code>**.example.com</code> matches any depth (incl. the apex), '
 			+       '<code>**</code> matches every domain.'
 			+     '</div>'
 			+   '</div>'
-			+   '<div class="form-group">'
-			+     '<label class="control-label">Role</label>'
-			+     '<select class="form-control" name="role">'
+			+   '<div class="mb-3">'
+			+     '<label class="form-label fw-bold">Role</label>'
+			+     '<select class="form-select" name="role">'
 			+       '<option value="viewer">Viewer (read)</option>'
 			+       '<option value="manager">Manager (full over domain)</option>'
 			+       '<option value="admin">Admin (global only)</option>'
 			+     '</select>'
 			+   '</div>'
 			+   '<hr />'
-			+   '<button type="submit" class="btn btn-info">Add Permission</button>'
+			+   '<div class="d-flex justify-content-end gap-2">'
+			+     '<button type="button" class="btn btn-secondary" onclick="app.modal.close()">Cancel</button>'
+			+     '<button type="submit" class="btn btn-primary">Add Permission</button>'
+			+   '</div>'
 			+ '</form>',
 		});
 	}
 
 	function removePermission(id){
 		app.permission.remove(id, function(error, data){
-			if(error) return app.messages.action(error, $.scope.Permission.$this, 'danger');
-			// The websocket echo removes the row; drop it locally too for snappiness.
+			if(error) return app.messages.action(error, $('#permissions-list'), 'danger');
 			$.scope.Permission.remove(id);
+			loadPermissions();
 		});
 	}
 
 	$(document).ready(function(){
-		// Existing permissions.
-		app.permission.list(function(error, data){
-			if(error) return app.messages.action(error, $.scope.Permission.$this, 'danger');
-			for(let p of data.results) $.scope.Permission.push(p);
-		});
-
+		loadPermissions();
 		loadSubjectSuggestions();
 
 		$.scope.Permission.__take = function($el, item, list){
@@ -108,12 +101,10 @@
 
 		// Live updates (model:Permission:*), so adds/removes reflect for everyone.
 		app.subscribe(/^model:Permission:create/, function(data){
-			$.scope.Permission.remove(data.id);
-			$.scope.Permission.unshift(data);
-			setTimeout(function(){ app.util.revealItem($('#permission-row-' + data.id)); }, 100);
+			loadPermissions();
 		});
 		app.subscribe(/^model:Permission:remove/, function(data, topic){
-			$.scope.Permission.remove(topic.split(':')[3]);
+			loadPermissions();
 		});
 	});
 </script>
@@ -122,47 +113,48 @@
 <datalist id="subjectUsers"></datalist>
 <datalist id="subjectGroups"></datalist>
 
-<div class="row" style="display:none">
+<div class="row">
 	<div class="col-12">
-		<div class="card shadow-lg">
+		<div class="card shadow">
 
-			<div class="card-header text-center">
-				<span class="card-icon float-start">
-					<i class="fa-solid fa-list-check"></i>
-				</span>
-				<span class="card-title">Permissions</span>
-				<span class="float-end">
-					<a href="/docs/access" class="text-reset me-2" title="Help"><i class="fa-solid fa-circle-question"></i></a>
-					<button type="button" class="btn btn-sm btn-success" onclick="permissionAddOpen()">
-						<i class="fa-solid fa-user-shield"></i>
-						Add Permission
+			<div class="card-header d-flex justify-content-between align-items-center">
+				<div>
+					<i class="fa-solid fa-user-shield me-2"></i><strong>Permissions List</strong>
+				</div>
+				<div>
+					<a href="/docs/access" class="text-reset me-3" title="Help"><i class="fa-solid fa-circle-question"></i></a>
+					<button type="button" class="btn btn-sm btn-primary" onclick="permissionAddOpen()">
+						<i class="fa-solid fa-user-shield me-1"></i> Add Permission
 					</button>
-				</span>
+				</div>
 			</div>
 
 			<div class="card-header actionMessage" style="display:none"></div>
-			<div class="card-body">
-			<div class="row row-cols-1 row-cols-lg-2 g-3" id="permission-cards">
-				<div class="col" jq-repeat="Permission" jq-repeat-index="id" id="permission-row-{{id}}" style="display:none">
-					<div class="card shadow-sm h-100">
-						<div class="card-body">
-							<h6 class="mb-2">
-								<span class="badge text-bg-secondary">{{ subjectType }}</span>
-								{{ subject }}
-							</h6>
-							<dl class="row mb-2 small">
-								<dt class="col-4">Scope</dt><dd class="col-8">{{ scope }}</dd>
-								<dt class="col-4">Domain</dt><dd class="col-8">{{ domain }}</dd>
-								<dt class="col-4">Role</dt><dd class="col-8">{{ role }}</dd>
-							</dl>
-							<button type="button" class="btn btn-sm btn-danger" onclick="removePermission('{{id}}')">
-								<i class="fa-solid fa-trash"></i>
-								Delete
+			<div class="card-body p-0">
+				<ul class="list-group list-group-flush" id="permissions-list">
+					<li class="list-group-item d-flex align-items-center justify-content-between py-3" jq-repeat="Permission" jq-repeat-index="id" id="permission-row-{{id}}" style="display:none">
+						<div class="d-flex align-items-center">
+							<div class="me-3 fs-4 text-primary">
+								<i class="fa-solid fa-user-check"></i>
+							</div>
+							<div>
+								<h6 class="mb-1 fw-bold">
+									<span class="badge bg-secondary me-2">{{ subjectType }}</span> {{ subject }}
+								</h6>
+								<div class="small text-muted">
+									<span class="me-3"><strong>Scope:</strong> {{ scope }}</span>
+									<span class="me-3"><strong>Domain:</strong> <code>{{ domain }}</code></span>
+									<span><strong>Role:</strong> <span class="badge bg-info text-dark">{{ role }}</span></span>
+								</div>
+							</div>
+						</div>
+						<div>
+							<button type="button" class="btn btn-sm btn-outline-danger" onclick="removePermission('{{id}}')">
+								<i class="fa-solid fa-trash me-1"></i> Delete
 							</button>
 						</div>
-					</div>
-				</div>
-			</div>
+					</li>
+				</ul>
 			</div>
 		</div>
 	</div>
