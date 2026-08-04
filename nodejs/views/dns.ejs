@@ -1,7 +1,7 @@
 <%- include('top') %>
 <script type="text/javascript">
-	// Require login to see this page.
-	app.auth.forceLogin();
+	// Require an admin to see this page.
+	app.auth.forceLogin(['admin']);
 </script>
 
 <style type="text/css">

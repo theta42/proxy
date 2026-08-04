@@ -37,7 +37,7 @@ module.exports = {
 	// in (plus the synthetic `admin` group when user/me reports isAdmin).
 	nav: [
 		{href: '/hosts', icon: 'fa-solid fa-network-wired', label: 'Hosts', groups: []},
-		{href: '/dns', icon: 'fa-solid fa-record-vinyl', label: 'DNS', groups: []},
+		{href: '/dns', icon: 'fa-solid fa-record-vinyl', label: 'DNS', groups: ['admin']},
 		{href: '/permissions', icon: 'fa-solid fa-user-shield', label: 'Permissions', groups: ['admin']},
 		{href: '/groups', icon: 'fa-solid fa-users-gear', label: 'Groups', groups: ['admin']},
 	],
