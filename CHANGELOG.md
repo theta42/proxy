@@ -1,3 +1,8 @@
+## v1.33.0
+- feat: Add SSO-style error page (404/500) for browser navigation instead of a bare JSON/text response
+- feat: DNS page is now admin-only (hidden from non-admins; API already admin-gated)
+- feat: navbar — username no longer underlined; only the active link is bold + underlined
+
 ## v1.13.3
 - fix: remove missing DEPLOYMENT.md and docs/ from Docker build context
 

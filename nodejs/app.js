@@ -21,6 +21,8 @@ module.exports = app;
 
 // Hold onto the auth middleware 
 const middleware = require('./middleware/auth');
+const conf = require('@simpleworkjs/conf');
+const buildInfo = require('./utils/build_info');
 
 // Grab the projects PubSub
 app.contoller = require('./controller');
@@ -115,6 +117,19 @@ app.use(async function(err, req, res, next) {
     res.status(status);
     // Only expose safe, non-internal fields to the client.
     const body = { name: err.name, message: err.message };
+    // Browser navigation gets the HTML error page (shared with SSO); API
+    // clients get JSON.
+    if (req.accepts('html') && !req.originalUrl.startsWith('/api/')) {
+      res.render('error', {
+        title: conf.environment !== 'production' ? 'dev' : '',
+        titleIcon: conf.environment !== 'production' ? '<i class="fa-brands fa-dev"></i>' : '',
+        name: conf.name,
+        logo: conf.logo,
+        ...buildInfo,
+        error: err,
+      });
+      return;
+    }
     res.json(body);
   }catch(error){
     console.error('error in the catch-all error handler', error);

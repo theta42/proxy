@@ -1,0 +1,25 @@
+<%- include('top') %>
+
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6 text-center">
+      <div class="mb-4">
+        <i class="fa-solid fa-triangle-exclamation text-warning" style="font-size: 4rem;"></i>
+      </div>
+      <h1 class="display-4 fw-bold text-dark"><%= error.status || 500 %></h1>
+      <h3 class="mb-3 text-secondary"><%= error.message || 'Something went wrong' %></h3>
+      <p class="text-muted mb-4">
+        <% if (error.status === 404) { %>
+          The page you are looking for doesn't exist or has been moved.
+        <% } else { %>
+          An unexpected error occurred. Please try again later.
+        <% } %>
+      </p>
+      <a href="/" class="btn btn-primary shadow-sm px-4 py-2">
+        <i class="fa-solid fa-house me-2"></i>Return to Home
+      </a>
+    </div>
+  </div>
+</div>
+
+<%- include('bottom') %>

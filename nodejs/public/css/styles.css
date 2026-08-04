@@ -3,6 +3,12 @@ nav.navbar{
 	padding-right: 1em;
 }
 
+/* Only the active top-nav link is bold + underlined; the username is plain. */
+.top-nav a.active{
+	font-weight: bold;
+	text-decoration: underline;
+}
+
 body {
 	display: flex;
 	flex-direction: column;
