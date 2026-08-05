@@ -58,16 +58,55 @@ function hashHostSecrets(body){
 	}
 }
 
+// The SSO's directory groups, for the per-host SSO allow-list autocomplete.
+// The host's allow-list is checked against the `groups` claim the SSO puts in
+// the token (see utils/host_sso.js), so the only suggestions that can ever
+// match are the SSO's own groups -- the local groups below are a fallback, not
+// the real answer. Requires conf.sso.apiToken; degrades to [] without it, and
+// never fails the request (the form still works, just without suggestions).
+//
+// Cached for a few minutes: this is typeahead fodder, and every host editor
+// opening the form would otherwise hit the SSO.
+let ssoGroupCache = {at: 0, groups: []};
+const SSO_GROUP_TTL = 5 * 60 * 1000;
+
+async function ssoGroups(){
+	let sso = conf.sso || {};
+	if(!sso.url || !sso.apiToken) return [];
+	if(Date.now() - ssoGroupCache.at < SSO_GROUP_TTL) return ssoGroupCache.groups;
+	try{
+		let res = await fetch(`${sso.url.replace(/\/$/, '')}/api/group`, {
+			// A minted API token (`sso_<id>_<secret>`) authenticates as a bearer
+			// token; the SSO's `auth-token` header is for browser session UUIDs
+			// only and would be rejected here.
+			headers: {Authorization: `Bearer ${sso.apiToken}`, Accept: 'application/json'},
+			signal: AbortSignal.timeout(5000),
+		});
+		if(!res.ok) throw new Error(`SSO group list failed (${res.status})`);
+		let body = await res.json();
+		// The SSO returns { results: [...] } -- either CN strings or objects.
+		let groups = (body && body.results || []).map(g => (typeof g === 'string' ? g : g && g.name)).filter(Boolean);
+		ssoGroupCache = {at: Date.now(), groups};
+		return groups;
+	}catch(error){
+		console.error(`[auth-suggestions] could not list SSO groups: ${error.message}`);
+		// Cache the failure briefly so a down SSO doesn't stall every form open.
+		ssoGroupCache = {at: Date.now(), groups: ssoGroupCache.groups};
+		return ssoGroupCache.groups;
+	}
+}
+
 // Autocomplete source for the per-host auth allow-lists (SSO users/groups).
 // Available to any authenticated host editor (not just global admins). Groups
-// are derived from local groups, existing permission group-subjects, and the
-// conf.auth admin/role-map groups.
+// are the SSO directory's groups plus local groups, existing permission
+// group-subjects, and the conf.auth admin/role-map groups.
 router.get('/auth-suggestions', async function(req, res, next){
 	try{
 		let users = [];
 		try{ users = (await User.list()) || []; }catch(error){ /* none */ }
 
 		let groups = new Set();
+		for(let g of await ssoGroups()) groups.add(g);
 		try{ for(let g of await LocalGroup.list()) groups.add(g); }catch(error){ /* none */ }
 		try{
 			for(let p of await Permission.listDetail()){

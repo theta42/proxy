@@ -45,6 +45,18 @@ module.exports = {
 		usernameClaim: 'preferred_username',
 	},
 
+	// Read-only SSO management API access, used to populate the per-host SSO
+	// allow-list autocomplete with the groups that actually exist in the
+	// directory. Without it the "Allowed groups" field can only suggest groups
+	// the proxy already knows locally, which for an SSO-gated host is usually
+	// none of the ones the operator wants. `apiToken` is a machine token minted
+	// by the theta-suite bootstrap and lives in secrets.js; leaving it unset
+	// simply falls back to the local-only suggestions.
+	sso: {
+		url: '',        // e.g. https://sso.example.com
+		apiToken: '',
+	},
+
 	// Authorization: how groups map to roles, and which groups are global admin.
 	// Per-user overrides are Grant records managed in the app.
 	auth: {
