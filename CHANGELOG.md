@@ -1,3 +1,9 @@
+## v1.34.0
+- feat: the per-host SSO **Allowed groups** field now autocompletes from the SSO directory's groups. Suggestions previously came only from local groups, permission subjects and `conf.auth` maps — none of which can match an SSO-gated host, because its allow-list is checked against the `groups` claim the SSO issues. New `conf.sso` block (`url` + read-only `apiToken`, minted by theta-suite's bootstrap); results are cached for 5 minutes and the endpoint degrades silently to the old local-only list when unset.
+- fix: the SSO group lookup authenticates with `Authorization: Bearer <token>`, not the `auth-token` header — the latter is for browser session UUIDs and would be rejected for a minted API token.
+- docs: `docs/concepts-hosts.md` gains a "Putting a host behind single sign-on" section covering the per-host `/__proxy_auth` flow, the wildcard redirect URI the IdP must allow, and where group suggestions come from.
+- docs: `secrets.js.example` documents the new `sso` block.
+
 ## v1.33.0
 - feat: Add SSO-style error page (404/500) for browser navigation instead of a bare JSON/text response
 - feat: DNS page is now admin-only (hidden from non-admins; API already admin-gated)

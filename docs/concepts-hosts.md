@@ -68,6 +68,38 @@ host form whenever the name you're entering already has a matching
 wildcard available to reuse — including the wildcard's own bare base
 domain (e.g. `example.com` itself, not just `something.example.com`).
 
+## Putting a host behind single sign-on
+
+Each host can be gated on its own, independently of the proxy's management UI.
+On the host's **Auth** tab pick **Single sign-on (SSO)** and, optionally, fill in
+the **Allowed users** / **Allowed groups** lists. Empty lists mean any
+authenticated user is allowed; otherwise the identity must match one of them.
+
+The proxy runs the OIDC flow itself at `/__proxy_auth` on the protected host and
+keeps a Redis-backed session in a `__proxy_sso` cookie, so the app behind it
+needs no changes.
+
+**The IdP must allow the per-host callback.** Each protected host calls back to
+`https://<that-host>/__proxy_auth/callback`, which is a different URL for every
+host, all against the proxy's one OAuth client. Register a wildcard redirect URI
+on that client — the SSO Manager supports `*` (one label) and `**` (any number):
+
+```
+https://**.example.com/__proxy_auth/callback
+https://example.com/__proxy_auth/callback
+```
+
+theta-suite's bootstrap registers both automatically, and backfills them onto an
+existing client. Without them, switching a host to SSO fails at the IdP with
+`400 redirect_uri is not registered for this client`.
+
+**Group suggestions come from the SSO.** The Allowed groups field autocompletes
+from the SSO directory's groups when `sso.url` and `sso.apiToken` are set in the
+proxy's config (theta-suite's bootstrap mints that read-only token). Without it
+the field can only suggest the proxy's local groups, which for an SSO-gated host
+are rarely the ones you want — the allow-list is matched against the `groups`
+claim in the SSO's token, so only SSO groups can ever match.
+
 ## Load Balancing
 
 If you have multiple servers running the same application, you can load balance traffic across them. When editing a host, you can specify **Additional Targets** (one `IP:port` per line). The proxy will automatically distribute incoming requests across your primary target and all additional targets using a round-robin strategy, providing simple high availability and load distribution without extra configuration.
