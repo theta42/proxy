@@ -466,13 +466,19 @@ app.permission = (function(app){
 		});
 	}
 
+	function update(id, args, callback){
+		app.api.put('permission/' + encodeURIComponent(id), args, function(error, data){
+			callback(error, data);
+		});
+	}
+
 	function remove(id, callback){
 		app.api.delete('permission/' + encodeURIComponent(id), function(error, data){
 			callback(error, data);
 		});
 	}
 
-	return {list, subjects, add, remove};
+	return {list, subjects, add, update, remove};
 
 })(app);
 

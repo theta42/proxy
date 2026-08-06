@@ -1,3 +1,7 @@
+## v1.35.0
+- feat: **permission entries can be edited.** The Permissions page only offered Delete, so changing a role or scope meant removing the grant and re-adding it from memory. New `PUT /api/permission/:id` plus an Edit modal pre-filled from the record.
+- fix: a permission's id is derived from (subjectType, subject, scope, domain), so changing any of those is a *different* record, not an update. The endpoint creates the new grant and removes the superseded one in that order, so an edit can never leave the old grant behind still conferring access.
+
 ## v1.34.0
 - feat: the per-host SSO **Allowed groups** field now autocompletes from the SSO directory's groups. Suggestions previously came only from local groups, permission subjects and `conf.auth` maps — none of which can match an SSO-gated host, because its allow-list is checked against the `groups` claim the SSO issues. New `conf.sso` block (`url` + read-only `apiToken`, minted by theta-suite's bootstrap); results are cached for 5 minutes and the endpoint degrades silently to the old local-only list when unset.
 - fix: the SSO group lookup authenticates with `Authorization: Bearer <token>`, not the `auth-token` header — the latter is for browser session UUIDs and would be rejected for a minted API token.

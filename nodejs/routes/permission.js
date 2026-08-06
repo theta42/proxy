@@ -57,6 +57,47 @@ router.post('/', async function(req, res, next){
 	}
 });
 
+// Edit an existing grant.
+//
+// The record id is derived from (subjectType, subject, scope, domain)
+// -- Permission.mkId -- so changing any of those is a DIFFERENT record, not an
+// in-place update. Changing only the role is a true update. Handle both here so
+// the UI can offer a single "edit" instead of making the operator delete and
+// re-add, and so a subject/scope change can never leave the old grant behind
+// still conferring access.
+router.put('/:id', async function(req, res, next){
+	try{
+		let existing = await Permission.get(req.params.id);
+		if(!existing) return res.status(404).json({message: `Permission ${req.params.id} not found.`});
+
+		let next_ = {
+			subjectType: req.body.subjectType !== undefined ? req.body.subjectType : existing.subjectType,
+			subject:     req.body.subject     !== undefined ? req.body.subject     : existing.subject,
+			scope:       req.body.scope       !== undefined ? req.body.scope       : existing.scope,
+			domain:      req.body.domain      !== undefined ? req.body.domain      : existing.domain,
+			role:        req.body.role        !== undefined ? req.body.role        : existing.role,
+			created_by:  reqUsername(req),
+		};
+		if(next_.scope === 'global') next_.domain = '*';
+
+		// create() upserts on the new id, so this is safe in either direction;
+		// remove the old record afterwards only when the identity actually moved.
+		let permission = await Permission.create(next_);
+		let newId = Permission.mkId(next_);
+		if(newId !== req.params.id){
+			try{ await existing.remove(); }catch(error){ /* already replaced */ }
+		}
+
+		return res.json({
+			message: `Updated ${next_.subjectType} "${next_.subject}" to ${next_.role}` +
+				(next_.scope === 'global' ? ' globally.' : ` on ${next_.domain}.`),
+			...permission,
+		});
+	}catch(error){
+		next(error);
+	}
+});
+
 router.delete('/:id', async function(req, res, next){
 	try{
 		let permission = await Permission.get(req.params.id);
