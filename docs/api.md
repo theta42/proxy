@@ -391,6 +391,30 @@ curl -H "Content-Type: application/json" \
 - `200` `{"message": "Granted manager to user \"alice\" on example.com.", ...}`
 - `422` Validation error
 
+### Update Permission
+
+**PUT** `/api/permission/:id`
+
+Edit an existing grant in place. Any field omitted keeps its current value;
+changing `subjectType`/`subject`/`scope`/`domain`/`role` enough to change the
+permission's identity moves it to a new id (the old record is removed).
+
+**Parameters:** same as Create Permission, all optional — only send the
+fields you want to change.
+
+```bash
+curl -H "Content-Type: application/json" \
+  -H "auth-token: your-token-here" \
+  -X PUT \
+  -d '{"role": "viewer"}' \
+  https://proxy-host.com/api/permission/<id>
+```
+
+**Responses:**
+- `200` `{"message": "Updated user \"alice\" to viewer on example.com.", ...}`
+- `404` Permission not found
+- `422` Validation error
+
 ### Delete Permission
 
 **DELETE** `/api/permission/:id`

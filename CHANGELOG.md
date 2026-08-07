@@ -1,3 +1,7 @@
+## v1.35.1
+- docs: `docs/api.md` was missing the `PUT /api/permission/:id` endpoint (shipped in v1.35.0) entirely from the Permissions section.
+- docs: rate limiting, response caching, HSTS, and IP allow/deny are real, fully-implemented per-host fields with no documentation anywhere. Added a section to `docs/concepts-hosts.md`.
+
 ## v1.35.0
 - feat: **permission entries can be edited.** The Permissions page only offered Delete, so changing a role or scope meant removing the grant and re-adding it from memory. New `PUT /api/permission/:id` plus an Edit modal pre-filled from the record.
 - fix: a permission's id is derived from (subjectType, subject, scope, domain), so changing any of those is a *different* record, not an update. The endpoint creates the new grant and removes the superseded one in that order, so an edit can never leave the old grant behind still conferring access.
