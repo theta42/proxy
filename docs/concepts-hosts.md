@@ -104,6 +104,22 @@ claim in the SSO's token, so only SSO groups can ever match.
 
 If you have multiple servers running the same application, you can load balance traffic across them. When editing a host, you can specify **Additional Targets** (one `IP:port` per line). The proxy will automatically distribute incoming requests across your primary target and all additional targets using a round-robin strategy, providing simple high availability and load distribution without extra configuration.
 
+## Other per-host protections
+
+A few more toggles live on each host's edit form, alongside auth and load
+balancing:
+
+- **Rate limiting** — cap requests per client IP (a token-bucket: a
+  requests/sec rate plus a burst allowance). Off by default.
+- **Response caching** — cache cacheable upstream responses at the edge. Off
+  by default; upstream `Cache-Control: private`/`no-store` is still honored
+  even when enabled.
+- **HSTS** — send `Strict-Transport-Security` once you've confirmed HTTPS
+  works, so browsers stop trying plain HTTP for this host.
+- **IP allow/deny** — restrict a host to a list of source IPs/CIDRs
+  (allow-list is default-deny once non-empty), or block specific sources
+  outright (deny always wins over allow).
+
 ## Want more detail?
 
 This page skips the system-internals (Redis, OpenResty, the lookup service)
