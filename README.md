@@ -75,113 +75,20 @@ provider + LDAP directory you already run.
 - Inbound internet access for Let's Encrypt validation
 - Root access (required for user management features)
 
-## Quick start
+## Deployment
 
-Three ways to run it, in order of how much it sets up for you:
-
-### 1. As part of the unified stack (recommended)
-
-[theta-env](https://github.com/theta42/theta-env) composes this proxy with the
-[theta42 SSO Manager](https://github.com/theta42/sso-manager-node) and generates
-all the wiring (OIDC endpoints, LDAP bind, hostnames) from a single `setup.env`.
-You enter your domain once and the proxy is registered as an OIDC client of the
-SSO automatically:
+Theta Proxy is deployed exclusively via Docker Compose as an integrated service within **Theta Suite**:
 
 ```bash
-git clone --recursive https://github.com/theta42/theta-env.git
-cd theta-env
+git clone --recursive https://github.com/theta42/theta-suite.git
+cd theta-suite
 cp setup.env.example setup.env   # set CFG_DOMAIN to your domain
-./setup.sh                       # generates ./config/, builds + bootstraps + starts both
+./setup.sh                       # generates config, builds, and starts Theta Suite
 ```
 
-See the [theta-env README](https://github.com/theta42/theta-env) for the full
-first-run flow, DNS/port requirements, and backups.
+All routing rules, OIDC client secrets, and LDAP settings are automatically wired during `./setup.sh` bring-up.
 
-### 2. Standalone, in Docker
-
-The all-in-one image bundles OpenResty, the Node management app, and Redis. The
-OIDC/LDAP/auth config is read from a bind-mounted `./config/proxy-secrets.js`
-(the OAuth client id/secret are filled in by your SSO's bootstrap, or you set
-them yourself):
-
-```bash
-git clone https://github.com/theta42/proxy.git
-cd proxy
-mkdir -p config && chmod 700 config
-cp secrets.js.example config/proxy-secrets.js
-$EDITOR config/proxy-secrets.js   # point oidc/ldap at your SSO + directory
-docker compose up -d --build
-```
-
-The management UI comes up at `http://127.0.0.1:3000` (bound to localhost; the
-OpenResty front proxies it under TLS on 443). See [DEPLOYMENT.md](DEPLOYMENT.md)
-and `secrets.js.example` for the full config shape.
-
-### 3. Bare metal (Debian/Ubuntu)
-
-An automated installer installs Node.js, OpenResty, Redis, the Lua modules, and
-the app, then symlinks the nginx config and starts a systemd service:
-
-```bash
-wget -O - https://raw.githubusercontent.com/theta42/proxy/master/ops/install.sh | sudo bash
-```
-
-This installer will:
-- Install Node.js 22.x
-- Install OpenResty and required dependencies
-- Install and configure Redis
-- Set up SSL fallback certificates
-- Install Lua dependencies (lua-resty-auto-ssl, luasocket)
-- Clone/update the proxy application at `/opt/theta42/proxy`
-- Seed `/etc/proxy/secrets.js` on first run (edit it, then re-run or `systemctl restart proxy`)
-- Configure systemd service
-- Start the proxy service
-
-It's idempotent and safe to re-run — re-running it updates the app in place and
-prints the version you're updating from and to (e.g. `Updated v1.1.13 ->
-v1.1.14`), or `Already up to date` if there's nothing new.
-
-## Logs (Docker)
-
-The all-in-one image runs OpenResty in the foreground and the Node app in the
-background, both writing to the container's stdout/stderr. The proxy's nginx
-access/error logs go to files (`/var/log/nginx`, on the `proxy-logs` volume),
-so they do **not** show up in `docker logs`.
-
-```bash
-# App + OpenResty (stdout/stderr)
-docker compose logs -f proxy
-# or, by container name:
-docker logs -f proxy
-
-# nginx access / error logs (in-container files, not in docker logs)
-docker compose exec proxy tail -f /var/log/nginx/access.log
-docker compose exec proxy tail -f /var/log/nginx/error.log
-
-# Recent context
-docker compose logs --tail=200 --since=10m proxy
-```
-
-## Secrets
-
-Secrets are loaded from **OpenBao** at boot via
-[@simpleworkjs/bao-conf](https://simpleworkjs.github.io/bao-conf/), which
-deep-merges `secret/proxy/conf` over the file-loaded config. The proxy's OIDC
-`clientSecret` is captured at require time (inside `createOidcClient` during
-`require('../models')`), so `bin/www` runs `bao-conf.init()` **before**
-`require('../app')` (which transitively loads models). Fail-soft: if OpenBao is
-unreachable, boot continues from `CONF_SECRETS`. The proxy authenticates to
-OpenBao with the scoped `VAULT_TOKEN` (env, policy `proxy` — read only
-`secret/proxy/conf`), never the root token.
-
-The `config/proxy-secrets.js` file is an operator-edit seed artifact
-(gitignored); the bootstrap writes the generated OAuth client creds into
-OpenBao, which is authoritative. For the full architecture see theta-env's
-**[Secrets docs](https://theta42.github.io/theta-env/secrets/)**.
-
-## Manual Installation
-
-For manual installation or other distributions, see the detailed steps below.
+See the main [Theta Suite README](https://github.com/theta42/theta-suite) for full details on setup, domain configuration, TLS certificates, and backup management.
 
 > **Recommended path:** `ops/install.sh` is idempotent and safe to re-run — it
 > symlinks the OpenResty/systemd config from the repo checkout, so updates
