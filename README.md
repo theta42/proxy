@@ -1,9 +1,10 @@
-# Proxy
+# Theta Proxy
 
 A reverse proxy and HTTPS termination service built on OpenResty/nginx, with a
 management API and web GUI. It puts any of your apps behind single sign-on (OIDC)
 and can also look users up directly in LDAP — so the same people who log in to
-your SSO are the people allowed to reach your proxied apps.
+[Theta Directory](https://github.com/theta42/theta-directory) are the people
+allowed to reach your proxied apps.
 
 It handles the parts that are tedious to do by hand: automatic HTTPS certificates
 from Let's Encrypt (including wildcards via DNS-01), routing by hostname with
@@ -11,12 +12,13 @@ wildcard matching, and per-host access control tied to your identity provider.
 You manage hosts, DNS providers, and permissions from a web UI or a REST API; the
 proxy serves them over TLS with auto-renewing certs and no downtime on changes.
 
-> Running it together with the [theta42 SSO Manager](https://github.com/theta42/sso-manager-node)?
-> [theta-env](https://github.com/theta42/theta-env) composes the two with one
-> `setup.sh` — it generates the OIDC + LDAP wiring from a single `setup.env` so
-> the proxy and the SSO find each other without manual config.
+Theta Proxy is deployed as part of [Theta Suite](https://github.com/theta42/theta-suite),
+alongside Theta Directory (bundled OpenLDAP + OIDC) and Theta Gateway — it
+isn't installed or run on its own. `./setup.sh` generates the OIDC + LDAP
+wiring from a single `setup.env` so the proxy and the SSO find each other
+without manual config.
 
-**Documentation:** [https://theta42.github.io/proxy/](https://theta42.github.io/proxy/)
+**Documentation:** [https://theta42.github.io/theta-suite/proxy/](https://theta42.github.io/theta-suite/proxy/)
 ([CHANGELOG.md](CHANGELOG.md) for what changed in each release) — also
 readable from the running app itself at `/docs`, no internet access required.
 
@@ -35,19 +37,6 @@ Multiple backend targets per host, load balanced round-robin:
 
 [![Load balancing](docs/images/load-balancing.png)](docs/images/load-balancing.png)
 
-## Why this over the alternatives
-
-Nginx Proxy Manager, Traefik, and Caddy are all good reverse proxies with
-auto-HTTPS. This one is built around identity: it is both an **OIDC client** of
-an SSO provider (for browser login) **and** a direct **LDAP client** (for user
-lookups and per-host access control), so access decisions come from your real
-user directory, not a static allow-list or a separate auth proxy bolted on top.
-The trade-off is that it expects an OIDC/LDAP identity source to point at — it
-is not a standalone auth server. Pair it with the
-[theta42 SSO Manager](https://github.com/theta42/sso-manager-node) (bundled
-OpenLDAP + OIDC) for a self-hosted SSO + proxy stack, or point it at any OIDC
-provider + LDAP directory you already run.
-
 ## Features
 
 - Automated HTTPS/SSL certificate management via Let's Encrypt
@@ -58,8 +47,8 @@ provider + LDAP directory you already run.
 - **Multi-target load balancing** — configure multiple backend targets per host with built-in round-robin load balancing
 - Web-based management interface
 - RESTful API for automation
-- **OIDC login** — the proxy is an OpenID Connect client of an external SSO
-  (e.g. [`theta42/sso-manager-node`](https://github.com/theta42/sso-manager-node))
+- **OIDC login** — the proxy is an OpenID Connect client of
+  [Theta Directory](https://github.com/theta42/theta-directory)
 - **Direct LDAP lookups**, independent of the OIDC flow
 - **Role-based access control (RBAC)** — global admins, local groups, and
   per-domain permissions (viewer/manager) via `/api/permission` and `/api/group`
@@ -68,12 +57,9 @@ provider + LDAP directory you already run.
 
 ## Requirements
 
-- Node.js 18+ (tested with 18.x, 20.x, 22.x)
-- OpenResty (nginx with Lua support)
-- Redis
-- Modern Linux distribution (tested on Ubuntu 20.04+, Debian 11+)
+- Docker + Docker Compose (everything else — Node.js, OpenResty, Redis — runs
+  inside the container Theta Suite builds)
 - Inbound internet access for Let's Encrypt validation
-- Root access (required for user management features)
 
 ## Deployment
 
@@ -89,97 +75,6 @@ cp setup.env.example setup.env   # set CFG_DOMAIN to your domain
 All routing rules, OIDC client secrets, and LDAP settings are automatically wired during `./setup.sh` bring-up.
 
 See the main [Theta Suite README](https://github.com/theta42/theta-suite) for full details on setup, domain configuration, TLS certificates, and backup management.
-
-> **Recommended path:** `ops/install.sh` is idempotent and safe to re-run — it
-> symlinks the OpenResty/systemd config from the repo checkout, so updates
-> stay in sync automatically. The manual steps below copy those same files
-> instead of symlinking them, so they will **not** auto-track future changes
-> to `ops/nginx_conf/` or `ops/proxy.service` — you'd need to re-copy them
-> yourself after every update. Use the manual path only if `install.sh`
-> doesn't fit your distribution.
-
-### System Dependencies
-
-**Ubuntu/Debian:**
-```bash
-apt install libpam0g-dev build-essential redis-server luarocks -y
-```
-
-**Node.js 22.x:**
-```bash
-curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-NODE_MAJOR=22
-echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-apt update && apt install nodejs -y
-```
-
-**OpenResty:**
-```bash
-wget -O - https://openresty.org/package/pubkey.gpg | sudo gpg --dearmor -o /usr/share/keyrings/openresty.gpg
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/openresty.gpg] http://openresty.org/package/ubuntu $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/openresty.list
-apt update && apt install openresty -y
-```
-
-**Lua Dependencies:**
-```bash
-luarocks install lua-resty-auto-ssl
-luarocks install luasocket
-```
-
-### SSL Configuration
-
-Create fallback SSL certificates:
-```bash
-mkdir -p /etc/ssl/
-openssl req -new -newkey rsa:2048 -days 3650 -nodes -x509 \
-  -subj '/CN=sni-support-required-for-valid-ssl' \
-  -keyout /etc/ssl/resty-auto-ssl-fallback.key \
-  -out /etc/ssl/resty-auto-ssl-fallback.crt
-```
-
-### OpenResty Configuration
-
-Configuration files are provided in `ops/nginx_conf/`:
-- `nginx.conf` - Main nginx configuration
-- `autossl.conf` - Auto-SSL configuration for Let's Encrypt HTTP-01
-- `proxy.conf` - Proxy server configuration with host lookup
-- `targetinfo.lua` - Lua module for host lookup via Unix socket
-
-Copy these files to `/etc/openresty/`:
-```bash
-mkdir -p /etc/openresty/sites-enabled/
-cp ops/nginx_conf/nginx.conf /etc/openresty/nginx.conf
-cp ops/nginx_conf/autossl.conf /etc/openresty/autossl.conf
-cp ops/nginx_conf/proxy.conf /etc/openresty/sites-enabled/000-proxy
-cp ops/nginx_conf/targetinfo.lua /usr/local/openresty/lualib/targetinfo.lua
-```
-
-### Application Setup
-
-Clone and install:
-```bash
-mkdir -p /opt/theta42
-cd /opt/theta42
-git clone https://github.com/theta42/proxy.git
-cd proxy/nodejs
-npm install
-```
-
-Configure secrets:
-```bash
-mkdir -p /etc/proxy
-cp ../secrets.js.example /etc/proxy/secrets.js
-chmod 600 /etc/proxy/secrets.js
-$EDITOR /etc/proxy/secrets.js
-```
-
-Create systemd service:
-```bash
-cp ../ops/proxy.service /etc/systemd/system/proxy.service
-systemctl daemon-reload
-systemctl enable proxy.service
-systemctl start proxy.service
-```
 
 ## DNS Provider Configuration
 
@@ -229,25 +124,6 @@ The proxy supports sophisticated domain matching:
 - **Mixed wildcards**: `api.*.example.com` matches `api.v1.example.com`, `api.v2.example.com`, etc.
 
 Priority: Exact match > Single wildcard > Double wildcard
-
-## Development
-
-**Running locally:**
-```bash
-cd nodejs
-npm install
-npm run dev  # Runs with nodemon for auto-reload
-```
-
-**Running tests:**
-```bash
-npm test                  # Run all tests
-npm run test:unit         # Run unit tests only
-npm run test:integration  # Run integration tests only
-npm run test:watch        # Watch mode for development
-```
-
-Tests use Node.js built-in test runner (requires Node 18+).
 
 ## API Documentation
 
