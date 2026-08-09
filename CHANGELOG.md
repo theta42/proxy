@@ -1,3 +1,9 @@
+## v2.0.1
+- docs: removed the "Why this over the alternatives" section and the standalone-Docker install path from README; trimmed the Requirements section, which still listed bare-metal requirements (root access, OpenResty/Redis installed directly) that contradicted the Docker-exclusive deployment story above it. Documentation/OIDC links now point at the unified `theta42.github.io/theta-suite/` docs site instead of the old per-repo Pages sites.
+
+## v2.0.0
+- docs: **Docker-only deployment via Theta Suite.** README's "Quick start" (three deployment options: unified stack, standalone Docker, bare metal) replaced with a single Docker Compose path through Theta Suite's `./setup.sh`, matching how the proxy is actually deployed and supported. Major version bump to mark this as a breaking change in how the proxy is documented/installed.
+
 ## v1.35.1
 - docs: `docs/api.md` was missing the `PUT /api/permission/:id` endpoint (shipped in v1.35.0) entirely from the Permissions section.
 - docs: rate limiting, response caching, HSTS, and IP allow/deny are real, fully-implemented per-host fields with no documentation anywhere. Added a section to `docs/concepts-hosts.md`.
