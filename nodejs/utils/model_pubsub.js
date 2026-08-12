@@ -10,7 +10,12 @@ const ps = require('../controller/pubsub');
  * @param {Object|Function} model - The data model or instance to be proxied.
  * @returns {Proxy} - The proxied model.
  */
-function ModelPs(model) {
+function ModelPs(model, options) {
+	// Which mutations announce themselves. Defaults to all of them; a model
+	// with a hot, uninteresting write path can narrow it — see ApiToken, whose
+	// best-effort `last_used_on` touch happens on every authenticated API call
+	// and would otherwise put an event on the socket for each one.
+	const actions = (options && options.actions) || ['add', 'create', 'update', 'remove'];
 	// Ensure we have a reference to the class constructor regardless of whether an instance or class was passed
 	const Model = model.constructor.name === 'Function' ? model : model.constructor;
 	
@@ -38,8 +43,8 @@ function ModelPs(model) {
 	 */
 	function publish(prop, res, req) {
 		try {
-			// Only trigger for specific mutation keywords
-			if (!['add', 'create', 'update', 'remove'].includes(prop)) return;
+			// Only trigger for the mutations this model announces.
+			if (!actions.includes(prop)) return;
 
 			ps.publish(`model:${Model.name}:${prop}:${getIndex(res, req)}`, res);
 		} catch (error) {
@@ -61,7 +66,10 @@ function ModelPs(model) {
 		 * Intercepts 'new' keyword calls to ensure instances are also proxied.
 		 */
 		construct(target, args, newTarget) {
-			return ModelPs(Reflect.construct(target, args, newTarget));
+			// Carry the options through: an instance built from a narrowed
+			// class must stay narrowed, or the very writes we excluded would
+			// announce themselves from the instance instead.
+			return ModelPs(Reflect.construct(target, args, newTarget), options);
 		},
 
 		/**

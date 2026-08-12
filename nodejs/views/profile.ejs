@@ -61,10 +61,25 @@
 		}
 	}
 
-	$(document).ready(function(){
+	function loadProfile(){
 		app.api.get('user/me', function(error, data){
 			if(error) return app.messages.action(error, $('#profile-card'), 'danger');
 			renderProfile(data);
+		});
+	}
+
+	$(document).ready(function(){
+		loadProfile();
+
+		// Live updates for your own record. The socket gate on User is
+		// admin-or-self, so an ordinary session only ever receives its own —
+		// which is exactly what this card shows. The case that matters is an
+		// admin changing your groups or resetting your password while you are
+		// looking at a page telling you otherwise.
+		let timer = null;
+		app.subscribe(/^model:User:/, function(){
+			clearTimeout(timer);
+			timer = setTimeout(loadProfile, 300);
 		});
 	});
 </script>
@@ -272,6 +287,21 @@
 
 	$(document).ready(function(){
 		tableAJAX();
+
+		// Live updates. ApiToken publishes create and remove only — its
+		// `last_used_on` touch happens on every authenticated API call, and
+		// announcing that would put an event on the socket per request. A token
+		// list needs to know when a token appears or is revoked; a "last used"
+		// timestamp going a few seconds stale costs nothing.
+		//
+		// The socket gate is owner-scoped with no admin bypass, so this only
+		// ever carries your own tokens. tableAJAX() also toggles the empty
+		// state, so it re-runs rather than patching a card.
+		let timer = null;
+		app.subscribe(/^model:ApiToken:/, function(){
+			clearTimeout(timer);
+			timer = setTimeout(tableAJAX, 300);
+		});
 	});
 </script>
 

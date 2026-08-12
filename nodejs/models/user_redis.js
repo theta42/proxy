@@ -1,6 +1,7 @@
 'use strict';
 
 const Table = require('.');
+const ModelPs = require('../utils/model_pubsub');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const saltRounds = 10;
@@ -83,7 +84,9 @@ class User extends Table{
 	};
 }
 
-User.register();
+// Announce writes so the Users page updates itself. _key is 'username', not
+// 'name', so the class-name-as-pk trap that hit LocalGroup does not apply.
+User.register(ModelPs(User));
 
 // Anti-lockout local-admin bootstrap moved to @simpleworkjs/oidc-client
 // (bootstrapLocalAdmin); invoked once from models/index.js after User is

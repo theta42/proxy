@@ -74,6 +74,41 @@ test('models without a gate are absent from READERS, so they are not broadcast',
 	// attach() fails closed on an unlisted model. Cert carries private key
 	// material and must never be added without a deliberate gate.
 	assert.strictEqual(READERS.Cert, undefined);
-	assert.strictEqual(READERS.User, undefined);
-	assert.strictEqual(READERS.ApiToken, undefined);
+	assert.strictEqual(READERS.SsoSession, undefined);
+});
+
+test('User events are admin-or-self, not admin-only', () => {
+	// GET /api/user is requireAdmin, but /api/user/me is self-service, so a
+	// user must receive their own record and nobody else's.
+	const alice = {isAdmin: false, global: null, domains: {}, groups: [], username: 'alice'};
+	assert.strictEqual(READERS.User(alice, {username: 'alice'}), true);
+	assert.strictEqual(READERS.User(alice, {username: 'bob'}), false);
+	assert.strictEqual(READERS.User({...admin, username: 'root'}, {username: 'bob'}), true);
+});
+
+test('User falls back to the topic pk when a delete carries no body', () => {
+	const alice = {isAdmin: false, global: null, domains: {}, groups: [], username: 'alice'};
+	assert.strictEqual(READERS.User(alice, null, 'alice'), true);
+	assert.strictEqual(READERS.User(alice, null, 'bob'), false);
+});
+
+test('ApiToken is owner-scoped with no admin bypass', () => {
+	// A personal access token is nobody else's business; the REST route has no
+	// admin path either.
+	const alice = {isAdmin: false, global: null, domains: {}, groups: [], username: 'alice'};
+	assert.strictEqual(READERS.ApiToken(alice, {created_by: 'alice'}), true);
+	assert.strictEqual(READERS.ApiToken(alice, {created_by: 'bob'}), false);
+	assert.strictEqual(READERS.ApiToken({...admin, username: 'root'}, {created_by: 'alice'}), false);
+});
+
+test('an unidentifiable record is withheld', () => {
+	const alice = {isAdmin: false, global: null, domains: {}, groups: [], username: 'alice'};
+	assert.strictEqual(READERS.User(alice, {}, undefined), false);
+	assert.strictEqual(READERS.ApiToken(alice, {}, undefined), false);
+});
+
+test('Cert and SsoSession have no gate, so they are never broadcast', () => {
+	// Cert holds private key material; SsoSession holds live session state.
+	assert.strictEqual(READERS.Cert, undefined);
+	assert.strictEqual(READERS.SsoSession, undefined);
 });

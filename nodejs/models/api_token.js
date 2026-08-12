@@ -3,6 +3,7 @@
 const Table = require('.');
 const bcrypt = require('bcrypt');
 const crypto = require('crypto');
+const ModelPs = require('../utils/model_pubsub');
 
 // Self-service personal access token (PAT) for the proxy management API.
 // Format:  prx_<id>_<secret>
@@ -17,8 +18,11 @@ const crypto = require('crypto');
 // owned-domain rights are recomputed live by Permission.effectiveFor.
 //
 // No `static _ttl`: records persist (lifetime is the optional expires_at field).
-// Deliberately NOT wrapped in ModelPs — the best-effort last_used_on write on
-// the auth path would otherwise spam the socket on every API call.
+// Wrapped in ModelPs for create/remove ONLY. The reason this was previously
+// unwrapped still stands — the best-effort last_used_on write happens on every
+// authenticated API call, and announcing that would put an event on the socket
+// per request. A token list only needs to know when a token appears or is
+// revoked; a `last used` timestamp going a few seconds stale costs nothing.
 
 const PREFIX = 'prx_';
 const randomHex = (bytes) => crypto.randomBytes(bytes).toString('hex');
@@ -84,6 +88,10 @@ class ApiToken extends Table{
 	}
 }
 
-ApiToken.register();
+ApiToken.register(ModelPs(ApiToken, {actions: ['add', 'create', 'remove']}));
 
-module.exports = {ApiToken};
+// Export the *proxied* model, not the raw class — routes/api_token.js imports
+// this file directly, and registering the proxy only makes it reachable via
+// `require('../models').models`. This is the same trap that left LocalGroup and
+// Permission publishing nothing at all (v2.1.0).
+module.exports = {ApiToken: ModelPs(ApiToken, {actions: ['add', 'create', 'remove']})};

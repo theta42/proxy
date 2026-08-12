@@ -62,6 +62,25 @@ const READERS = {
 	LocalGroup(){
 		return true;
 	},
+
+	// routes/user.js:19 — GET /api/user is authz.requireAdmin. A user also
+	// reads themselves via /api/user/me, so the gate is admin OR self rather
+	// than admin only: row-level, not just model-level.
+	User(effective, record, pk){
+		if(effective.isAdmin) return true;
+		const self = effective.username;
+		const subject = (record && record.username) || pk;
+		return !!self && !!subject && String(subject) === String(self);
+	},
+
+	// routes/api_token.js — self-service, owner-scoped, with no admin path.
+	// Deliberately no admin bypass here either: a personal access token is
+	// nobody else's business, and the REST route agrees.
+	ApiToken(effective, record, pk){
+		const self = effective.username;
+		const owner = record && record.created_by;
+		return !!self && !!owner && String(owner) === String(self);
+	},
 };
 
 // Models whose events invalidate cached rights: a grant or group-membership
@@ -97,6 +116,9 @@ async function effectiveFor(socket){
 		username: socket.user && socket.user.username,
 		groups: socket.groups || [],
 	});
+	// effectiveFor returns rights, not identity; the row-level gates below need
+	// to know WHO this socket is to compare against a record's owner.
+	socket._effective.username = socket.user && socket.user.username;
 	socket._effectiveAt = now;
 	return socket._effective;
 }
