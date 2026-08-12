@@ -11,14 +11,27 @@
 	// not a lookup by key).
 	var permissionsById = {};
 
+	// The app.filter instance driving the search box; assigned in ready().
+	var permissionFilter;
+
+	// Keep the by-id lookup in step with whatever lands in the scope, including
+	// rows that arrive over the socket rather than through loadPermissions().
+	function permissionParseRow(p){
+		permissionsById[p.id] = p;
+		return p;
+	}
+
 	function loadPermissions() {
 		app.permission.list(function(error, data){
 			if(error) return app.messages.action(error, $('#permissions-list'), 'danger');
 			permissionsById = {};
 			$.scope.Permission.empty();
 			for(let p of (data.results || [])){
-				permissionsById[p.id] = p;
-				$.scope.Permission.push(p);
+				$.scope.Permission.push(permissionParseRow(p));
+			}
+			if(permissionFilter){
+				permissionFilter.setTotal((data.results || []).length);
+				permissionFilter.refresh();
 			}
 		});
 	}
@@ -178,13 +191,17 @@
 			$el.fadeOut(600, function(){ $el.remove(); });
 		};
 
-		// Live updates (model:Permission:*), so adds/removes reflect for everyone.
-		app.subscribe(/^model:Permission:create/, function(data){
-			loadPermissions();
-		});
-		app.subscribe(/^model:Permission:remove/, function(data, topic){
-			loadPermissions();
-		});
+		// Live updates + search, from @simpleworkjs/frontend. This used to
+		// re-fetch the entire grant list on every event; now the one changed
+		// row is patched, so a grant added by another admin no longer costs
+		// every open Permissions page a full reload.
+		permissionFilter = app.filter.live('Permission', 'Permission', {
+			key: 'id',
+			parse: permissionParseRow,
+			input: '#permissionSearch',
+			count: '#permissionCount',
+			fields: ['subject', 'subjectType', 'role', 'domain', 'scope'],
+		}).filter;
 	});
 </script>
 
@@ -209,6 +226,22 @@
 			</div>
 
 			<div class="card-header actionMessage" style="display:none"></div>
+			<div class="card-body border-bottom">
+				<div class="row g-2 align-items-end">
+					<div class="col-sm">
+						<label class="form-label fw-bold mb-1" for="permissionSearch">Search permissions:</label>
+						<input type="search" id="permissionSearch" class="form-control form-control-sm"
+							placeholder="subject, role, domain or scope" />
+					</div>
+					<div class="col-sm-auto">
+						<button type="button" class="btn btn-sm btn-outline-secondary"
+							onclick="permissionFilter.clear()">Clear</button>
+					</div>
+					<div class="col-sm-auto">
+						<small class="text-muted" id="permissionCount"></small>
+					</div>
+				</div>
+			</div>
 			<div class="card-body p-0">
 				<ul class="list-group list-group-flush" id="permissions-list">
 					<li class="list-group-item d-flex align-items-center justify-content-between py-3" jq-repeat="Permission" jq-repeat-index="id" id="permission-row-{{id}}" style="display:none">

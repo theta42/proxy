@@ -23,6 +23,7 @@ module.exports = app;
 const middleware = require('./middleware/auth');
 const conf = require('@simpleworkjs/conf');
 const buildInfo = require('./utils/build_info');
+const socketPubsub = require('./utils/socket_pubsub');
 
 // Grab the projects PubSub
 app.contoller = require('./controller');
@@ -38,23 +39,14 @@ require('./services/host_scheduler');
 require('./services/dynamic_dns');
 require('./services/update_check');
 
-// Push pubsub over the socket and back.
+// Push model events out to the sockets allowed to see them. The gate lives in
+// utils/socket_pubsub.js, which mirrors the REST read guards per socket —
+// previously this was an unconditional broadcast of every event to every
+// authenticated client.
 app.onListen.push(function(){
   app.io.use(middleware.authIO);
-
-  app.contoller.ps.subscribe(/./g, function(data, topic){
-    app.io.emit('P2PSub', { topic, data });
-  });                                 
-
-  app.io.on('connection', (socket) => {
-    // console.log('socket', socket)
-    var user = socket.user;
-    socket.on('P2PSub', (msg) => {
-      app.contoller.ps.publish(msg.topic, {...msg.data, __from:socket.user});
-      // socket.broadcast.emit('P2PSub', msg);
-    });
-  });
-}); 
+  socketPubsub.attach(app.io, app.contoller.ps);
+});
 
 // Gzip text responses (HTML/JS/CSS/JSON). The admin UI loads ~13 separate,
 // uncompressed vendor JS/CSS files on every full page navigation (a
