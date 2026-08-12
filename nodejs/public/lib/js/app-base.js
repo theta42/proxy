@@ -62,18 +62,14 @@ app.socket = (function(app){
 				token: app.auth.getToken()
 			}
 		});
-		// socket.emit('chat message', $('#m').val());
+		// Events flow server -> client only. The client used to forward every
+		// local publish back over the socket, where the server rebroadcast it
+		// to every other client — an injection path that no app code ever put
+		// legitimate traffic on (nothing calls app.publish() directly).
+		// A delete event carries no body, so msg.data is routinely null. The
+		// old handler tagged it unconditionally and threw on those.
 		socket.on('P2PSub', function(msg){
-			msg.data.__noSocket	= true;
-			app.publish(msg.topic, msg.data);
-		});
-
-		app.subscribe(/./g, function(data, topic){
-		  // console.log('local_pubs', data, topic)
-		  if(data.__noSocket) return;
-		  // console.log('local_pubs 2', data, topic)
-
-		  socket.emit('P2PSub', { topic, data });
+			app.publish(msg.topic, msg.data == null ? {} : msg.data);
 		});
 	})
 

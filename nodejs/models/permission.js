@@ -136,4 +136,7 @@ class Permission extends Table{
 
 Permission.register(ModelPs(Permission));
 
-module.exports = {Permission};
+// Export the proxied model — see the note in local_group.js. routes/permission.js
+// imports this file directly, so the raw class published no events and the
+// Permissions page's live updates never fired.
+module.exports = {Permission: ModelPs(Permission)};

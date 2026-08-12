@@ -67,4 +67,9 @@ class LocalGroup extends Table{
 
 LocalGroup.register(ModelPs(LocalGroup));
 
-module.exports = {LocalGroup};
+// Export the *proxied* model, as host.js does. Registering the proxy only
+// makes it reachable via `require('../models').models`; the routes import this
+// file directly, so exporting the raw class meant every group create/update/
+// remove skipped ModelPs and published nothing. That is why the Groups page
+// never updated itself even though it subscribed to model:LocalGroup:*.
+module.exports = {LocalGroup: ModelPs(LocalGroup)};

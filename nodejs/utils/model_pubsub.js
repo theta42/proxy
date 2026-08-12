@@ -18,9 +18,18 @@ function ModelPs(model) {
 	 * Extracts the unique identifier (primary key) from the model or request/response objects.
 	 */
 	function getIndex(req, res) {
-		if (model[Model._key]) return model[Model._key];
-		if (req && req[Model._key]) return req[Model._key];
-		if (res && res[Model._key]) return res[Model._key];
+		// `model` is the class itself on a static call, and every class has a
+		// built-in `.name` — so for any model whose _key is 'name' this used to
+		// return the CLASS name ("LocalGroup") as the primary key of every
+		// event. Creates then looked up a key that matched nothing and appended
+		// a row; updates did the same, duplicating the record instead of
+		// patching it. Host was the only model that behaved, purely because its
+		// _key is 'host' and `Host.host` happens to be undefined.
+		if (typeof model !== 'function' && model[Model._key] !== undefined) {
+			return model[Model._key];
+		}
+		if (req && req[Model._key] !== undefined) return req[Model._key];
+		if (res && res[Model._key] !== undefined) return res[Model._key];
 	}
 
 	/**

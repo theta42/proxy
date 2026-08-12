@@ -37,6 +37,10 @@
 
 <script type="text/javascript">
 
+	// The app.filter instance driving the search box and the type dropdown.
+	// Assigned in ready(); the inline onchange/onclick handlers below use it.
+	var hostFilter;
+
 	// Parse the JSON object for a host to something the UI wants
 	function hostParseRow(host) {
 		host['created_on_text'] = moment(host['created_on'], "x").fromNow();
@@ -67,6 +71,15 @@
 
 			for(let host of res.results){
 				$.scope.hosts.push(hostParseRow(host));
+			}
+
+			// Apply whatever filter is active to the rows just loaded, and
+			// publish the count. Also tells the filter how big the real set
+			// is, so it can move to server-side filtering once this install
+			// outgrows filtering in the browser.
+			if(hostFilter){
+				hostFilter.setTotal(res.total != null ? res.total : res.results.length);
+				hostFilter.refresh();
 			}
 
 			$.scope.hosts.put = function($el, item, list){
@@ -624,17 +637,6 @@
 		});
 	}
 
-	function hostSearchInput(){
-		let inputValue = $(event.target).val().toLowerCase();
-		for(let hostObj of $.scope.hosts){
-			if (hostObj.host.toLowerCase().includes(inputValue)) {
-				hostObj.__jq_$el.show();
-			} else {
-				hostObj.__jq_$el.hide();
-			}
-		}
-	};
-
 	async function verifyWildcardRequirements(host){
 		try{
 			let res = await app.api.get(`dns/domain/${host}`);
@@ -727,28 +729,26 @@
 			$el.replaceWith($render);
 		};
 
-		app.subscribe(/^model:Host:create/, function(data, topic){
-			let [a,b, action, host] = topic.split(':');
-			if($.scope.hosts.indexOf(host) >= 0){
-				$.scope.hosts.update(host, hostParseRow(data));
-			}else{
-				$.scope.hosts.unshift(hostParseRow(data));
-			}
-		});
-
-		app.subscribe(/^model:Host:update/, function(data, topic){
-			let [a,b, action, host] = topic.split(':');
-			if($.scope.hosts.indexOf(host) >= 0){
-				$.scope.hosts.update(host, hostParseRow(data));
-			}else{
-				$.scope.hosts.unshift(hostParseRow(data));
-			}
-		});
-
-		app.subscribe(/^model:Host:remove/, function(data, topic){
-			let [a,b, action, host] = topic.split(':');
-			$.scope.hosts.remove(host);
-		});
+		// Live updates + search, both from @simpleworkjs/frontend. This
+		// replaces the three hand-rolled model:Host:* subscriptions and the
+		// hand-rolled search loop that used to live in this file: one call
+		// keeps the table live and filtered, and every other list in the app
+		// gets the same behaviour from the same code.
+		hostFilter = app.filter.live('hosts', 'Host', {
+			key: 'host',
+			parse: hostParseRow,
+			input: '#hostSearch',
+			count: '#hostCount',
+			// Searching only the hostname meant a known IP or port could not
+			// find its row.
+			fields: ['host', 'ip', 'targetPort', 'wildcard_parent', 'domain.provider'],
+			facets: {
+				ssl: function(row, value){
+					if(value === 'any') return true;
+					return value === 'wildcard' ? !!row.is_wildcard : !row.is_wildcard;
+				},
+			},
+		}).filter;
 	});
 </script>
 
@@ -774,10 +774,31 @@
 
 			<div class="card-header actionMessage" style="display:none"></div>
 			<div class="card-body search-wrapper">
-				<label class="form-label" for="search" style="margin-left: -5px;">
-					Search Hosts:
-				</label>
-				<input type="search" oninput="hostSearchInput()" />
+				<div class="row g-2 align-items-end">
+					<div class="col-sm">
+						<label class="form-label" for="hostSearch">Search Hosts:</label>
+						<input type="search" id="hostSearch" class="form-control form-control-sm"
+							placeholder="host, IP, port or DNS provider" />
+					</div>
+					<div class="col-sm-auto">
+						<label class="form-label" for="hostSslFilter">Type:</label>
+						<select id="hostSslFilter" class="form-select form-select-sm"
+							onchange="hostFilter.set('ssl', this.value)">
+							<option value="any">All</option>
+							<option value="wildcard">Wildcard</option>
+							<option value="single">Single</option>
+						</select>
+					</div>
+					<div class="col-sm-auto">
+						<button type="button" class="btn btn-sm btn-outline-secondary"
+							onclick="hostFilter.clear(); $('#hostSslFilter').val('any');">
+							Clear
+						</button>
+					</div>
+					<div class="col-sm-auto">
+						<small class="text-muted" id="hostCount"></small>
+					</div>
+				</div>
 			</div>
 			<div class='table-responsive'>
 				<table class="m-0 card-body table table-striped overflow-x-scroll">

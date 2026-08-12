@@ -16,11 +16,18 @@
 
 <script type="text/javascript">
 
+	// The app.filter instance driving the search box; assigned in ready().
+	var groupFilter;
+
 	function loadGroups() {
 		app.group.list(function(error, data){
 			if(error) return app.messages.action(error, $('#groups-list'), 'danger');
 			$.scope.LocalGroup.empty();
 			for(let g of (data.results || [])) $.scope.LocalGroup.push(g);
+			if(groupFilter){
+				groupFilter.setTotal((data.results || []).length);
+				groupFilter.refresh();
+			}
 		});
 	}
 
@@ -71,15 +78,17 @@
 			$el.fadeOut(600, function(){ $el.remove(); });
 		};
 
-		app.subscribe(/^model:LocalGroup:create/, function(data){
-			loadGroups();
-		});
-		app.subscribe(/^model:LocalGroup:update/, function(data, topic){
-			loadGroups();
-		});
-		app.subscribe(/^model:LocalGroup:remove/, function(data, topic){
-			loadGroups();
-		});
+		// Live updates + search, from @simpleworkjs/frontend. Each of these
+		// used to re-fetch every group on any change; now the single changed
+		// group is patched in place.
+		groupFilter = app.filter.live('LocalGroup', 'LocalGroup', {
+			key: 'name',
+			input: '#groupSearch',
+			count: '#groupCount',
+			// `members` is an array; String()-ing it makes each member name
+			// searchable, so you can find the groups a person belongs to.
+			fields: ['name', 'members'],
+		}).filter;
 	});
 </script>
 
@@ -111,6 +120,24 @@
 	</div>
 
 	<div class="col-md-8 mb-4">
+		<div class="card shadow-sm border mb-3">
+			<div class="card-body py-2">
+				<div class="row g-2 align-items-end">
+					<div class="col-sm">
+						<label class="form-label fw-bold mb-1" for="groupSearch">Search groups:</label>
+						<input type="search" id="groupSearch" class="form-control form-control-sm"
+							placeholder="group name or member" />
+					</div>
+					<div class="col-sm-auto">
+						<button type="button" class="btn btn-sm btn-outline-secondary"
+							onclick="groupFilter.clear()">Clear</button>
+					</div>
+					<div class="col-sm-auto">
+						<small class="text-muted" id="groupCount"></small>
+					</div>
+				</div>
+			</div>
+		</div>
 		<div class="row row-cols-1 g-3" id="groups-list">
 			<div jq-repeat="LocalGroup" jq-repeat-index="name" style="display:none" class="col">
 				<div class="card shadow-sm border">

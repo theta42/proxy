@@ -44,6 +44,11 @@ async function authIO(socket, next){
 		if(!tok) return next(Auth.errors.login());
 		let token = await Auth.checkToken(tok);
 		socket.user = token.user;
+		// Group memberships captured at login, mirroring req.groups. The
+		// socket read gate (utils/socket_pubsub.js) resolves this identity's
+		// effective rights from them, so a socket without groups would be
+		// treated as ungrouped and see nothing it should not.
+		socket.groups = typeof token.groupsArray === 'function' ? token.groupsArray() : [];
 		next();
 	}catch(error){
 		next(error);
