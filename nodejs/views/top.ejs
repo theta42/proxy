@@ -28,7 +28,24 @@
 		<script type="text/javascript" src="/static-modules/@simpleworkjs/frontend/lib/app.validate.js"></script>
 		<script type="text/javascript" src="/static-modules/@simpleworkjs/frontend/lib/app.sync.js"></script>
 		<script type="text/javascript" src="/static-modules/@simpleworkjs/frontend/lib/app.filter.js"></script>
-		<script type="text/javascript" src="/static/lib/js/app.notify.js"></script>
+		<script type="text/javascript" src="/static-modules/@simpleworkjs/frontend/lib/app.notify.js"></script>
+		<script type="text/javascript">
+			// Which page each kind of notification opens. Runs before ready,
+			// so it lands before app.notify initialises itself.
+			app.notify.configure({
+			links: {
+				Host:          function(pk){ return '/hosts/' + encodeURIComponent(pk); },
+				Permission:    function(){ return '/permissions'; },
+				LocalGroup:    function(){ return '/groups'; },
+				DnsProvider:   function(){ return '/dns'; },
+				DynamicRecord: function(){ return '/dns'; },
+				// No users page here (/users redirects); a User event is only
+				// ever your own record, which the profile page shows.
+				User:          function(){ return '/profile'; },
+				ApiToken:      function(){ return '/profile'; },
+			},
+			});
+		</script>
 		<script type="text/javascript" src="/static/js/app.js"></script>
 	</head>
 	<body>
