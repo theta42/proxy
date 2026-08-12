@@ -26,6 +26,9 @@
 
 <script type="text/javascript">
 
+	// app.filter instances for the two lists on this page; assigned in ready().
+	var dnsProviderFilter, dynamicRecordFilter;
+
 	function providerGet(){
 		app.api.options('dns', function(error, res){
 			for(let provider of res.results){
@@ -85,31 +88,34 @@
 		// Populate
 		providerGet();
 
-		app.subscribe(/^model:/, function(data, topic){
-			let [group, Model, action, pk] = topic.split(':');
-			console.log('WS:', group, Model, action, pk, data);
-		});
+		// Live updates + search, from @simpleworkjs/frontend.
+		//
+		// What was here before drove $.scope[Model] straight off the topic,
+		// inside empty catch blocks. Two things made it a no-op in practice:
+		// the scopes carried `jq-repeat-index` (an attribute jq-repeat WRITES,
+		// never reads) instead of `jq-index-key`, so they had no key and every
+		// remove/update lookup failed; and ModelPs published the class name as
+		// the pk. The catch{} swallowed both, so the page looked wired up and
+		// silently did nothing.
+		dnsProviderFilter = app.filter.live('DnsProvider', 'DnsProvider', {
+			key: 'id',
+			parse: $.scope.DnsProvider.parseData,
+			input: '#providerSearch',
+			count: '#providerCount',
+			fields: ['name', 'displayName', 'provider', 'domainsString'],
+		}).filter;
 
-		app.subscribe(/^model:.+:create/, function(data, topic){
-			try{
-				let [group, Model, action, pk] = topic.split(':');
-				$.scope[Model].unshift(data)
-			}catch{}
-		});
+		dynamicRecordFilter = app.filter.live('DynamicRecord', 'DynamicRecord', {
+			key: 'id',
+			input: '#ddnsSearch',
+			count: '#ddnsCount',
+			fields: ['fqdn', 'hostname', 'domain', 'ip'],
+		}).filter;
 
-		app.subscribe(/^model:.+:remove/, function(data, topic){
-			try{
-				let [group, Model, action, pk] = topic.split(':');
-				$.scope[Model].remove(pk);
-			}catch{}
-		});
-
-		app.subscribe(/^model:.+:update/, function(data, topic){
-			try{
-				let [group, Model, action, pk] = topic.split(':');
-				$.scope[Model].update(pk, data)
-			}catch{}
-		});
+		// Publish the initial counts for the rows pushed above (the filters are
+		// created after the populate, so nothing has asked them to render yet).
+		dnsProviderFilter.setTotal($.scope.DnsProvider.length).refresh();
+		dynamicRecordFilter.setTotal($.scope.DynamicRecord.length).refresh();
 	});
 
 </script>
@@ -172,9 +178,27 @@
 		</div>
 	</div>
 	<div class="col-md-9">
+		<div class="card shadow-sm border mb-3">
+			<div class="card-body py-2">
+				<div class="row g-2 align-items-end">
+					<div class="col-sm">
+						<label class="form-label mb-1" for="providerSearch">Search providers:</label>
+						<input type="search" id="providerSearch" class="form-control form-control-sm"
+							placeholder="name, provider or domain" />
+					</div>
+					<div class="col-sm-auto">
+						<button type="button" class="btn btn-sm btn-outline-secondary"
+							onclick="dnsProviderFilter.clear()">Clear</button>
+					</div>
+					<div class="col-sm-auto">
+						<small class="text-muted" id="providerCount"></small>
+					</div>
+				</div>
+			</div>
+		</div>
 		<div class="row row-cols-1 row-cols-md-2 g-4">
 			
-			<div jq-repeat="DnsProvider" jq-repeat-index="id" style="display:none" class="col">
+			<div jq-repeat="DnsProvider" jq-index-key="id" style="display:none" class="col">
 				<div class="card shadow-lg">
 
 					<div class="card-header text-center">
@@ -263,8 +287,22 @@
 				</form>
 
 				<!-- Record list -->
+				<div class="row g-2 align-items-end mb-2">
+					<div class="col-sm">
+						<label class="form-label mb-1" for="ddnsSearch">Search records:</label>
+						<input type="search" id="ddnsSearch" class="form-control form-control-sm"
+							placeholder="hostname, domain or IP" />
+					</div>
+					<div class="col-sm-auto">
+						<button type="button" class="btn btn-sm btn-outline-secondary"
+							onclick="dynamicRecordFilter.clear()">Clear</button>
+					</div>
+					<div class="col-sm-auto">
+						<small class="text-muted" id="ddnsCount"></small>
+					</div>
+				</div>
 				<div class="list-group">
-					<div jq-repeat="DynamicRecord" jq-repeat-index="id"
+					<div jq-repeat="DynamicRecord" jq-index-key="id"
 						class="list-group-item d-flex align-items-center flex-wrap gap-2">
 
 						<div class="me-auto">
