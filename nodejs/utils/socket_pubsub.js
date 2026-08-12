@@ -142,6 +142,20 @@ function attach(io, ps){
 		if(!event) return;
 
 		const canRead = READERS[event.model];
+
+		// Every event that goes out is a notification, so this is also where
+		// history is recorded — once per event, before the per-socket fan-out.
+		// Only gated models: an event no gate can authorize is one no feed
+		// could replay. Not awaited; a model write must not wait on its
+		// history row.
+		if(canRead){
+			// Required here, not at module load: models/activity_event pulls in
+			// models/index, whose bootstrap creates an admin user as a side
+			// effect. Merely loading this file must not do that — see the note
+			// on the roles import above.
+			require('../models/activity_event')
+				.record({model: event.model, action: event.action, pk: event.pk, data});
+		}
 		if(!canRead){
 			// Fail closed. Warn once per model so a missing entry surfaces in
 			// the log instead of looking like a silently broken live update.

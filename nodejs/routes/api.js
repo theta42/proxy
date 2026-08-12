@@ -31,6 +31,10 @@ router.use('/group', middleware.auth, authz.requireAdmin, require('./group'));
 // Self-service API tokens (PATs) — owner-scoped, no admin gate required.
 router.use('/api-token', middleware.auth, require('./api_token'));
 
+// The notification feed: model events replayed through the same read gates that
+// decided who received them live (routes/activity.js).
+router.use('/activity', middleware.auth, require('./activity'));
+
 router.use('/update-check', middleware.auth, require('./update_check'));
 
 module.exports = router;

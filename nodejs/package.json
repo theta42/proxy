@@ -24,7 +24,7 @@
     "@simpleworkjs/app-stack": "^1.0.0",
     "@simpleworkjs/bao-conf": "^1.0.0",
     "@simpleworkjs/conf": "^1.2.0",
-    "@simpleworkjs/frontend": "^0.3.0",
+    "@simpleworkjs/frontend": "^0.4.0",
     "@simpleworkjs/ldap": "^1.0.0",
     "@simpleworkjs/oidc-client": "^1.0.0",
     "acme-client": "^5.4.0",
