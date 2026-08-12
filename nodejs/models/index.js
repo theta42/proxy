@@ -17,6 +17,8 @@ require('./host');
 require('./local_group');
 require('./permission');
 require('./sso_session');
+require('./activity_event');            // notification history (shape only, TTL-bounded)
+require('./activity_seen');             // per-user read watermark
 
 // Shared OIDC client (authorization-code + PKCE): session models (Token,
 // AuthToken, OidcState), the Auth service, and the /login /logout /oidc/start

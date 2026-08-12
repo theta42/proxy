@@ -28,6 +28,7 @@
 		<script type="text/javascript" src="/static-modules/@simpleworkjs/frontend/lib/app.validate.js"></script>
 		<script type="text/javascript" src="/static-modules/@simpleworkjs/frontend/lib/app.sync.js"></script>
 		<script type="text/javascript" src="/static-modules/@simpleworkjs/frontend/lib/app.filter.js"></script>
+		<script type="text/javascript" src="/static/lib/js/app.notify.js"></script>
 		<script type="text/javascript" src="/static/js/app.js"></script>
 	</head>
 	<body>
@@ -59,6 +60,28 @@
 						<i class="fa-solid fa-user me-1"></i><span id="cl-username-text"></span>
 					</span>
 					<% } %>
+					<!-- Notifications. Every model event this session is allowed to
+					     see (the socket read gate already decided that) shows up
+					     here; the feed is those same events replayed through the
+					     same gate. Hidden until a session exists. -->
+					<div id="notify-bell" class="dropdown me-3" style="display:none">
+						<a class="nav-link text-light position-relative" href="#" role="button"
+						   data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+						   title="Notifications">
+							<i class="fa-solid fa-bell"></i>
+							<span id="notify-badge"
+							      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+							      style="display:none">0</span>
+						</a>
+						<div class="dropdown-menu dropdown-menu-end shadow" style="min-width:22rem;max-height:26rem;overflow-y:auto">
+							<h6 class="dropdown-header d-flex align-items-center">
+								Notifications
+								<a href="#" id="notify-desktop-toggle" class="ms-auto small fw-normal text-decoration-none"></a>
+							</h6>
+							<ul id="notify-list" class="list-unstyled mb-0"></ul>
+						</div>
+					</div>
+
 					<a id="cl-login-button" class="btn btn-outline-danger my-2 my-sm-0" onclick="app.auth.forceLogin()" style="display: none;">
 						<i class="fas fa-sign-in"></i>
 						Login

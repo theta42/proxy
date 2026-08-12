@@ -112,3 +112,21 @@ test('Cert and SsoSession have no gate, so they are never broadcast', () => {
 	assert.strictEqual(READERS.Cert, undefined);
 	assert.strictEqual(READERS.SsoSession, undefined);
 });
+
+test('ActivityEvent is not gated, so it cannot record its own writes', () => {
+	// Recording is gated on READERS. An entry here would make the recorder log
+	// its own row, which would record again — unbounded. Obvious now, baffling
+	// at 2am.
+	assert.strictEqual(READERS.ActivityEvent, undefined);
+	assert.strictEqual(READERS.ActivitySeen, undefined);
+});
+
+test('every gated model survives the reduced record the feed replays', () => {
+	// History stores shape only, so the feed hands gates a partial record. A
+	// gate that throws on it would silently drop that model from every feed.
+	const effective = {isAdmin: false, global: null, domains: {'example.com': 'viewer'}, groups: [], username: 'alice'};
+	const reduced = {host: 'a.example.com', fqdn: 'a.example.com', username: 'alice', created_by: 'alice'};
+	for (const model of Object.keys(READERS)) {
+		assert.doesNotThrow(() => READERS[model](effective, reduced, 'a.example.com'), model);
+	}
+});
