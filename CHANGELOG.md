@@ -1,3 +1,6 @@
+## v2.3.2
+- fix: **the error log filled with an OCSP stapling error on every TLS handshake.** Let's Encrypt has wound OCSP down, so the certificates it issues carry no OCSP responder URI and auto-ssl's lookup cannot succeed for any of them — ever. auto-ssl logs that at `ngx.ERR` by default, once per handshake per host, and says "continuing anyway" because the handshake is genuinely fine. The flood is the damage: a real error is buried under thousands of copies of a benign one, which is exactly what happened while debugging an unrelated routing fault. Logged at `ngx.WARN` now (closes #227).
+
 ## v2.3.1
 - fix: **the notification bell broke the nav bar.** The container holding username / bell / Log Out is `.form-inline`, a Bootstrap 4 class that does not exist in Bootstrap 5 — it laid out only because everything inside it happened to be an inline element. The bell is a `<div class="dropdown">` (Bootstrap requires that), so it forced a line break and pushed Log Out onto a third row. Replaced with `d-flex align-items-center`, which is what makes a row in Bootstrap 5 and does not depend on what the children are.
 
