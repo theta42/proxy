@@ -1,3 +1,6 @@
+## v2.3.1
+- fix: **the notification bell broke the nav bar.** The container holding username / bell / Log Out is `.form-inline`, a Bootstrap 4 class that does not exist in Bootstrap 5 — it laid out only because everything inside it happened to be an inline element. The bell is a `<div class="dropdown">` (Bootstrap requires that), so it forced a line break and pushed Log Out onto a third row. Replaced with `d-flex align-items-center`, which is what makes a row in Bootstrap 5 and does not depend on what the children are.
+
 ## v2.3.0
 - feat: **notifications, with history and a bell.** Every model event you are allowed to see is a notification — the socket read gate already decides that, live and per row, so there is no recipient resolution and no fan-out: a notification is an event that reached you, and history is those same events replayed through the same gate. Clicking one opens the record that changed.
 - feat: history is recorded where every event already passes through, so nothing has to remember to log, and it stores the **shape** only — model, action, pk, actor, owner, timestamp. No payload, so history never becomes a second copy of the data retaining a deleted record's contents. Bounded by a 30-day TTL.
