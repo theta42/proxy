@@ -7,6 +7,7 @@ const ModelPs = require('../utils/model_pubsub');
 
 const tldExtract = require('tld-extract').parse_host;
 const LetsEncrypt = require('../utils/letsencrypt');
+const renewal = require('../utils/renewal');
 const conf = require('@simpleworkjs/conf');
 
 const fs = require('fs');
@@ -77,6 +78,12 @@ class Host extends Table{
 		'wildcard_matchAny': {default: false, isRequired: false, type: 'boolean',},
 		'wildcard_parent': {isRequired: false, type: 'string', min: 3, max: 500},
 		'wildcard_expires': {isRequired: false, type: 'number'},
+		// notBefore of the issued cert. Paired with wildcard_expires it gives the
+		// certificate's actual lifetime, which is what utils/renewal.js needs to
+		// decide when to renew without a hardcoded 30-day constant that only ever
+		// suited 90-day certs. Absent on records issued before this was stored --
+		// checkWildcardForRenew() recovers it from the stored certificate.
+		'wildcard_issued': {isRequired: false, type: 'number'},
 		'domain': {model: 'Domain', rel: 'one'},
 	}
 
@@ -287,13 +294,15 @@ class Host extends Table{
 				},
 			});
 
+			let certInfo = LetsEncrypt.AcmeClient.crypto.readCertificateInfo(cert.cert);
+
 			let toAdd = {
 				cert_pem: cert.cert.split('\n\n')[0],
 				fullchain_pem: cert.cert,
 				privkey_pem: cert.key.toString(),
 				csr_pem: cert.csr.toString(),
 				expiry: 4120307657,
-				real_expiry: +LetsEncrypt.AcmeClient.crypto.readCertificateInfo(cert.cert).notAfter/1000,
+				real_expiry: +certInfo.notAfter/1000,
 			}
 
 
@@ -301,6 +310,10 @@ class Host extends Table{
 			await this.update({
 				wildcard_status: `Done`,
 				wildcard_expires: toAdd.real_expiry*1000,
+				// Both ends of the validity period, so renewal can be scheduled as a
+				// fraction of this certificate's own lifetime rather than a constant
+				// that assumes 90 days. See utils/renewal.js.
+				wildcard_issued: +certInfo.notBefore,
 			});
 
 			return this;
@@ -312,25 +325,70 @@ class Host extends Table{
 		}
 	}
 
-	async checkWildcardForRenew(){
+	/**
+	 * Recover the certificate's issue date from the stored PEM.
+	 *
+	 * wildcard_issued was added after these records existed, so a host issued
+	 * before it can't say how long its certificate is meant to live -- and the
+	 * renewal decision needs both ends of the validity period. The certificate
+	 * itself has always carried notBefore, so read it back rather than guessing.
+	 * Returns null when there is nothing to read; renewal falls back to assuming
+	 * a 90-day lifetime, which errs toward renewing late rather than constantly.
+	 */
+	async recoverWildcardIssued(){
 		try{
-			if(this.is_wildcard && Date.now() > this.wildcard_expires - (30 * 24 * 60 * 60 * 1000)){
-				this.createWildcardCert();
-			}
+			let stored = await this.constructor.redisClient.GET(`${this.host}:latest`);
+			if(!stored) return null;
+
+			let pem = JSON.parse(stored).fullchain_pem;
+			if(!pem) return null;
+
+			let issued = +LetsEncrypt.AcmeClient.crypto.readCertificateInfo(pem).notBefore;
+			if(!Number.isFinite(issued)) return null;
+
+			await this.update({wildcard_issued: issued});
+			return issued;
 		}catch(error){
-			console.error('checkWildcardForRenew instance', this.host, error)
-			throw error;
+			console.error('recoverWildcardIssued', this.host, error.message);
+			return null;
 		}
 	}
 
+	async checkWildcardForRenew(){
+		if(!this.is_wildcard) return;
+
+		let issued = this.wildcard_issued || await this.recoverWildcardIssued();
+
+		// Renew once two thirds of THIS certificate's lifetime has elapsed, rather
+		// than at a fixed 30 days out. The old constant was a third of a 90-day
+		// cert and silently becomes wrong as validity periods shorten -- at 6 days
+		// it is true on every check, reissuing daily into a rate limit.
+		if(!renewal.shouldRenew(issued, this.wildcard_expires)) return;
+
+		// Awaited: unawaited, a rejection here escaped the try/catch entirely and
+		// surfaced as an unhandled rejection with no host attached to it. That was
+		// survivable while a 30-day runway meant someone would notice; it is not
+		// once a failed renewal can expire a certificate within the week.
+		await this.createWildcardCert();
+	}
+
 	static async checkWildcardForRenew(){
+		let hosts;
 		try{
-			for(let host of await this.listDetail()){
-				host.checkWildcardForRenew();
-			}
+			hosts = await this.listDetail();
 		}catch(error){
-			console.error('checkWildcardForRenew', error)
-			throw error;
+			console.error('checkWildcardForRenew list', error);
+			return;
+		}
+
+		// Per host, so one host whose DNS provider is misconfigured cannot stop
+		// every other host from renewing.
+		for(let host of hosts){
+			try{
+				await host.checkWildcardForRenew();
+			}catch(error){
+				console.error('checkWildcardForRenew', host.host, error);
+			}
 		}
 	}
 
