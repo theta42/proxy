@@ -1,3 +1,6 @@
+## v2.4.2
+- feat: **interactive notification controls and live toast popups.** Adopted `@simpleworkjs/frontend` 0.4.2 with live in-app toast alerts (`toast: true`) for foreground real-time notifications, rich FontAwesome model category icons with semantic badge coloring, and interactive dropdown controls (*Mark all read*, *Clear list*).
+
 ## v2.4.1
 - fix: bumped `@simpleworkjs/frontend` to v0.4.1 — `app.messages.confirm(message, null, type)` (a documented, commonly used form for a page with no inline `.actionMessage`) threw `Cannot read properties of null (reading 'closest')` instead of showing the dialog, and `confirm()` had no toast fallback at all for that case (it just warned and left its promise pending forever). No proxy page hit this today, but every consumer shares the same vendored copy — fixed here to keep the fleet on the patched version.
 
