@@ -33,6 +33,7 @@
 			// Which page each kind of notification opens. Runs before ready,
 			// so it lands before app.notify initialises itself.
 			app.notify.configure({
+			toast: true,
 			links: {
 				Host:          function(pk){ return '/hosts/' + encodeURIComponent(pk); },
 				Permission:    function(){ return '/permissions'; },
@@ -67,7 +68,7 @@
 					</li>
 					<% } %>
 				</ul>
-				<div class="d-flex align-items-center mt-2 mt-md-0">
+				<div class="form-inline mt-2 mt-md-0">
 					<% if(ui.profileUrl){ %>
 					<a id="cl-username" class="navbar-text text-light me-3 text-decoration-none" href="<%- ui.profileUrl %>" style="display: none;">
 						<i class="fa-solid fa-user me-1"></i><span id="cl-username-text"></span>
@@ -82,7 +83,7 @@
 					     here; the feed is those same events replayed through the
 					     same gate. Hidden until a session exists. -->
 					<div id="notify-bell" class="dropdown me-3" style="display:none">
-						<a class="nav-link text-light position-relative" href="#" role="button"
+						<a class="nav-link text-light position-relative d-flex align-items-center" href="#" role="button"
 						   data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
 						   title="Notifications">
 							<i class="fa-solid fa-bell"></i>
@@ -90,12 +91,18 @@
 							      class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
 							      style="display:none">0</span>
 						</a>
-						<div class="dropdown-menu dropdown-menu-end shadow" style="min-width:22rem;max-height:26rem;overflow-y:auto">
-							<h6 class="dropdown-header d-flex align-items-center">
-								Notifications
-								<a href="#" id="notify-desktop-toggle" class="ms-auto small fw-normal text-decoration-none"></a>
-							</h6>
-							<ul id="notify-list" class="list-unstyled mb-0"></ul>
+						<div class="dropdown-menu dropdown-menu-end shadow-lg border-0" style="min-width:24rem;max-height:28rem;overflow-y:auto;border-radius:0.5rem">
+							<div class="px-3 py-2 border-bottom d-flex align-items-center justify-content-between bg-light">
+								<span class="fw-semibold text-dark small"><i class="fa-solid fa-bell me-1 text-primary"></i> Notifications</span>
+								<div class="d-flex align-items-center gap-2">
+									<a href="#" id="notify-mark-read" class="small text-decoration-none text-muted" title="Mark all read"><i class="fa-solid fa-check-double"></i></a>
+									<a href="#" id="notify-clear" class="small text-decoration-none text-muted" title="Clear list"><i class="fa-solid fa-trash-can"></i></a>
+								</div>
+							</div>
+							<ul id="notify-list" class="list-unstyled mb-0 py-1"></ul>
+							<div class="px-3 py-2 border-top bg-light text-center">
+								<a href="#" id="notify-desktop-toggle" class="small text-decoration-none"></a>
+							</div>
 						</div>
 					</div>
 
