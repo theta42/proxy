@@ -1,3 +1,6 @@
+## [2.4.3] - 2026-08-22
+- Added docs/KNOWN_ISSUES.md for multi-site known limits and tradeoffs.
+
 ## v2.4.2
 - feat: **interactive notification controls and live toast popups.** Adopted `@simpleworkjs/frontend` 0.4.2 with live in-app toast alerts (`toast: true`) for foreground real-time notifications, rich FontAwesome model category icons with semantic badge coloring, and interactive dropdown controls (*Mark all read*, *Clear list*).
 
