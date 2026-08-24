@@ -1,3 +1,6 @@
+## [2.4.4] - 2026-08-23
+- fix: **the notification bell broke the nav bar again — this is a regression, not a new bug.** The `.form-inline` → `d-flex align-items-center` fix shipped in v2.3.1 (#226, commit `401ae67`) was silently undone by `278324c`, the v2.4.2 interactive-notification-controls release, which carried a stale copy of `top.ejs` across the shared frontend rollout. `.form-inline` is a Bootstrap 4 class that does not exist in Bootstrap 5 (this app is on 5.3.8), so it applied nothing and the bell — a block-level `<div class="dropdown">` that `app.notify.js` reveals with `.show()`, i.e. `display: block` — broke out of the row and pushed Log Out onto a third line. jump-host regressed identically in its own v3.3.2 rollout; the Directory escaped because its fix (#232) landed after.
+
 ## [2.4.3] - 2026-08-22
 - Added docs/KNOWN_ISSUES.md for multi-site known limits and tradeoffs.
 
