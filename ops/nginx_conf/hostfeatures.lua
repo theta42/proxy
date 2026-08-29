@@ -127,9 +127,10 @@ local function basic_auth_ok(res)
     local b = ngx.decode_base64(stored)
     if not a or not b then return false end
     if #a ~= #b then return false end
+    local bit = require "bit"
     local equal = 0
     for i = 1, #a do
-        equal = equal | (a:byte(i) ~ b:byte(i))
+        equal = bit.bor(equal, bit.bxor(a:byte(i), b:byte(i)))
     end
     return equal == 0
 end
