@@ -1,3 +1,8 @@
+## [2.5.2] - 2026-08-29
+
+### Fixed
+- **Host auth router export:** Corrected `routes/host_auth.js` module export to directly export the Express router function for `app.use('/__proxy_auth', ...)`, resolving `TypeError: argument handler must be a function` startup crash.
+
 ## [2.5.1] - 2026-08-29
 
 ### Fixed

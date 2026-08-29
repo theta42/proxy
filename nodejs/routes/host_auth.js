@@ -128,4 +128,7 @@ router.get('/logout', async function(req, res, next){
 	}
 });
 
-module.exports = {router, safeRd, callbackUri};
+module.exports = router;
+router.router = router;
+router.safeRd = safeRd;
+router.callbackUri = callbackUri;
