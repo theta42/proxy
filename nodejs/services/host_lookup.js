@@ -27,7 +27,7 @@ const conf = require('@simpleworkjs/conf');
 const socket = new SocketServerJson({
 	socketFile: conf.socketFile,
 
-	onData: function(data, clientSocket) {
+	onData: async function(data, clientSocket) {
 		try{
 			// Try to match the requested host name using the lookup tree
 			let parentHost = Host.lookUp(data['domain']);
@@ -57,7 +57,16 @@ const socket = new SocketServerJson({
 			// This allows child domains to use the parent's wildcard SSL certificate
 			if(!parentHost.wildcard_parent){
 				parentHost.wildcard_parent = parentHost.host;
-				Host.addCache(data['domain'], parentHost);
+				// Awaited: an un-awaited addCache() rethrow escaped the try/catch as
+				// an unhandled rejection (addCache is async) and killed the lookup
+				// service. A cache-write failure here is non-fatal to THIS request
+				// (the response is already correct), so catch + warn instead of
+				// failing the lookup.
+				try{
+					await Host.addCache(data['domain'], parentHost);
+				}catch(error){
+					console.warn('services/host_lookup addCache failed for', data['domain'], error);
+				}
 			}
 
 			// Convert all values to strings for Redis compatibility

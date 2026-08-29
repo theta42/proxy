@@ -10,6 +10,7 @@
 --   req_headers  (JSON object)  -- added to the upstream request
 --   resp_headers (JSON object)  -- added to the client response
 --   ip_allow / ip_deny (JSON arrays of CIDRs)
+--   debug_headers  -- emit X-Target-Host response header (off by default)
 --   basicauth_enabled / basicauth_realm
 --   basicauth_users (JSON object {username: base64(sha1(password))})
 --   sso_enabled  -- gate on a __proxy_sso session (established by /__proxy_auth)
@@ -115,7 +116,22 @@ local function basic_auth_ok(res)
     local hasher = sha1:new()
     if not hasher then return false end
     hasher:update(pass or "")
-    return ngx.encode_base64(hasher:final()) == stored
+    local computed = ngx.encode_base64(hasher:final())
+
+    -- Constant-time comparison. A plain `==` short-circuits on the first
+    -- differing byte, which leaks timing information that an attacker can use
+    -- to recover the stored hash byte-by-byte. Decode both base64 strings and
+    -- compare every byte, bailing out only on a length mismatch (which reveals
+    -- nothing useful — the hash length is fixed by the algorithm).
+    local a = ngx.decode_base64(computed)
+    local b = ngx.decode_base64(stored)
+    if not a or not b then return false end
+    if #a ~= #b then return false end
+    local equal = 0
+    for i = 1, #a do
+        equal = equal | (a:byte(i) ~ b:byte(i))
+    end
+    return equal == 0
 end
 
 local function basic_challenge(res)
@@ -212,8 +228,17 @@ function M.access(ngx_, res)
     apply_auth(res)
     apply_req_headers(res)
 
-    -- Cache gate for proxy_no_cache / proxy_cache_bypass. Opt-in per host.
-    ngx.var.skip_cache = (res["respcache_enabled"] == "true") and "0" or "1"
+    -- Cache gate for proxy_no_cache / proxy_cache_bypass. Opt-in per host via
+    -- respcache_enabled, BUT never cache a response behind an auth gate: the
+    -- cache key has no auth component, so the first authenticated user's
+    -- response would be served to every later viewer (including other users),
+    -- leaking private content. When basic auth or SSO is on, force skip_cache.
+    local auth_on = res["basicauth_enabled"] == "true" or res["sso_enabled"] == "true"
+    if auth_on or res["respcache_enabled"] ~= "true" then
+        ngx.var.skip_cache = "1"
+    else
+        ngx.var.skip_cache = "0"
+    end
 end
 
 -- header_filter_by_lua entry point. Reads the record stashed in ngx.ctx.
@@ -231,6 +256,17 @@ function M.header(ngx_)
     if res["hsts_enabled"] == "true" then
         ngx.header["Strict-Transport-Security"] =
             "max-age=31536000; includeSubDomains"
+    end
+
+    -- X-Target-Host reveals the upstream's internal IP/hostname. It is an
+    -- operator debugging aid, NOT a default header: it is only emitted when the
+    -- host's debug_headers flag is explicitly opt-in. proxy.conf no longer adds
+    -- it unconditionally.
+    if res["debug_headers"] == "true" then
+        local target = ngx.var.target
+        if target and target ~= "" then
+            ngx.header["X-Target-Host"] = target
+        end
     end
 end
 

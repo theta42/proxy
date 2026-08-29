@@ -1,3 +1,19 @@
+## [2.5.0] - 2026-08-29
+
+### Fixed
+- **Certificate API endpoint security (C3):** Gated `GET /api/cert/:host` with `requireAdmin`, stripped `privkey_pem` and `csr_pem` from responses, and corrected `deleteCert(this.host)` call.
+- **Open redirect protection (M8):** Gated `safeRd` / `safeInternalPath` against protocol-relative paths (`/\evil.com`) and backslash evasion.
+- **Lookup Unix socket permissions (M9):** Set lookup Unix domain socket permissions to `0666` for nobody worker cosockets.
+- **Unhandled rejection in host caching (M10):** Awaited `Host.addCache` with catch/warn to prevent unhandled promise rejections on host additions.
+- **LDAP connection concurrency (M11):** Used per-request LDAP clients and mutexes around shared instances for authentication binds.
+- **Proxy token TTL and revocation (M12):** Added 30-day TTL to proxy auth tokens and enforced server-side Redis token revocation on logout.
+- **Cache leakage on authenticated hosts (M23):** Explicitly disabled Nginx response caching (`proxy_cache off`) for hosts with authentication/SSO enabled.
+- **SSO callback HTTPS enforcement (M24):** Enforced HTTPS protocol redirect on `/__proxy_auth` and preserved HTTPS callback URLs when deployed behind reverse proxies.
+- **Basic auth timing attack protection (M34):** Implemented constant-time string comparison for basic auth credentials in OpenResty Lua and marked `basicauth_users` private.
+- **Null certificate crash guard (M38):** Guarded against null certificate return in `GET /api/cert/:host` to return 404 instead of throwing a `TypeError`.
+- **SSO cookie Secure flag (M39):** Added `X-Forwarded-Proto` header inspection alongside `req.protocol` to ensure SSO session cookies set the `Secure` attribute behind TLS-terminating proxies.
+- **Redirect query string preservation (L3):** Preserved URL query strings and sanitized redirect targets during host-auth challenge flows.
+
 ## [2.4.4] - 2026-08-23
 - fix: **the notification bell broke the nav bar again — this is a regression, not a new bug.** The `.form-inline` → `d-flex align-items-center` fix shipped in v2.3.1 (#226, commit `401ae67`) was silently undone by `278324c`, the v2.4.2 interactive-notification-controls release, which carried a stale copy of `top.ejs` across the shared frontend rollout. `.form-inline` is a Bootstrap 4 class that does not exist in Bootstrap 5 (this app is on 5.3.8), so it applied nothing and the bell — a block-level `<div class="dropdown">` that `app.notify.js` reveals with `.show()`, i.e. `display: block` — broke out of the row and pushed Log Out onto a third line. jump-host regressed identically in its own v3.3.2 rollout; the Directory escaped because its fix (#232) landed after.
 

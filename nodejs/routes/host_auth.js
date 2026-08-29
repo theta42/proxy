@@ -20,33 +20,17 @@ const {oidc} = require('@simpleworkjs/oidc-client');
 const {Host} = require('../models').models;
 const {HostSsoState, SsoSession} = require('../models/sso_session');
 const {identityAllowed} = require('../utils/host_sso');
+const {safeRd, callbackUri} = require('../utils/host_auth_redirect');
 
 const COOKIE = (conf.hostSso && conf.hostSso.cookieName) || '__proxy_sso';
 
-// Minimal HTML notice page (these endpoints are hit by browsers, not the API).
-function page(message){
-	return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in</title>`
-		+ `<meta name="viewport" content="width=device-width, initial-scale=1">`
-		+ `<style>body{font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;color:#222}</style>`
-		+ `</head><body><p>${String(message).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</p></body></html>`;
-}
-
-// This host's own callback URL — must match between authorize and token steps.
-function callbackUri(req){
-	return `${req.protocol}://${req.get('host')}/__proxy_auth/callback`;
-}
-
-// Constrain the post-login redirect to this same host (no open redirect). `rd`
-// may be a bare path or a full same-host URL.
-function safeRd(req, rd){
-	try{
-		if(!rd) return '/';
-		if(rd.charAt(0) === '/' && rd.charAt(1) !== '/') return rd;
-		let u = new URL(rd);
-		if(u.host === req.get('host')) return u.pathname + u.search;
-	}catch(error){ /* fall through */ }
-	return '/';
-}
+	// Minimal HTML notice page (these endpoints are hit by browsers, not the API).
+	function page(message){
+		return `<!doctype html><html><head><meta charset="utf-8"><title>Sign in</title>`
+			+ `<meta name="viewport" content="width=device-width, initial-scale=1">`
+			+ `<style>body{font-family:system-ui,sans-serif;max-width:32rem;margin:4rem auto;padding:0 1rem;color:#222}</style>`
+			+ `</head><body><p>${String(message).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</p></body></html>`;
+	}
 
 function readCookie(req, name){
 	for(let part of (req.headers.cookie || '').split(';')){
@@ -116,9 +100,10 @@ router.get('/callback', async function(req, res, next){
 		let sid = oidc.randomToken(32);
 		await SsoSession.create({sid, host: hostname, sub: identity.username, email, groups: identity.groups || []});
 
+		const isHttps = req.protocol === 'https' || req.headers['x-forwarded-proto'] === 'https';
 		res.cookie(COOKIE, sid, {
 			httpOnly: true,
-			secure: req.protocol === 'https',
+			secure: isHttps,
 			sameSite: 'lax',
 			path: '/',
 			maxAge: SsoSession.ttl() * 1000,
@@ -143,4 +128,4 @@ router.get('/logout', async function(req, res, next){
 	}
 });
 
-module.exports = router;
+module.exports = {router, safeRd, callbackUri};
