@@ -1,4 +1,4 @@
-const { describe, test, beforeEach, afterEach, after, mock } = require('node:test');
+const { describe, test, beforeEach, afterEach, mock } = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
 
@@ -10,12 +10,6 @@ const DuckDns = require('../../models/dns_provider/duckdns');
 describe('DnsProvider Vault Integration', () => {
     let originalSet, originalGet, originalRequest;
 
-    after(async () => {
-        if (Table._redis && Table._redis.quit) {
-            await Table._redis.quit();
-        }
-    });
-
     beforeEach(() => {
         // Mock baoConf
         originalSet = baoConf.set;
@@ -23,12 +17,32 @@ describe('DnsProvider Vault Integration', () => {
         originalRequest = baoConf.request;
 
         const vaultStore = {};
+        const redisStore = {};
+
         baoConf.set = mock.fn(async (path, data) => { vaultStore[path] = data; return true; });
         baoConf.get = mock.fn(async (path) => vaultStore[path] || {});
         baoConf.request = mock.fn(async () => ({}));
         
         mock.method(DuckDns.prototype, 'listDomains', async () => []);
         mock.method(DnsProvider.prototype, 'updateDomains', async () => {});
+
+        // Mock Table persistence so unit tests run cleanly without an external Redis instance
+        mock.method(Table, 'create', async function(data) {
+            const id = data.id || crypto.randomBytes(8).toString('hex');
+            const record = { ...data, id };
+            redisStore[id] = record;
+            const inst = new this(record);
+            return inst;
+        });
+
+        mock.method(Table, 'get', async function(id) {
+            if (!redisStore[id]) {
+                const err = new Error('Entry not found');
+                err.name = 'EntryNotFound';
+                throw err;
+            }
+            return new this(redisStore[id]);
+        });
     });
 
     afterEach(() => {
