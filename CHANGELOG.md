@@ -1,3 +1,8 @@
+## [2.5.3] - 2026-08-29
+
+### Fixed
+- **LuaJIT bitwise operator compatibility:** Replaced Lua 5.3 bitwise operators `|` and `~` with `bit.bor` and `bit.bxor` from LuaJIT's built-in `bit` module in `ops/nginx_conf/hostfeatures.lua`, fixing runtime load errors that caused HTTP 502 Bad Gateway responses.
+
 ## [2.5.2] - 2026-08-29
 
 ### Fixed

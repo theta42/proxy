@@ -1,6 +1,6 @@
 {
   "name": "theta-proxy",
-  "version": "2.5.2",
+  "version": "2.5.3",
   "description": "Reverse proxy and SSL certificate manager for Theta Suite",
   "scripts": {
     "test": "npm --prefix nodejs test",
