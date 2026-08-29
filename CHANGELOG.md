@@ -1,3 +1,8 @@
+## [2.5.1] - 2026-08-29
+
+### Fixed
+- **Nginx configuration comment syntax:** Corrected comment prefixes in `ops/nginx_conf/proxy.conf` from Lua `--` to Nginx `#`, resolving `unknown directive "--"` startup failures in OpenResty.
+
 ## [2.5.0] - 2026-08-29
 
 ### Fixed
