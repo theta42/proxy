@@ -1,23 +1,34 @@
-const { describe, test, beforeEach, afterEach, after, mock } = require('node:test');
+'use strict';
+const { describe, test, beforeEach, afterEach, mock } = require('node:test');
 const assert = require('node:assert');
 const crypto = require('crypto');
+const net = require('net');
 
-const baoConf = require('@simpleworkjs/bao-conf');
-const Table = require('../../models/index');
-const DnsProvider = Table.models.DnsProvider;
-const DuckDns = require('../../models/dns_provider/duckdns');
+function checkRedis() {
+    return new Promise((resolve) => {
+        const socket = net.createConnection(6379, '127.0.0.1');
+        socket.once('connect', () => { socket.end(); resolve(true); });
+        socket.once('error', () => { resolve(false); });
+    });
+}
 
-describe('DnsProvider Vault Integration', () => {
+describe('DnsProvider Vault Integration', async () => {
+    const redisRunning = await checkRedis();
+    if (!redisRunning) {
+        test('skipped when Redis is not running', (t) => {
+            t.skip('Redis is not running on 127.0.0.1:6379');
+        });
+        return;
+    }
+
+    const baoConf = require('@simpleworkjs/bao-conf');
+    const Table = require('../../models/index');
+    const DnsProvider = Table.models.DnsProvider;
+    const DuckDns = require('../../models/dns_provider/duckdns');
+
     let originalSet, originalGet, originalRequest;
 
-    after(async () => {
-        if (Table._redis && Table._redis.quit) {
-            await Table._redis.quit();
-        }
-    });
-
     beforeEach(() => {
-        // Mock baoConf
         originalSet = baoConf.set;
         originalGet = baoConf.get;
         originalRequest = baoConf.request;
@@ -49,18 +60,14 @@ describe('DnsProvider Vault Integration', () => {
 
         const instance = await DnsProvider.create(payload);
 
-        // 1. Should have called OpenBao set
         assert.strictEqual(baoConf.set.mock.callCount(), 1);
         const [path, secrets] = baoConf.set.mock.calls[0].arguments;
         
         assert.strictEqual(path, `proxy/dns-providers/${instance.id}`);
         assert.deepStrictEqual(secrets, { token: 'super-secret-vault-token' });
 
-        // 2. The returned instance should have the secret injected back
         assert.strictEqual(instance.token, 'super-secret-vault-token');
         
-        // 3. get() should fetch public data from Redis and merge secrets from OpenBao
-        // (baoConf.get is already mocked to return from vaultStore)
         const fetched = await DnsProvider.get(instance.id);
         assert.strictEqual(fetched.token, 'super-secret-vault-token');
     });

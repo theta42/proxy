@@ -13,6 +13,31 @@ const client = new Client({
   tlsOptions: conf.tlsOptions || {},
 });
 
+// Fresh, unbound ldapts Client. Used for the per-request bind-test in login()
+// so that path never touches the shared module client (see below).
+function newClient(){
+	return new Client({
+		url: conf.url,
+		tlsOptions: conf.tlsOptions || {},
+	});
+}
+
+// ldapts is NOT safe for concurrent use: a single Client carries the bind state
+// of one connection, and overlapping bind/search/unbind calls from concurrent
+// requests interleave into a corrupt sequence (e.g. a search running under
+// another request's bind, or an unbind that tears down someone else's round
+// trip). Serialize every shared-client operation through this promise-chain
+// mutex: each holder runs, then the next. The `finally` always unbinds back to
+// the service account so the next operation starts from a known state.
+let clientChain = Promise.resolve();
+function withClient(op){
+	const run = clientChain.then(() => op());
+	// Keep the chain alive whether op resolves or rejects, so one failed
+	// operation can't stall every request behind it.
+	clientChain = run.then(() => undefined, () => undefined);
+	return run;
+}
+
 
 // Best-effort group extraction from a directory entry's `memberOf` values.
 // Turns `cn=dns-team,ou=groups,dc=...` into `dns-team`. Directories that don't
@@ -53,88 +78,62 @@ User.keyMap = {
 }
 
 User.list = async function(){
-	try{
-		await client.bind(conf.bindDN, conf.bindPassword);
+	return withClient(async function(){
+		try{
+			await client.bind(conf.bindDN, conf.bindPassword);
 
-		const res = await client.search(conf.searchBase, {
-		  scope: 'sub',
-		  filter: conf.userFilter,
-		});
+			const res = await client.search(conf.searchBase, {
+			  scope: 'sub',
+			  filter: conf.userFilter,
+			});
 
-		await client.unbind();
-
-		return res.searchEntries.map(function(user){return user.uid});
-	}catch(error){
-		throw error;
-	}
-};
-
-User.listDetail = async function(){
-	try{
-		await client.bind(conf.bindDN, conf.bindPassword);
-
-		const res = await client.search(conf.searchBase, {
-		  scope: 'sub',
-		  filter: conf.userFilter,
-		});
-
-		await client.unbind();
-
-		let users = []
-
-		for(let user of res.searchEntries){
-			let obj = Object.create(this);
-			Object.assign(obj, user_parse(user));
-			
-			users.push(obj)
-
+			return res.searchEntries.map(function(user){return user.uid});
+		}finally{
+			// Always unbind back to a clean state for the next mutex holder.
+			await client.unbind();
 		}
-
-		return users;
-
-	}catch(error){
-		throw error;
-	}
+	});
 };
+
 
 User.get = async function(data){
-	try{
-		if(typeof data !== 'object'){
-			let username = data;
-			data = {};
-			data.username = username;
-		}
-		
-		await client.bind(conf.bindDN, conf.bindPassword);
-
-		// Escape the interpolated username (RFC 4515) — previously raw, which
-		// let `*`/`(`/`)`/`\`/NUL in a username break or broaden the filter.
-		let filter = `(&${conf.userFilter}(${conf.userNameAttribute}=${escapeFilter(data.username)}))`;
-
-		const res = await client.search(conf.searchBase, {
-			scope: 'sub',
-			filter: filter,
-		});
-
-		await client.unbind();
-
-		let user = res.searchEntries[0]
-
-		if(user){
-			let obj = Object.create(this);
-			Object.assign(obj, user_parse(user));
-			
-			return obj;
-		}else{
-			let error = new Error('UserNotFound');
-			error.name = 'UserNotFound';
-			error.message = `LDAP:${data.username} does not exists`;
-			error.status = 404;
-			throw error;
-		}
-	}catch(error){
-		throw error;
+	if(typeof data !== 'object'){
+		let username = data;
+		data = {};
+		data.username = username;
 	}
+
+	return withClient(async function(){
+		try{
+			await client.bind(conf.bindDN, conf.bindPassword);
+
+			// Escape the interpolated username (RFC 4515) — previously raw, which
+			// let `*`/`(`/`)`/`\`/NUL in a username break or broaden the filter.
+			let filter = `(&${conf.userFilter}(${conf.userNameAttribute}=${escapeFilter(data.username)}))`;
+
+			const res = await client.search(conf.searchBase, {
+				scope: 'sub',
+				filter: filter,
+			});
+
+			let user = res.searchEntries[0]
+
+			if(user){
+				let obj = Object.create(this);
+				Object.assign(obj, user_parse(user));
+
+				return obj;
+			}else{
+				let error = new Error('UserNotFound');
+				error.name = 'UserNotFound';
+				error.message = `LDAP:${data.username} does not exists`;
+				error.status = 404;
+				throw error;
+			}
+		}finally{
+			await client.unbind();
+		}
+	});
 };
 
 User.exists = async function(data){
@@ -149,15 +148,19 @@ User.exists = async function(data){
 };
 
 User.login = async function(data){
+	// Look up the user's DN through the shared (mutex-guarded) client, then
+	// bind-test the password on a FRESH per-request client. Using a dedicated
+	// client means login never rebinds the shared connection as the user: the
+	// shared client stays bound as the service account for reads, and concurrent
+	// logins can't clobber each other's bind state on one connection.
+	let user = await this.get(data.username);
+
+	const c = newClient();
 	try{
-		let user = await this.get(data.username);
-
-		await client.bind(user.dn, data.password);
-
-		await client.unbind();
+		await c.bind(user.dn, data.password);
+		await c.unbind();
 
 		return user;
-
 	}catch(error){
 		throw error;
 	}

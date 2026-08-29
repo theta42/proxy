@@ -27,14 +27,16 @@ class SocketServerJson {
 		this.onClientClose = new CallbackQueue(args.onClientClose);
 		this.onClientError = new CallbackQueue(args.onClientError);
 
-		// Set socket file permissions after listening. 660 (owner + group read/write)
-		// is the safest default; the Docker image runs both processes as root, and
-		// bare-metal operators should ensure the proxy service and openresty share a
-		// group when running as separate users. Wrapped in try-catch as chmod may
-		// fail in test/restricted environments.
+
+		// Set socket file permissions after listening. 0666 (world read/write) so
+		// the OpenResty worker (runs as nobody in the container, regardless of how
+		// the mgmt app is started) can connect for wildcard cache-miss lookups. The
+		// socket only accepts local connections (the cosocket peer is local-only),
+		// so world-writable is the documented, intended mode. Wrapped in try-catch
+		// as chmod may fail in test/restricted environments.
 		this.onListen.push(() => {
 			try {
-				fs.chmodSync(this.socketFile, '660');
+				fs.chmodSync(this.socketFile, parseInt('666', 8));
 			} catch(err) {
 				// Chmod may fail in test environments or certain filesystems
 				// Socket will still work with default permissions

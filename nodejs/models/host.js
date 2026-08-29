@@ -58,10 +58,11 @@ class Host extends Table{
 		'hsts_enabled': {default: false, isRequired: false, type: 'boolean',},
 		// Per-host HTTP basic auth. basicauth_users is {username: base64(sha1(pw))}
 		// (hashed at the route layer, see utils/basicauth.js); enforced in
-		// ops/nginx_conf/hostfeatures.lua.
+		// ops/nginx_conf/hostfeatures.lua. isPrivate: even salted password hashes
+		// are sensitive — a viewer must not be able to pull them out of the API.
 		'basicauth_enabled': {default: false, isRequired: false, type: 'boolean',},
 		'basicauth_realm': {default: 'Restricted', isRequired: false, type: 'string', min: 1, max: 128},
-		'basicauth_users': {default: function(){return {}}, isRequired: false, type: 'object',},
+		'basicauth_users': {default: function(){return {}}, isRequired: false, type: 'object', isPrivate: true,},
 		// Per-host SSO (OIDC via conf.oidc) — enforced by a signed session cookie
 		// checked in ops/nginx_conf/hostfeatures.lua. Empty allow-lists mean "any
 		// authenticated user". basic auth and SSO are OR'd (either satisfies).
@@ -70,6 +71,10 @@ class Host extends Table{
 		'sso_allow_groups': {default: function(){return []}, isRequired: false, type: 'object',},
 		'req_headers': {default: function(){return {}}, isRequired: false, type: 'object',},
 		'resp_headers': {default: function(){return {}}, isRequired: false, type: 'object',},
+		// Opt-in debug response headers (X-Target-Host). Off by default: the header
+		// leaks the upstream's internal IP/hostname to the client. Operators flip
+		// this on per host when debugging routing; the header-filter phase reads it.
+		'debug_headers': {default: false, isRequired: false, type: 'boolean',},
 		'ip_allow': {default: function(){return []}, isRequired: false, type: 'object',},
 		'ip_deny': {default: function(){return []}, isRequired: false, type: 'object',},
 
@@ -463,7 +468,11 @@ class Host extends Table{
 			let out = await super.remove(...args);
 			await Host.buildLookUpObj();
 			await this.bustCache(this.host);
-			await deleteCert(this.domain);
+			// Purge the cached wildcard certificate under the host's own name.
+			// `this.domain` is the registrable domain relation and is shared by
+			// every host on that domain — deleting under it would either no-op
+			// (wrong key) or, worse, wipe a sibling's cert. Key by this.host.
+			await deleteCert(this.host);
 
 			return out;
 		} catch(error){
