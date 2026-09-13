@@ -1,3 +1,8 @@
+## [2.5.4] - 2026-09-12
+
+### Fixed
+- **Long-Lived WebSockets Were Severed At nginx's 60s Default**: no `proxy_read_timeout` was set anywhere, so upgraded connections inherited the 60s default — and it applies to an upgraded tunnel exactly as it does to a normal response. theta-agent pings every 60s and heartbeats every 60s, so the only traffic coming *back* down an idle agent socket (the pong, the `heartbeat_ack`) arrives right at the deadline: whether the tunnel survived was a coin flip, and a lost one looks like an agent reconnecting every minute for no visible reason. Now 600s for both read and send. nginx accepts neither a variable nor an `if` here, so this applies to every proxied upstream rather than only upgrades — the trade is that a genuinely hung upstream is held for 10 minutes instead of 1 before the 504, which is a better failure than silently cutting every WebSocket in the stack.
+
 ## [2.5.3] - 2026-08-29
 
 ### Fixed
