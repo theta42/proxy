@@ -1,3 +1,8 @@
+## [2.5.5] - 2026-09-13
+
+### Security
+- **Dependency advisories cleared** (2 high, 4 moderate; every open Dependabot alert on this repo is now closed): `socket.io-parser` 4.2.6 → 4.2.7 (high), `ip-address` 10.2.0 → 10.7.0 (high + 2 moderate), and `qs` 6.15.3 → 6.16.0 (2 moderate). All three were already-open Dependabot pull requests that had gone stale against master; each was rebased and re-verified rather than merged on its original, months-old CI run.
+
 ## [2.5.4] - 2026-09-12
 
 ### Fixed
