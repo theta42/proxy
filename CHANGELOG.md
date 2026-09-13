@@ -1,3 +1,13 @@
+## [2.6.0] - 2026-09-13
+
+### Added
+- **ID token signatures are now verified.** `@simpleworkjs/oidc-client` 1.0.0 → 1.1.1, which verifies the ID token against the SSO's JWKS (signature, `iss`, `aud`, `exp`) and cross-checks its subject against the userinfo response. Until now the flow was treated as opaque and identity came from userinfo alone — sound, but it established nothing about *who asserted* it. The client's own comment gave the reason: "The SSO publishes no jwks_uri". theta-directory v2.38.0 publishes one.
+
+  This requires `oidc.jwksUri` to be set, and theta-suite's `setup.sh` now writes it pointing at the **internal** SSO address (`http://sso-manager:3001/.well-known/jwks.json`) — the same reason `tokenEndpoint` and `userinfoEndpoint` already do. `issuer` deliberately stays the public host: it is what the SSO puts in the token's `iss` claim, and that is what gets compared. An existing deployment without `jwksUri` keeps working exactly as before, logging one warning that signatures are not being verified.
+
+### Changed
+- `@simpleworkjs/bao-conf` 1.0.0 → 1.0.2: an unset `VAULT_TOKEN` is reported once per process rather than once per secret read.
+
 ## [2.5.5] - 2026-09-13
 
 ### Security
