@@ -11,6 +11,14 @@
 		<link rel="icon" type="image/svg+xml" href="<%- ui.faviconUrl %>">
 		<!-- CSS are placed here -->
 		<link rel="stylesheet" href="/static-modules/bootstrap/dist/css/bootstrap.min.css">
+		<!-- Font Awesome, webfont build ONLY. The SVG-with-JS build (js/all.min.js)
+	     was loaded alongside this and has been removed: it runs a MutationObserver
+	     over the whole document and rewrites every <i> into an <svg>, keeping the
+	     original source. On a page that re-renders a list often it cannot keep up --
+	     measured in Chrome, 150 rows x 6 rebuilds froze the renderer at 776MB with
+	     ZERO icons converted, while the same run without it was untroubled. This
+	     stylesheet renders the same `fa-solid fa-*` classes with no scripting, and
+	     nothing here uses an SVG-only feature (fa-layers, power transforms, masks). -->
 		<link rel="stylesheet" href="/static-modules/@fortawesome/fontawesome-free/css/all.min.css">
 
 		<link rel='stylesheet' href='/static/css/styles.css' />
@@ -18,7 +26,6 @@
 		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
 		<script type="text/javascript" src='/static-modules/jquery/dist/jquery.js'></script>
 		<script type="text/javascript" src="/static-modules/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
-		<script type="text/javascript" src="/static-modules/@fortawesome/fontawesome-free/js/all.min.js"></script>
 		<script type="text/javascript" src='/static-modules/mustache/mustache.min.js'></script>
 		<script type="text/javascript" src='/static-modules/jq-repeat/dist/js/jq-repeat.js'></script>
 		<script type="text/javascript" src="/static-modules/moment/moment.js"></script>

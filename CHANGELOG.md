@@ -1,3 +1,19 @@
+## [2.6.2] - 2026-09-16
+
+### Fixed
+- **The Font Awesome SVG-with-JS build is no longer loaded.**
+  `nodejs/views/top.ejs` pulled both the webfont stylesheet *and*
+  `js/all.min.js`. The JS build runs a MutationObserver over the whole document,
+  rewriting every `<i>` into an `<svg>` and keeping the original source. On a
+  page that re-renders a list often it cannot keep up: measured in Chrome, 150
+  rows x 6 rebuilds froze the renderer at 776MB having converted **zero** icons,
+  while the same run without it was untroubled. The stylesheet alone renders the
+  same `fa-solid fa-*` classes with no scripting, and nothing in this app uses
+  an SVG-only feature (`fa-layers`, power transforms, masks).
+
+  Found in theta-directory; the proxy loads the same shell, so it carried the
+  same cost.
+
 ## [2.6.1] - 2026-09-16
 
 ### Fixed
