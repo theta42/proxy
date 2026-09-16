@@ -1,3 +1,23 @@
+## [2.6.1] - 2026-09-16
+
+### Fixed
+- **`app.notify` grew without bound in any long-lived tab.** It subscribes to
+  every model event for the life of the page and appended each one to an array
+  nothing ever trimmed, then re-collapsed that whole array on every new event to
+  render 30 rows -- so one arriving event cost O(history), on a history that
+  only grew. Reproduced in theta-directory, where a browser killed the tab at
+  4GB; the proxy's UI loads the same shell and the same feed, so it carried the
+  same defect. Fixed upstream in `@simpleworkjs/frontend` v0.4.3.
+- **`nodejs/package.json` said `2.5.3` on a tree released as v2.6.0.** The
+  v2.6.0 release commit updated the changelog and was tagged, but never bumped
+  the version field, so the package reported a version three releases stale.
+  Corrected here rather than left to drift further.
+
+### Changed
+- `@simpleworkjs/frontend` `^0.4.0` -> `^0.4.3`. The lockfile had been pinned at
+  0.4.1, so this also picks up 0.4.2 (notification model icons, foreground
+  toasts, `app.notify.clear()`) and 0.4.1's `app.messages.confirm()` fix.
+
 ## [2.6.0] - 2026-09-13
 
 ### Added
