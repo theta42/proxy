@@ -107,6 +107,12 @@
 								</div>
 							</div>
 							<ul id="notify-list" class="list-unstyled mb-0 py-1"></ul>
+							<!-- app.notify renders mute controls here, built from the
+							     models actually present in the feed. Without this
+							     element muting still works via configure({mutes}),
+							     it just has no UI -- and a filter nobody can reach
+							     is not a filter. -->
+							<div id="notify-filters" class="bg-light"></div>
 							<div class="px-3 py-2 border-top bg-light text-center">
 								<a href="#" id="notify-desktop-toggle" class="small text-decoration-none"></a>
 							</div>
