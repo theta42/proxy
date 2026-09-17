@@ -1,3 +1,24 @@
+## [2.7.0] - 2026-09-17
+
+### Added
+- **The notification bell can be filtered.** `@simpleworkjs/frontend` 0.4.3 →
+  0.5.0 brings muting -- `'Resource:update'` (one model, one action),
+  `'Resource'` (one model, every action) and `'*:update'` (one action, every
+  model, the "hide updates" button) -- persisted per-app in `localStorage`.
+  `views/top.ejs` gains the `#notify-filters` container the controls render
+  into; without it muting still works, it just has no UI, and a filter nobody
+  can reach is not a filter.
+
+### Fixed
+- **A burst of events no longer raises a burst of toasts.** The feed popped one
+  toast and one desktop notification per arriving event while its own list
+  collapsed correctly, so a sweep that produced one tidy "42 resources updated"
+  row also stacked 42 toasts beside it. Popups now buffer briefly and are
+  collapsed the same way the list is.
+- **Root `package.json` was two patch versions behind** at `2.6.0` on a tree
+  released as `v2.6.2`. Nothing consumes that field, which is exactly why it
+  keeps drifting; both manifests now agree.
+
 ## [2.6.2] - 2026-09-16
 
 ### Fixed
